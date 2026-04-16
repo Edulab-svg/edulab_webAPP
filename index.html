@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>エデュラボ管理システム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0f1a;--surface:#111827;--border:rgba(255,255,255,.06);
+  --text:#e8ecf4;--text2:#8892a8;
+  --accent1:#3b82f6;--accent2:#10b981;--accent3:#f59e0b;
+  --accent4:#e879f9;--accent5:#38bdf8;--accent6:#f97316;
+  --glow1:rgba(59,130,246,.15);--glow2:rgba(16,185,129,.15);--glow3:rgba(245,158,11,.15);
+  --glow4:rgba(232,121,249,.15);--glow5:rgba(56,189,248,.15);--glow6:rgba(249,115,22,.15);
+}
+body{font-family:'Noto Sans JP','Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.bg-grid{position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:60px 60px}
+.bg-glow{position:fixed;z-index:0;border-radius:50%;filter:blur(120px);opacity:.4;animation:float 20s ease-in-out infinite}
+.bg-glow.g1{width:500px;height:500px;background:var(--glow1);top:-100px;right:-100px}
+.bg-glow.g2{width:400px;height:400px;background:var(--glow2);bottom:-50px;left:-50px;animation-delay:-7s}
+.bg-glow.g3{width:350px;height:350px;background:var(--glow3);top:40%;left:50%;animation-delay:-14s}
+@keyframes float{0%,100%{transform:translate(0,0)}33%{transform:translate(30px,-20px)}66%{transform:translate(-20px,30px)}}
+.wrapper{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:40px 24px 60px}
+.header{text-align:center;margin-bottom:56px}
+.logo-mark{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent1),var(--accent2));font-family:'Outfit';font-weight:800;font-size:28px;color:#fff;margin-bottom:20px;box-shadow:0 8px 32px rgba(59,130,246,.3);animation:logoIn .8s ease-out both}
+@keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+.header h1{font-family:'Outfit','Noto Sans JP';font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.02em;line-height:1.2;background:linear-gradient(135deg,#fff 30%,var(--text2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:fadeUp .8s ease-out .2s both}
+.header .sub{font-size:14px;color:var(--text2);margin-top:8px;letter-spacing:.1em;font-weight:300;animation:fadeUp .8s ease-out .4s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.card{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px 28px 28px;text-decoration:none;color:inherit;transition:all .4s cubic-bezier(.16,1,.3,1);overflow:hidden;cursor:pointer;animation:cardIn .7s ease-out both}
+.card:nth-child(1){animation-delay:.3s}.card:nth-child(2){animation-delay:.45s}.card:nth-child(3){animation-delay:.6s}
+.card:nth-child(4){animation-delay:.75s}.card:nth-child(5){animation-delay:.9s}.card:nth-child(6){animation-delay:1.05s}
+@keyframes cardIn{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+.card::before{content:'';position:absolute;inset:0;border-radius:20px;background:radial-gradient(600px circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.04),transparent 40%);opacity:0;transition:opacity .4s}
+.card:hover::before{opacity:1}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:20px 20px 0 0;transform:scaleX(0);transform-origin:left;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+.card:hover::after{transform:scaleX(1)}
+.card.c1::after{background:linear-gradient(90deg,var(--accent1),#818cf8)}
+.card.c2::after{background:linear-gradient(90deg,var(--accent2),#34d399)}
+.card.c3::after{background:linear-gradient(90deg,var(--accent3),#fbbf24)}
+.card.c4::after{background:linear-gradient(90deg,var(--accent4),#c026d3)}
+.card.c5::after{background:linear-gradient(90deg,var(--accent5),#0ea5e9)}
+.card.c6::after{background:linear-gradient(90deg,var(--accent6),#fb923c)}
+.card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,.12);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.card-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:20px;transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.card:hover .card-icon{transform:scale(1.1) rotate(-3deg)}
+.c1 .card-icon{background:var(--glow1);color:var(--accent1)}
+.c2 .card-icon{background:var(--glow2);color:var(--accent2)}
+.c3 .card-icon{background:var(--glow3);color:var(--accent3)}
+.c4 .card-icon{background:var(--glow4);color:var(--accent4)}
+.c5 .card-icon{background:var(--glow5);color:var(--accent5)}
+.c6 .card-icon{background:var(--glow6);color:var(--accent6)}
+.card-title{font-family:'Outfit','Noto Sans JP';font-size:20px;font-weight:700;margin-bottom:8px}
+.card-desc{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px}
+.card-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.tag{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text2);border:1px solid rgba(255,255,255,.06)}
+.card-link{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;transition:gap .3s}
+.card:hover .card-link{gap:10px}
+.c1 .card-link{color:var(--accent1)}.c2 .card-link{color:var(--accent2)}.c3 .card-link{color:var(--accent3)}
+.c4 .card-link{color:var(--accent4)}.c5 .card-link{color:var(--accent5)}.c6 .card-link{color:var(--accent6)}
+.card-link svg{transition:transform .3s}.card:hover .card-link svg{transform:translateX(2px)}
+.status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent2);margin-bottom:16px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.section{margin-bottom:40px}
+.section-heading{display:flex;align-items:center;gap:12px;margin-bottom:20px;animation:fadeUp .8s ease-out .25s both}
+.section-label{font-family:'Outfit','Noto Sans JP';font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:5px 14px;border-radius:20px;border:1px solid}
+.section-label.lbl-all{color:var(--accent1);border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.07)}
+.section-label.lbl-manten{color:var(--accent2);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.07)}
+.section-line{flex:1;height:1px;background:var(--border)}
+.footer{text-align:center;margin-top:64px;padding-top:32px;border-top:1px solid var(--border);animation:fadeUp .8s ease-out .8s both}
+.footer p{font-size:12px;color:var(--text2);letter-spacing:.05em}
+.footer .company{font-weight:600;color:var(--text);margin-bottom:4px;font-size:13px}
+@media(max-width:640px){.wrapper{padding:28px 16px 40px}.cards{grid-template-columns:1fr}.header{margin-bottom:36px}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="bg-glow g1"></div>
+<div class="bg-glow g2"></div>
+<div class="bg-glow g3"></div>
+<div class="wrapper">
+  <header class="header">
+    <div class="logo-mark">E</div>
+    <h1>エデュラボ管理システム</h1>
+    <p class="sub">EDULAB MANAGEMENT PORTAL</p>
+  </header>
+  <div class="section">
+    <div class="section-heading">
+      <span class="section-label lbl-all">全体</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards">
+      <a href="https://xs047468.xsrv.jp/fiveyearplan/dashboard/" class="card c1">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">📊</div>
+        <div class="card-title">6カ年計画シミュレーター</div>
+        <div class="card-desc">19→29教室の事業拡大計画を月次P&Lでシミュレーション。全144教室・6年度分のパラメータをリアルタイム編集。</div>
+        <div class="card-tags">
+          <span class="tag">P&L月次</span><span class="tag">退会率シミュレーション</span><span class="tag">年度別推移</span><span class="tag">パラメータ編集</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="/wbs/index.php" class="card c3">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">📋</div>
+        <div class="card-title">WBS プロジェクト管理</div>
+        <div class="card-desc">作業分解構成図（WBS）でプロジェクトのタスクを体系的に管理・可視化。</div>
+        <div class="card-tags">
+          <span class="tag">WBS</span><span class="tag">ガントチャート</span><span class="tag">タスク分解</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="http://xs047468.xsrv.jp/koukokukanri/" class="card c4">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">📣</div>
+        <div class="card-title">広告管理システム</div>
+        <div class="card-desc">広告キャンペーンの作成・管理・効果測定を一元化。媒体別の出稿状況やパフォーマンスをリアルタイムで把握。</div>
+        <div class="card-tags">
+          <span class="tag">広告管理</span><span class="tag">キャンペーン</span><span class="tag">効果測定</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="http://xs047468.xsrv.jp/hrsystem/" class="card c5">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">🏖️</div>
+        <div class="card-title">HRシステム</div>
+        <div class="card-desc">従業員の有給休暇の取得状況・残日数・給与・月次台帳・賞与台帳をデジタル管理。</div>
+        <div class="card-tags">
+          <span class="tag">有給管理</span><span class="tag">取得率管理</span><span class="tag">給与管理</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/cpctotalling/" class="card c6">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">💰</div>
+        <div class="card-title">CPC 集計システム</div>
+        <div class="card-desc">クリック単価（CPC）データの集計・分析を自動化。媒体別・期間別のCPCトレンドを可視化し、広告コストの最適化を支援。</div>
+        <div class="card-tags">
+          <span class="tag">CPC集計</span><span class="tag">広告コスト</span><span class="tag">データ分析</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/jinjikouka/" class="card c2">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">⭐</div>
+        <div class="card-title">人事考課システム</div>
+        <div class="card-desc">従業員の評価・考課を一元管理。評価基準の設定から結果の集計・フィードバックまでをデジタル化し、公平で透明な人事評価を実現。</div>
+        <div class="card-tags">
+          <span class="tag">人事評価</span><span class="tag">考課管理</span><span class="tag">フィードバック</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/wordapp/" class="card c5">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">🔤</div>
+        <div class="card-title">単語テスト生成アプリ</div>
+        <div class="card-desc">単語テストや単語学習アプリをかんたんに生成。生徒の語彙力強化に向けたテスト作成・出題を効率化。</div>
+        <div class="card-tags">
+          <span class="tag">単語テスト</span><span class="tag">語彙学習</span><span class="tag">テスト生成</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/cashflow/" class="card c5">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">💲</div>
+        <div class="card-title">CF管理アプリ</div>
+        <div class="card-desc">主に日次CFを確認します、資金繰りを可視化します。新規出店やスポットの支出や収入は手打ち管理します。</div>
+        <div class="card-tags">
+          <span class="tag">日次CF</span><span class="tag">月次CF</span><span class="tag">テンプレ追加</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/jobinterview/" class="card c4">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">🤝</div>
+        <div class="card-title">社員面接 管理システム</div>
+        <div class="card-desc">採用面接のスケジュール・候補者情報・評価結果を一元管理。選考プロセスを効率化し、採用活動をサポート。</div>
+        <div class="card-tags">
+          <span class="tag">面接管理</span><span class="tag">採用選考</span><span class="tag">候補者管理</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-heading">
+      <span class="section-label lbl-manten">まんてん個別プラス</span>
+      <div class="section-line"></div>
+    </div>
+    <div class="cards">
+      <a href="/openschedule/" class="card c2">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">🏫</div>
+        <div class="card-title">新教室 開校スケジュール</div>
+        <div class="card-desc">新教室の開校に向けたタスク・スケジュールを一元管理。進捗状況をリアルタイムで把握。</div>
+        <div class="card-tags">
+          <span class="tag">開校準備</span><span class="tag">タスク管理</span><span class="tag">進捗トラッキング</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/newmembertask/" class="card c2">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">🎓</div>
+        <div class="card-title">新入社員 研修日程管理</div>
+        <div class="card-desc">新入社員の研修スケジュールを一元管理。各研修の日程・担当者・進捗状況をリアルタイムで把握し、スムーズなオンボーディングを支援。</div>
+        <div class="card-tags">
+          <span class="tag">研修管理</span><span class="tag">日程調整</span><span class="tag">オンボーディング</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+      <a href="https://xs047468.xsrv.jp/plusbusinessmodel/" class="card c3">
+        <div class="status"><span class="status-dot"></span>稼働中</div>
+        <div class="card-icon">💡</div>
+        <div class="card-title">まんてん個別プラス ビジネスモデル</div>
+        <div class="card-desc">まんてん個別プラスのビジネスモデルを可視化・管理。収益構造や運営モデルの分析・共有をサポート。</div>
+        <div class="card-tags">
+          <span class="tag">ビジネスモデル</span><span class="tag">収益構造</span><span class="tag">分析</span>
+        </div>
+        <div class="card-link">システムを開く<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+      </a>
+    </div>
+  </div>
+  <footer class="footer">
+    <p class="company">株式会社エデュラボ</p>
+    <p>&copy; 2026 EduLab Inc. All rights reserved.</p>
+  </footer>
+</div>
+<script>
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect();
+    card.style.setProperty('--mx',e.clientX-r.left+'px');
+    card.style.setProperty('--my',e.clientY-r.top+'px');
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+# ============================================================
+#  .htaccess  -  Xserver / Apache 設定
+# ============================================================
+
+Options -Indexes
+
+# --- PHP ファイルへのダイレクトアクセスをブロック（api/ 以下の config.php 保護）---
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# --- api/ ディレクトリへのブラウザ直アクセスを制限 ---
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # api/index.php へのリクエストはそのまま通す
+    RewriteRule ^api/index\.php$ - [L]
+
+    # api/ 以下の php ファイルへの直アクセスを禁止
+    RewriteRule ^api/(.+)\.php$ - [F,L]
+</IfModule>
+
+# --- 文字コード ---
+AddDefaultCharset UTF-8
+
+# --- セキュリティヘッダー ---
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>

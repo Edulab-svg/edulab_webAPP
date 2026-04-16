@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# APIリクエストをapi/index.phpにルーティング
+RewriteRule ^api/(.*)$ api/index.php?route=$1 [QSA,L]
+
+# index.htmlをデフォルトに
+DirectoryIndex index.html
+
+# キャッシュ無効化
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+</IfModule>

@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教材作成ツール｜まんてん個別</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+/* =============================================
+   CSS変数・リセット
+   ============================================= */
+:root {
+  --blue:      #2563eb;
+  --blue-dark: #1d4ed8;
+  --blue-light:#eff6ff;
+  --orange:    #f97316;
+  --orange-lt: #fff7ed;
+  --white:     #ffffff;
+  --gray-50:   #f8fafc;
+  --gray-100:  #f1f5f9;
+  --gray-200:  #e2e8f0;
+  --gray-400:  #94a3b8;
+  --gray-600:  #475569;
+  --gray-800:  #1e293b;
+  --red:       #dc2626;
+  --green:     #16a34a;
+  --radius:    10px;
+  --shadow:    0 2px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.13);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  min-height: 100vh;
+}
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
+
+/* =============================================
+   ヘッダー
+   ============================================= */
+.header {
+  background: var(--blue);
+  color: #fff;
+  padding: 0 24px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(37,99,235,.3);
+  position: sticky; top: 0; z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-logo { height: 34px; width: auto; border-radius: 4px; }
+.header-title { font-size: 15px; font-weight: 700; letter-spacing: .03em; }
+.header-nav { display: flex; gap: 6px; }
+.nav-btn {
+  background: rgba(255,255,255,.15);
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background .2s;
+}
+.nav-btn:hover { background: rgba(255,255,255,.28); }
+.nav-btn.active { background: var(--orange); }
+
+/* =============================================
+   ページ共通
+   ============================================= */
+.page { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
+.page.active { display: block; }
+
+.page-heading {
+  font-size: 20px; font-weight: 800;
+  color: var(--blue); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.page-heading::before {
+  content: '';
+  display: inline-block;
+  width: 4px; height: 22px;
+  background: var(--orange);
+  border-radius: 2px;
+}
+
+/* =============================================
+   カード
+   ============================================= */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 14px; font-weight: 700;
+  color: var(--gray-600);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+/* =============================================
+   フォーム部品
+   ============================================= */
+label { font-size: 13px; font-weight: 600; color: var(--gray-600); display: block; margin-bottom: 5px; }
+.form-row { margin-bottom: 14px; }
+.form-row-inline { display: flex; gap: 12px; margin-bottom: 14px; }
+.form-row-inline > * { flex: 1; }
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+  width: 100%;
+  border: 1.5px solid var(--gray-200);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: border .2s;
+  background: var(--white);
+}
+input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+textarea { resize: vertical; min-height: 90px; }
+
+/* =============================================
+   ボタン
+   ============================================= */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: none; border-radius: 7px;
+  padding: 9px 18px; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all .2s;
+  text-decoration: none;
+}
+.btn-primary   { background: var(--blue);   color: #fff; }
+.btn-primary:hover { background: var(--blue-dark); }
+.btn-orange    { background: var(--orange); color: #fff; }
+.btn-orange:hover { background: #ea6c0c; }
+.btn-outline   { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { background: var(--gray-100); }
+.btn-danger    { background: var(--red); color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-lg { padding: 13px 28px; font-size: 15px; }
+
+/* =============================================
+   ページ①：単語リスト作成（Claude連携）
+   ============================================= */
+.api-key-wrap {
+  background: var(--blue-light);
+  border: 1.5px solid #bfdbfe;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex; align-items: center; gap: 10px;
+}
+.api-key-wrap label { margin: 0; white-space: nowrap; color: var(--blue); }
+.api-key-wrap input { flex: 1; margin: 0; }
+
+.prompt-area {
+  background: var(--gray-50);
+  border: 1.5px solid var(--gray-200);
+  border-radius: 7px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gray-600);
+  white-space: pre-wrap;
+  margin-bottom: 12px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.image-drop-zone {
+  border: 2px dashed var(--gray-400);
+  border-radius: var(--radius);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 14px;
+}
+.image-drop-zone:hover, .image-drop-zone.dragover {
+  border-color: var(--blue);
+  background: var(--blue-light);
+}
+.image-drop-zone p { color: var(--gray-400); font-size: 14px; }
+.image-drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+.preview-grid {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.preview-img {
+  position: relative;
+  width: 90px; height: 90px;
+}
+.preview-img img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+.preview-img .del-img {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--red); color: #fff;
+  border: none; border-radius: 50%;
+  width: 20px; height: 20px;
+  font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 結果テーブル */
+.result-table-wrap { overflow-x: auto; margin-top: 14px; }
+.result-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+}
+.result-table th {
+  background: var(--blue); color: #fff;
+  padding: 9px 12px; text-align: left; font-weight: 600;
+}
+.result-table td {
+  padding: 8px 12px; border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+.result-table tr:hover td { background: var(--gray-50); }
+.result-table td.answer { color: var(--red); font-weight: 600; }
+.result-table td input, .result-table td textarea {
+  padding: 5px 8px; font-size: 13px;
+  min-height: unset;
+}
+.result-table td textarea { min-height: 50px; }
+
+.badge {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 999px; font-size: 11px; font-weight: 700;
+}
+.badge-blue   { background: var(--blue-light); color: var(--blue); }
+.badge-orange { background: var(--orange-lt);  color: var(--orange); }
+
+/* =============================================
+   ページ②：単元一覧
+   ============================================= */
+.unit-list { display: flex; flex-direction: column; gap: 12px; }
+.unit-item {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 14px;
+  transition: box-shadow .2s;
+}
+.unit-item:hover { box-shadow: var(--shadow-lg); }
+.unit-item-info { flex: 1; }
+.unit-item-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.unit-item-sub  { font-size: 12px; color: var(--gray-400); }
+.unit-item-actions { display: flex; gap: 8px; }
+
+/* =============================================
+   ページ③：暗記ドリル
+   ============================================= */
+#drill-page { max-width: 460px; }
+.drill-start {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 30px 24px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.drill-start .drill-unit { font-size: 18px; font-weight: 800; margin: 12px 0 6px; }
+.drill-start .drill-sub  { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+.drill-start-btns { display: flex; flex-direction: column; gap: 10px; }
+
+.drill-quiz {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+.drill-progress {
+  text-align: right;
+  font-size: 12px;
+  color: var(--gray-400);
+  margin-bottom: 12px;
+}
+.drill-progress-bar {
+  height: 5px; background: var(--gray-200);
+  border-radius: 999px; margin-bottom: 18px; overflow: hidden;
+}
+.drill-progress-fill {
+  height: 100%; background: var(--orange);
+  border-radius: 999px; transition: width .4s ease;
+}
+.drill-category {
+  display: inline-block;
+  background: var(--blue-light); color: var(--blue);
+  font-size: 11px; font-weight: 700; padding: 3px 10px;
+  border-radius: 999px; margin-bottom: 14px;
+}
+.drill-question {
+  font-size: 17px; font-weight: 700;
+  line-height: 1.65; margin-bottom: 20px;
+  min-height: 60px;
+}
+.drill-note {
+  font-size: 12px; color: var(--gray-400);
+  margin-bottom: 16px; text-align: center;
+}
+.drill-answer-box {
+  background: var(--orange-lt);
+  border: 2px solid var(--orange);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+.drill-answer-label { font-size: 11px; color: var(--orange); font-weight: 700; margin-bottom: 6px; }
+.drill-answer-text  { font-size: 20px; font-weight: 900; color: var(--gray-800); }
+
+.drill-done {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.drill-done .emoji { font-size: 52px; margin-bottom: 12px; }
+.drill-done h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.drill-done p  { font-size: 14px; color: var(--gray-600); margin-bottom: 24px; }
+
+/* =============================================
+   ページ④：暗記シート
+   ============================================= */
+.sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px; gap: 12px; flex-wrap: wrap;
+}
+.sheet-header-left h2 { font-size: 18px; font-weight: 800; }
+.sheet-header-left p  { font-size: 12px; color: var(--gray-400); }
+.sheet-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.sheet-section { margin-bottom: 24px; }
+.sheet-section-title {
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px; font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 6px 6px 0 0;
+}
+.sheet-table { width: 100%; border-collapse: collapse; }
+.sheet-table th {
+  background: var(--gray-100);
+  padding: 8px 12px;
+  font-size: 12px; font-weight: 700;
+  color: var(--gray-600);
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+}
+.sheet-table td {
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--gray-200);
+  vertical-align: top;
+}
+.sheet-table td.ans {
+  color: var(--red); font-weight: 700;
+  min-width: 120px;
+}
+.sheet-table td.ans.hidden span {
+  background: var(--gray-800);
+  color: transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.sheet-table td.ans.hidden span:active { background: transparent; color: var(--red); }
+
+.sheet-footer {
+  text-align: right;
+  font-size: 12px; color: var(--gray-400);
+  margin-top: 12px;
+}
+
+/* =============================================
+   ローディング・トースト・モーダル
+   ============================================= */
+.loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  display: none; align-items: center; justify-content: center;
+  z-index: 999;
+}
+.loading-overlay.show { display: flex; }
+.loading-box {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.spinner {
+  width: 44px; height: 44px;
+  border: 4px solid var(--gray-200);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-msg { font-size: 14px; color: var(--gray-600); font-weight: 600; }
+
+.toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--gray-800); color: #fff;
+  padding: 12px 20px; border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(80px); opacity: 0;
+  transition: all .3s;
+  z-index: 1000;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--green); }
+.toast.error   { background: var(--red); }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.4);
+  display: none; align-items: center; justify-content: center;
+  z-index: 500; padding: 16px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--white);
+  border-radius: var(--radius);
+  padding: 28px;
+  width: 100%; max-width: 480px;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-size: 18px; font-weight: 800; margin-bottom: 18px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+/* =============================================
+   レスポンシブ
+   ============================================= */
+@media (max-width: 600px) {
+  .page { padding: 16px; }
+  .header { padding: 0 14px; }
+  .header-title { font-size: 13px; }
+  .nav-btn { padding: 5px 10px; font-size: 12px; }
+  .form-row-inline { flex-direction: column; gap: 8px; }
+  .unit-item { flex-wrap: wrap; }
+  .unit-item-actions { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header class="header">
+  <div class="header-left">
+    <img src="https://dl.dropboxusercontent.com/scl/fi/gebtlrdut41hwiiq61rng/rogo.jpg?rlkey=23un9x1tb5v54urhx6ar35laj&raw=1"
+         alt="まんてん個別" class="header-logo" crossorigin="anonymous">
+    <span class="header-title">教材作成ツール</span>
+  </div>
+  <nav class="header-nav">
+    <button class="nav-btn active" onclick="showPage('make')">📝 リスト作成</button>
+    <button class="nav-btn" onclick="showPage('list')">📚 単元一覧</button>
+    <button class="nav-btn" onclick="showPage('drill')">🎯 暗記ドリル</button>
+    <button class="nav-btn" onclick="showPage('sheet')">📄 暗記シート</button>
+  </nav>
+</header>
+
+<!-- =============================================
+     ページ①：リスト作成
+     ============================================= -->
+<div id="make-page" class="page active">
+  <h1 class="page-heading">単語リストを作成する</h1>
+
+  <!-- Step1: 単元情報 ＋ プロンプト生成 -->
+  <div class="card">
+    <p class="card-title">Step 1 ｜ プロンプトをコピーして claude.ai に送る</p>
+    <div style="background:var(--blue-light); border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px; color:var(--blue);">
+      💡 単元名・教科書ページは <strong>claude.ai が画像から自動で読み取ります</strong>。<br>
+      教科だけ選んでコピーしてください。（空白でもOK）
+    </div>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap;">
+      <div>
+        <label>教科（任意）</label>
+        <select id="subject" onchange="updatePrompt()">
+          <option value="">指定なし</option>
+          <option>社会</option>
+          <option>理科</option>
+          <option>国語</option>
+          <option>英語</option>
+          <option>数学</option>
+        </select>
+      </div>
+      <div style="font-size:12px; color:var(--gray-400);">
+        ※ 単元名・ページは貼り付け時に自動入力されます
+      </div>
+    </div>
+    <div id="prompt-copy-box" class="prompt-area" style="cursor:pointer; border-color:#bfdbfe; white-space:pre-wrap;" onclick="copyPrompt()" title="クリックでコピー"></div>
+    <button class="btn btn-orange" onclick="copyPrompt()" style="margin-top:8px;">📋 プロンプトをコピーする</button>
+  </div>
+
+  <!-- Step2: 貼り付け -->
+  <div class="card">
+    <p class="card-title">Step 2 ｜ claude.ai の出力（Markdown表）を貼り付ける</p>
+    <p style="font-size:12px; color:var(--gray-400); margin-bottom:10px;">
+      claude.ai が出力したMarkdown表をそのままコピー＆ペーストしてください
+    </p>
+    <textarea id="paste-area" rows="10"
+      placeholder="ここにclaude.aiの出力をそのまま貼り付けてください
+
+例）
+単元名：東アジアの貿易と南蛮人（教科書 p.100〜101 対応）
+
+| No | カテゴリー | 問題文（ヒント） | 答え |
+|----|-----------|----------------|------|
+| 1  | 鉄砲伝来   | 1543年に〜      | 種子島 |
+| 2  | 南蛮貿易   | ポルトガルとの〜 | 南蛮貿易 |"></textarea>
+    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+      <button class="btn btn-orange btn-lg" onclick="parseAndLoad()">📥 リストに取り込む</button>
+      <button class="btn btn-outline" onclick="document.getElementById('paste-area').value=''">クリア</button>
+    </div>
+  </div>
+
+  <!-- Step3: 確認・編集 -->
+  <div class="card" id="result-card" style="display:none;">
+    <p class="card-title">Step 3 ｜ 単元情報を確認・編集してから保存</p>
+
+    <!-- 単元情報確認欄（貼り付け時に自動入力） -->
+    <div style="background:var(--gray-50); border:1.5px solid var(--gray-200); border-radius:8px; padding:14px; margin-bottom:14px;">
+      <p style="font-size:12px; font-weight:700; color:var(--gray-600); margin-bottom:10px;">📌 単元情報（自動入力されます。必要に応じて修正してください）</p>
+      <div class="form-row-inline" style="margin-bottom:0;">
+        <div>
+          <label>教科</label>
+          <select id="subject-confirm">
+            <option>社会</option>
+            <option>理科</option>
+            <option>国語</option>
+            <option>英語</option>
+            <option>数学</option>
+          </select>
+        </div>
+        <div>
+          <label>単元名</label>
+          <input type="text" id="unit-name" placeholder="例：明治維新と近代日本">
+        </div>
+        <div>
+          <label>教科書ページ</label>
+          <input type="text" id="page-range" placeholder="例：p.84〜87">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" onclick="addRow()">＋ 行を追加</button>
+      <button class="btn btn-primary" onclick="saveUnit()">💾 DBに保存</button>
+    </div>
+
+    <div class="result-table-wrap">
+      <table class="result-table" id="result-table">
+        <thead>
+          <tr>
+            <th style="width:36px">No</th>
+            <th style="width:110px">カテゴリー</th>
+            <th>問題文</th>
+            <th style="width:150px">答え</th>
+            <th style="width:36px">削</th>
+          </tr>
+        </thead>
+        <tbody id="result-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =============================================
+     ページ②：単元一覧
+     ============================================= -->
+<div id="list-page" class="page">
+  <h1 class="page-heading">単元一覧</h1>
+  <div id="unit-list" class="unit-list">
+    <p style="color:var(--gray-400); text-align:center; padding:30px;">読み込み中...</p>
+  </div>
+</div>
+
+<!-- =============================================
+     ページ③：暗記ドリル
+     ============================================= -->
+<div id="drill-page" class="page">
+  <h1 class="page-heading">暗記ドリル</h1>
+
+  <!-- 単元選択 -->
+  <div id="drill-select" class="card">
+    <p class="card-title">単元を選択してください</p>
+    <select id="drill-unit-select" style="margin-bottom:12px;">
+      <option value="">-- 単元を選択 --</option>
+    </select>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-primary" onclick="startDrill('order')">▶ 順番通りにスタート</button>
+      <button class="btn btn-orange"  onclick="startDrill('random')">🔀 ランダムでスタート</button>
+    </div>
+  </div>
+
+  <!-- スタート画面 -->
+  <div id="drill-start" style="display:none;" class="drill-start">
+    <img src="https://dl.dropboxusercontent.com/scl/fi/gebtlrdut41hwiiq61rng/rogo.jpg?rlkey=23un9x1tb5v54urhx6ar35laj&raw=1"
+         alt="" style="height:40px; margin-bottom:10px;" crossorigin="anonymous">
+    <div class="drill-unit" id="ds-unit-name">単元名</div>
+    <div class="drill-sub"  id="ds-page">教科書ページ</div>
+    <p style="font-size:13px; color:var(--gray-600); margin-bottom:20px;">
+      問題を読んで、ノートに答えを書きましょう。<br>「答えを見る」で正解を確認できます。
+    </p>
+    <div class="drill-start-btns">
+      <button class="btn btn-orange btn-lg" onclick="beginDrill()">スタート ▶</button>
+      <button class="btn btn-outline" onclick="document.getElementById('drill-start').style.display='none'; document.getElementById('drill-select').style.display='block';">← 戻る</button>
+    </div>
+  </div>
+
+  <!-- クイズ画面 -->
+  <div id="drill-quiz" style="display:none;" class="drill-quiz">
+    <div class="drill-progress">第 <span id="dq-current">1</span> 問 / 全 <span id="dq-total">10</span> 問</div>
+    <div class="drill-progress-bar"><div class="drill-progress-fill" id="dq-bar" style="width:0%"></div></div>
+    <div class="drill-category" id="dq-category">カテゴリ</div>
+    <div class="drill-question" id="dq-question">問題文</div>
+    <p class="drill-note">✏️ ノートに答えを書いてから「答えを見る」をタップ</p>
+    <div id="dq-show-btn">
+      <button class="btn btn-primary btn-lg" style="width:100%" onclick="showDrillAnswer()">答えを見る 👁</button>
+    </div>
+    <div id="dq-answer-box" class="drill-answer-box" style="display:none;">
+      <div class="drill-answer-label">✅ 正解</div>
+      <div class="drill-answer-text" id="dq-answer">答え</div>
+    </div>
+    <div id="dq-next-btn" style="display:none; margin-top:12px;">
+      <button class="btn btn-orange btn-lg" style="width:100%" onclick="nextDrillQ()">次の問題へ →</button>
+    </div>
+  </div>
+
+  <!-- 完了画面 -->
+  <div id="drill-done" style="display:none;" class="drill-done">
+    <div class="emoji">🎉</div>
+    <h2>おつかれさまでした！</h2>
+    <p>全問に取り組みました。<br>もう一度やるともっと定着します！</p>
+    <button class="btn btn-orange btn-lg" onclick="restartDrill()">もう一度やる 🔄</button>
+  </div>
+</div>
+
+<!-- =============================================
+     ページ④：暗記シート
+     ============================================= -->
+<div id="sheet-page" class="page">
+  <h1 class="page-heading">暗記シート</h1>
+
+  <div class="card">
+    <p class="card-title">単元を選択してください</p>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <select id="sheet-unit-select" style="flex:1; min-width:200px;">
+        <option value="">-- 単元を選択 --</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadSheet()">表示 ▶</button>
+    </div>
+  </div>
+
+  <div id="sheet-content" style="display:none;">
+    <div class="sheet-header">
+      <div class="sheet-header-left">
+        <p>定期テスト対策・直前チェック</p>
+        <h2 id="sh-unit-name">単元名</h2>
+        <p id="sh-page"></p>
+      </div>
+      <img src="https://dl.dropboxusercontent.com/scl/fi/gebtlrdut41hwiiq61rng/rogo.jpg?rlkey=23un9x1tb5v54urhx6ar35laj&raw=1"
+           alt="まんてん個別" style="height:44px;" crossorigin="anonymous" id="sheet-logo">
+    </div>
+
+    <div class="sheet-controls">
+      <button class="btn btn-primary btn-sm" id="toggle-ans-btn" onclick="toggleAnswers()">答えを隠す</button>
+      <button class="btn btn-outline btn-sm" onclick="printSheet()">🖨️ 印刷</button>
+    </div>
+
+    <div id="sheet-body" style="margin-top:16px;"></div>
+    <div class="sheet-footer">まんてん個別</div>
+  </div>
+</div>
+
+<!-- ローディング -->
+<div class="loading-overlay" id="loading">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loading-msg">生成中...</div>
+  </div>
+</div>
+
+<!-- トースト -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================================
+// グローバル状態
+// =============================================
+// ★ サーバーの設置フォルダに合わせて変更してください
+const API = location.pathname.replace(/\/[^\/]*$/, '') + '/api/index.php';
+let currentRows    = [];  // 編集中テーブルデータ
+let drillData      = [];  // 暗記ドリル問題リスト
+let drillIndex     = 0;
+let drillMode      = 'order';
+let drillUnitInfo  = {};
+let answersVisible = true;
+
+// =============================================
+// ページ切り替え
+// =============================================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-page').classList.add('active');
+  event.currentTarget.classList.add('active');
+
+  if (name === 'list')  loadUnitList();
+  if (name === 'drill') loadDrillSelect();
+  if (name === 'sheet') loadSheetSelect();
+}
+
+// =============================================
+// プロンプト自動生成・コピー
+// =============================================
+function buildPromptText() {
+  const subject  = document.getElementById('subject').value;
+  const unitName = document.getElementById('unit-name').value.trim();
+  const pageRange= document.getElementById('page-range').value.trim();
+
+  const unitLine  = unitName  ? `単元名：${unitName}` : '単元名：（未入力）';
+  const pageLine  = pageRange ? `教科書ページ：${pageRange}` : '教科書ページ：（未入力）';
+
+  const subjectLine = subject ? `教科：${subject}` : '';
+
+  return `# 命令
+アップロードされた資料画像をもとに、暗記教材用の「問題・答えリスト」を作成してください。
+出力は下記フォーマットの「単元名の行」と「Markdown表」のみとし、説明文・前置き・まとめは一切書かないでください。
+
+# 単元情報の読み取り（画像から自動で読み取ること）
+- 単元名：資料のヘッダー・タイトルから章・節・タイトルを読み取る
+- 教科書ページ：「教科書 P.◯◯〜◯◯」などの表記を読み取る
+  ※ ワーク下部の小さいページ番号とは混同しないこと${subjectLine ? '\n- 教科：' + subject : ''}
+
+# 抽出ルール
+1. 抽出対象：「赤文字」「太字」「囲み」になっている語句を「答え」として抽出する
+2. リライト：問題文は資料の文章をそのままコピーせず、意味を変えずに独自の表現に書き換える
+3. カテゴリ分類：学習しやすいテーマ別に並べ替える
+
+# 出力フォーマット（この2行構成のみ出力。他は何も書かないこと）
+
+単元名：（資料から読み取った単元名）（教科書 p.◯◯〜◯◯ 対応）
+
+| No | カテゴリー | 問題文（ヒント） | 答え |
+|----|-----------|----------------|------|
+| 1  | カテゴリ名 | 問題文 | 答え |
+| 2  | カテゴリ名 | 問題文 | 答え |`;
+}
+
+function updatePrompt() {
+  document.getElementById('prompt-copy-box').textContent = buildPromptText();
+}
+
+function copyPrompt() {
+  const text = buildPromptText();
+  navigator.clipboard.writeText(text).then(() => {
+    toast('プロンプトをコピーしました！claude.aiに貼り付けてください', 'success');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('プロンプトをコピーしました！claude.aiに貼り付けてください', 'success');
+  });
+}
+
+// =============================================
+// ペースト解析（Markdown表対応・単元情報も自動取得）
+// =============================================
+function parseAndLoad() {
+  const raw = document.getElementById('paste-area').value.trim();
+  if (!raw) { toast('テキストを貼り付けてください', 'error'); return; }
+
+  const lines = raw.split('\n');
+  const rows  = [];
+
+  // ── 単元情報を貼り付けテキストから自動取得 ──
+  for (const line of lines) {
+    // 「単元名：○○（教科書 p.XX〜XX 対応）」形式
+    const unitMatch = line.match(/単元名[：:]\s*(.+?)(?:（教科書\s*(.+?)\s*対応）)?$/);
+    if (unitMatch) {
+      const parsedUnit = unitMatch[1].trim();
+      const parsedPage = unitMatch[2] ? unitMatch[2].trim() : '';
+      // Step1の入力欄が空なら自動セット
+      if (!document.getElementById('unit-name').value.trim() && parsedUnit) {
+        document.getElementById('unit-name').value = parsedUnit;
+        updatePrompt();
+      }
+      if (!document.getElementById('page-range').value.trim() && parsedPage) {
+        document.getElementById('page-range').value = parsedPage;
+        updatePrompt();
+      }
+    }
+  }
+
+  // ── Markdown表を解析 ──
+  for (const line of lines) {
+    const cols = line.split('|').map(s => s.trim()).filter(s => s !== '');
+    if (cols.length < 3) continue;
+    // 区切り行・ヘッダー行をスキップ
+    if (cols.every(c => /^[-:]+$/.test(c))) continue;
+    if (/^(no|番号)$/i.test(cols[0]) || /カテゴ/.test(cols[0])) continue;
+
+    let category, question, answer;
+    if (cols.length >= 4 && /^\d+$/.test(cols[0])) {
+      // | No | カテゴリ | 問題 | 答え |
+      [, category, question, answer] = cols;
+    } else if (cols.length >= 4) {
+      // | カテゴリ | 問題 | 答え | （No列なし）
+      [category, question, answer] = cols;
+    } else if (cols.length === 3) {
+      [category, question, answer] = cols;
+    } else { continue; }
+
+    if (!question || !answer) continue;
+    rows.push({
+      category: category?.trim() || '未分類',
+      question: question.trim(),
+      answer:   answer.trim()
+    });
+  }
+
+  if (rows.length === 0) {
+    toast('リストを読み取れませんでした。Markdown表形式か確認してください', 'error');
+    return;
+  }
+
+  currentRows = rows;
+  renderResultTable();
+  document.getElementById('result-card').style.display = 'block';
+  document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast(`${rows.length} 件を取り込みました`, 'success');
+}
+
+// =============================================
+// 結果テーブル
+// =============================================
+function renderResultTable() {
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = '';
+  currentRows.forEach((row, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center; color:var(--gray-400);">${i+1}</td>
+      <td><input type="text" value="${esc(row.category)}" onchange="currentRows[${i}].category=this.value"></td>
+      <td><textarea rows="2" onchange="currentRows[${i}].question=this.value">${esc(row.question)}</textarea></td>
+      <td class="answer"><input type="text" value="${esc(row.answer)}" onchange="currentRows[${i}].answer=this.value"></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteRow(${i})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+function deleteRow(i) { currentRows.splice(i, 1); renderResultTable(); }
+function addRow() {
+  currentRows.push({ category: '', question: '', answer: '' });
+  renderResultTable();
+}
+
+// =============================================
+// DBに保存
+// =============================================
+async function saveUnit() {
+  const subject  = document.getElementById('subject-confirm')?.value
+                 || document.getElementById('subject').value;
+  const unitName = document.getElementById('unit-name').value.trim();
+  const pageRange= document.getElementById('page-range').value.trim();
+
+  if (!unitName) { toast('単元名を入力してください', 'error'); return; }
+  if (!currentRows.length) { toast('問題データがありません', 'error'); return; }
+
+  showLoading('保存中...');
+  try {
+    const res = await apiFetch({ action: 'create_unit', subject, unit_name: unitName, page_range: pageRange, questions: currentRows });
+    toast('保存しました！', 'success');
+    document.getElementById('result-card').style.display = 'none';
+    currentRows = [];
+  } catch (e) {
+    toast('保存エラー: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+// =============================================
+// 単元一覧ページ
+// =============================================
+async function loadUnitList() {
+  const el = document.getElementById('unit-list');
+  el.innerHTML = '<p style="color:var(--gray-400); text-align:center; padding:30px;">読み込み中...</p>';
+  try {
+    const data = await apiFetch(null, `action=list_units&_t=${Date.now()}`, 'GET');
+    if (!data.units.length) {
+      el.innerHTML = '<p style="color:var(--gray-400); text-align:center; padding:30px;">単元がまだありません。リスト作成から追加してください。</p>';
+      return;
+    }
+    el.innerHTML = data.units.map(u => `
+      <div class="unit-item">
+        <div class="unit-item-info">
+          <div class="unit-item-name">${esc(u.unit_name)}</div>
+          <div class="unit-item-sub">
+            <span class="badge badge-blue">${esc(u.subject)}</span>
+            　${esc(u.page_range)}　
+            <small>${u.created_at?.slice(0,10) || ''}</small>
+          </div>
+        </div>
+        <div class="unit-item-actions">
+          <button class="btn btn-outline btn-sm" onclick="openDrillFor(${u.id})">🎯 ドリル</button>
+          <button class="btn btn-outline btn-sm" onclick="openSheetFor(${u.id})">📄 シート</button>
+          <button class="btn btn-orange btn-sm" onclick="exportUnit(${u.id})">⬇ HTML出力</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUnit(${u.id}, '${esc(u.unit_name)}')">削除</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--red); padding:20px;">エラー: ${e.message}</p>`;
+  }
+}
+
+async function deleteUnit(id, name) {
+  if (!confirm(`「${name}」を削除しますか？`)) return;
+  showLoading('削除中...');
+  try {
+    await apiFetch({ action: 'delete_unit', id });
+    toast('削除しました', 'success');
+    loadUnitList();
+  } catch (e) {
+    toast('削除エラー: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function openDrillFor(id) {
+  showPage_direct('drill');
+  document.getElementById('drill-unit-select').value = id;
+}
+function openSheetFor(id) {
+  showPage_direct('sheet');
+  document.getElementById('sheet-unit-select').value = id;
+  loadSheet();
+}
+function showPage_direct(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name + '-page').classList.add('active');
+  document.querySelectorAll('.nav-btn')[['make','list','drill','sheet'].indexOf(name)].classList.add('active');
+  if (name === 'drill') loadDrillSelect();
+  if (name === 'sheet') loadSheetSelect();
+}
+
+// =============================================
+// セレクトボックス読み込み（共通）
+// =============================================
+async function loadUnitOptions(selectId) {
+  const sel = document.getElementById(selectId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">-- 単元を選択 --</option>';
+  try {
+    const data = await apiFetch(null, `action=list_units&_t=${Date.now()}`, 'GET');
+    data.units.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id; opt.textContent = `[${u.subject}] ${u.unit_name}`;
+      sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+  } catch (e) { /* silent */ }
+}
+function loadDrillSelect() { loadUnitOptions('drill-unit-select'); }
+function loadSheetSelect() { loadUnitOptions('sheet-unit-select'); }
+
+// =============================================
+// 暗記ドリル
+// =============================================
+async function startDrill(mode) {
+  const id = document.getElementById('drill-unit-select').value;
+  if (!id) { toast('単元を選択してください', 'error'); return; }
+  drillMode = mode;
+  showLoading('読み込み中...');
+  try {
+    const data = await apiFetch(null, `action=get_unit&id=${id}&_t=${Date.now()}`, 'GET');
+    drillData     = data.questions;
+    drillUnitInfo = data.unit;
+    if (mode === 'random') drillData = shuffle([...drillData]);
+
+    document.getElementById('ds-unit-name').textContent = data.unit.unit_name;
+    document.getElementById('ds-page').textContent      = data.unit.page_range;
+
+    document.getElementById('drill-select').style.display = 'none';
+    document.getElementById('drill-start' ).style.display = 'block';
+    document.getElementById('drill-quiz'  ).style.display = 'none';
+    document.getElementById('drill-done'  ).style.display = 'none';
+  } catch (e) { toast('エラー: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+function beginDrill() {
+  drillIndex = 0;
+  document.getElementById('drill-start').style.display = 'none';
+  document.getElementById('drill-quiz' ).style.display = 'block';
+  renderDrillQ();
+}
+
+function renderDrillQ() {
+  const q   = drillData[drillIndex];
+  const tot = drillData.length;
+  document.getElementById('dq-current' ).textContent = drillIndex + 1;
+  document.getElementById('dq-total'   ).textContent = tot;
+  document.getElementById('dq-bar'     ).style.width = ((drillIndex / tot) * 100) + '%';
+  document.getElementById('dq-category').textContent = q.category;
+  document.getElementById('dq-question').textContent = q.question;
+  document.getElementById('dq-answer'  ).textContent = q.answer;
+
+  document.getElementById('dq-show-btn'   ).style.display = 'block';
+  document.getElementById('dq-answer-box' ).style.display = 'none';
+  document.getElementById('dq-next-btn'   ).style.display = 'none';
+}
+
+function showDrillAnswer() {
+  document.getElementById('dq-show-btn'   ).style.display = 'none';
+  document.getElementById('dq-answer-box' ).style.display = 'block';
+  document.getElementById('dq-next-btn'   ).style.display = 'block';
+}
+
+function nextDrillQ() {
+  drillIndex++;
+  if (drillIndex >= drillData.length) {
+    document.getElementById('drill-quiz').style.display = 'none';
+    document.getElementById('drill-done').style.display = 'block';
+    document.getElementById('dq-bar').style.width = '100%';
+  } else {
+    renderDrillQ();
+  }
+}
+
+function restartDrill() {
+  if (drillMode === 'random') drillData = shuffle([...drillData]);
+  else drillData.sort((a,b) => a.sort_order - b.sort_order);
+  drillIndex = 0;
+  document.getElementById('drill-done').style.display = 'none';
+  document.getElementById('drill-quiz').style.display = 'block';
+  renderDrillQ();
+}
+
+// =============================================
+// 暗記シート
+// =============================================
+async function loadSheet() {
+  const id = document.getElementById('sheet-unit-select').value;
+  if (!id) { toast('単元を選択してください', 'error'); return; }
+  showLoading('読み込み中...');
+  try {
+    const data = await apiFetch(null, `action=get_unit&id=${id}&_t=${Date.now()}`, 'GET');
+    document.getElementById('sh-unit-name').textContent = data.unit.unit_name;
+    document.getElementById('sh-page'     ).textContent = data.unit.page_range;
+
+    // カテゴリごとにグループ化
+    const groups = {};
+    data.questions.forEach(q => {
+      if (!groups[q.category]) groups[q.category] = [];
+      groups[q.category].push(q);
+    });
+
+    let html = '';
+    let no = 1;
+    Object.keys(groups).forEach(cat => {
+      html += `<div class="sheet-section">
+        <div class="sheet-section-title">${esc(cat)}</div>
+        <table class="sheet-table">
+          <thead><tr><th>No</th><th>問題文</th><th>答え</th></tr></thead>
+          <tbody>`;
+      groups[cat].forEach(q => {
+        html += `<tr>
+          <td style="width:36px; text-align:center; color:var(--gray-400);">${no++}</td>
+          <td>${esc(q.question)}</td>
+          <td class="ans"><span>${esc(q.answer)}</span></td>
+        </tr>`;
+      });
+      html += `</tbody></table></div>`;
+    });
+
+    document.getElementById('sheet-body'   ).innerHTML = html;
+    document.getElementById('sheet-content').style.display = 'block';
+    answersVisible = true;
+    document.getElementById('toggle-ans-btn').textContent = '答えを隠す';
+  } catch (e) { toast('エラー: ' + e.message, 'error'); }
+  finally { hideLoading(); }
+}
+
+function toggleAnswers() {
+  answersVisible = !answersVisible;
+  document.querySelectorAll('.sheet-table td.ans').forEach(td => {
+    td.classList.toggle('hidden', !answersVisible);
+  });
+  document.getElementById('toggle-ans-btn').textContent = answersVisible ? '答えを隠す' : '答えを表示';
+}
+
+function printSheet() {
+  // 印刷時は答えを表示
+  document.querySelectorAll('.sheet-table td.ans').forEach(td => td.classList.remove('hidden'));
+  window.print();
+}
+
+// =============================================
+// API共通フェッチ
+// =============================================
+async function apiFetch(body, query = '', method = 'POST') {
+  const url = method === 'GET'
+    ? `${API}?${query}&_t=${Date.now()}`
+    : API;
+
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (method === 'POST') opts.body = JSON.stringify(body);
+
+  let res;
+  try {
+    res = await fetch(url, opts);
+  } catch (e) {
+    throw new Error(`通信エラー：${url} に接続できません（${e.message}）`);
+  }
+
+  // レスポンスがJSONでない場合（PHPエラーページなど）も拾う
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // PHPのエラー文やHTMLが返ってきた場合
+    const preview = text.slice(0, 200).replace(/<[^>]+>/g, '').trim();
+    throw new Error(`サーバーエラー (HTTP ${res.status})：${preview}`);
+  }
+
+  if (data.status !== 'ok') throw new Error(data.message || '不明なエラー');
+  return data;
+}
+
+// =============================================
+// ユーティリティ
+// =============================================
+function showLoading(msg = '処理中...') {
+  document.getElementById('loading-msg').textContent = msg;
+  document.getElementById('loading').classList.add('show');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// =============================================
+// HTMLエクスポート（暗記シート＋暗記ドリル）
+// =============================================
+async function exportUnit(id) {
+  showLoading('HTMLファイルを生成中...');
+  try {
+    const data = await apiFetch(null, `action=get_unit&id=${id}&_t=${Date.now()}`, 'GET');
+    const unit = data.unit;
+    const questions = data.questions;
+
+    // カテゴリ別グループ化
+    const groups = {};
+    questions.forEach(q => {
+      if (!groups[q.category]) groups[q.category] = [];
+      groups[q.category].push(q);
+    });
+
+    downloadHtml(buildSheetHtml(unit, groups, questions), `暗記シート_${unit.unit_name}.html`);
+    await sleep(300);
+    downloadHtml(buildDrillHtml(unit, questions), `暗記ドリル_${unit.unit_name}.html`);
+    toast('暗記シート＋暗記ドリルを出力しました', 'success');
+  } catch(e) {
+    toast('エクスポートエラー: ' + e.message, 'error');
+  } finally { hideLoading(); }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function downloadHtml(html, filename) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── 暗記シート HTML生成 ──────────────────────────
+function buildSheetHtml(unit, groups, questions) {
+  const LOGO = 'https://dl.dropboxusercontent.com/scl/fi/gebtlrdut41hwiiq61rng/rogo.jpg?rlkey=23un9x1tb5v54urhx6ar35laj&raw=1';
+  const title = esc(unit.unit_name);
+  const page  = esc(unit.page_range);
+
+  let sectionHtml = '';
+  let no = 1;
+  Object.keys(groups).forEach(cat => {
+    const rows = groups[cat].map(q => `
+<tr class="table-row-striped border-b border-gray-100">
+  <td class="py-2 px-2 w-10 text-gray-400">${String(no++).padStart(2,'0')}</td>
+  <td class="py-2 px-2 text-sm">${esc(q.question)}</td>
+  <td class="py-2 px-2 w-32 text-right"><span class="answer-text">${esc(q.answer)}</span></td>
+</tr>`).join('');
+    sectionHtml += `
+<section>
+  <h2 class="bg-blue-600 text-white px-4 py-1 rounded-md font-bold mb-3 inline-block">${esc(cat)}</h2>
+  <table class="w-full border-t border-b border-gray-200">
+    <tbody>${rows}</tbody>
+  </table>
+</section>`;
+  });
+
+  const safeFilename = unit.unit_name.replace(/[^\w\u3000-\u9fff]/g,'_');
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>暗記シート｜${title}</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Noto Sans JP',sans-serif;background-color:#f3f4f6}
+@media print{body{background:white;-webkit-print-color-adjust:exact}.no-print{display:none!important}.sheet-container{width:210mm;margin:0;padding:0;box-shadow:none}.answer-text{color:#ef4444!important;background:none!important}table{font-size:11pt}tr{break-inside:avoid}}
+@media screen{.sheet-container{max-width:800px;margin:0 auto;padding:20px;background:white;min-height:100vh}.mask-active .answer-text{background-color:#374151;color:#374151;border-radius:4px;cursor:pointer;user-select:none}.mask-active .answer-text:active{background-color:transparent;color:#ef4444}}
+.answer-text{color:#ef4444;font-weight:bold;transition:all 0.2s}.table-row-striped:nth-child(even){background-color:#f9fafb}.downloading{padding:40px!important}
+</style></head>
+<body class="text-gray-800 pb-24 print:pb-0">
+<div class="no-print fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-lg flex gap-4 z-50 justify-center">
+<button id="toggleMaskBtn" class="flex-1 bg-gray-800 text-white font-bold py-3 px-4 rounded-xl shadow active:scale-95 transition flex items-center justify-center gap-2">
+<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/></svg>
+<span id="btnText">答えを隠す</span></button>
+<button id="downloadBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl shadow active:scale-95 transition flex items-center justify-center gap-2">
+<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+画像を保存</button>
+</div>
+<div class="sheet-container" id="contentArea">
+<header class="border-b-4 border-blue-600 pb-4 mb-6 flex justify-between items-end">
+  <div>
+    <p class="text-xs md:text-sm text-blue-600 font-bold mb-1">定期テスト対策・直前チェック</p>
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">${title}</h1>
+    <p class="text-sm md:text-base text-gray-600 mt-1 font-bold">教科書 ${page} 対応</p>
+  </div>
+  <div class="text-right flex flex-col items-end">
+    <img src="${LOGO}" alt="ロゴ" class="h-8 md:h-12 object-contain" crossorigin="anonymous" id="logoImg">
+    <div id="logoFallback" class="hidden text-blue-900 font-bold text-lg">まんてん個別</div>
+  </div>
+</header>
+<div class="no-print bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-6 flex items-start text-sm">
+  <span class="text-yellow-600 font-bold mr-2">Tips:</span>
+  <p>下の「答えを隠す」ボタンを押すと、答えが黒塗りになります。タップすると一瞬だけ答えが見えます。</p>
+</div>
+<div class="space-y-8">${sectionHtml}</div>
+<footer class="mt-8 border-t-2 border-gray-200 pt-4 flex items-center justify-end">
+  <div class="text-right"><p class="text-base md:text-lg font-bold text-blue-900">まんてん個別</p></div>
+</footer>
+</div>
+<div id="loadingOverlay" class="hidden fixed inset-0 bg-black/50 z-[100] flex items-center justify-center text-white font-bold">画像を生成中...</div>
+<script>
+var t=document.getElementById('toggleMaskBtn'),d=document.getElementById('downloadBtn'),c=document.getElementById('contentArea'),b=document.getElementById('btnText'),l=document.getElementById('loadingOverlay'),i=document.getElementById('logoImg'),f=document.getElementById('logoFallback'),m=false;
+i.onerror=function(){i.style.display='none';f.classList.remove('hidden')};
+t.addEventListener('click',function(){m=!m;if(m){c.classList.add('mask-active');t.classList.replace('bg-gray-800','bg-red-500');b.textContent="答えを見る"}else{c.classList.remove('mask-active');t.classList.replace('bg-red-500','bg-gray-800');b.textContent="答えを隠す"}});
+d.addEventListener('click',async function(){l.classList.remove('hidden');c.classList.add('downloading');try{var cv=await html2canvas(c,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});var a=document.createElement('a');a.download='暗記シート_${safeFilename}.png';a.href=cv.toDataURL("image/png");a.click()}catch(e){console.error(e)}c.classList.remove('downloading');l.classList.add('hidden')});
+<\/script></body></html>`;
+}
+
+// ── 暗記ドリル HTML生成 ──────────────────────────
+function buildDrillHtml(unit, questions) {
+  const LOGO  = 'https://dl.dropboxusercontent.com/scl/fi/gebtlrdut41hwiiq61rng/rogo.jpg?rlkey=23un9x1tb5v54urhx6ar35laj&raw=1';
+  const title = esc(unit.unit_name);
+  const page  = esc(unit.page_range);
+  const jsonData = JSON.stringify(
+    questions.map(q => ({ category: q.category, question: q.question, answer: q.answer }))
+  );
+  const safeFilename = unit.unit_name.replace(/[^\w\u3000-\u9fff]/g,'_');
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"><title>暗記ドリル｜${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:#f3f4f6;color:#1f2937;min-height:100vh;min-height:100dvh}
+button{font-family:inherit;cursor:pointer;border:none;outline:none;-webkit-tap-highlight-color:transparent}
+.screen{display:none;min-height:100vh;min-height:100dvh;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+.screen.active{display:flex}
+.card{background:#fff;max-width:420px;width:100%;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.1);overflow:hidden;padding:32px;text-align:center}
+.logo{height:56px;object-fit:contain;margin-bottom:12px}
+.card h1{font-size:22px;font-weight:900;color:#1e3a5f;line-height:1.4}
+.card h1 span{display:block;font-size:15px;font-weight:400;color:#2563eb;margin-top:4px}
+.subtitle{font-size:13px;color:#6b7280;font-weight:700;margin-top:8px}
+.how-to{background:#eff6ff;border-radius:12px;padding:16px;text-align:left;margin-top:20px;font-size:13px;color:#1e40af}
+.how-to b{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.how-to ol{padding-left:20px}.how-to li{margin-bottom:4px}
+.btn-primary{width:100%;background:#2563eb;color:#fff;font-weight:700;font-size:16px;padding:16px;border-radius:12px;box-shadow:0 4px 12px rgba(37,99,235,.3);transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary:hover{background:#1d4ed8}
+.btn-outline{width:100%;background:#fff;color:#2563eb;font-weight:700;font-size:15px;padding:14px;border-radius:12px;border:2px solid #2563eb;transition:background .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
+.btn-outline:hover{background:#eff6ff}
+.q-top{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;padding:0 8px;margin-bottom:12px}
+.q-top span{font-size:13px;font-weight:700;color:#6b7280}
+.q-top button{font-size:12px;color:#9ca3af;text-decoration:underline;background:none}
+.q-card{max-width:420px;width:100%;background:#fff;border-radius:24px;box-shadow:0 10px 40px rgba(0,0,0,.1);overflow:hidden;display:flex;flex-direction:column;min-height:500px}
+.q-header{background:#2563eb;padding:24px;text-align:center;color:#fff;flex-shrink:0}
+.q-category{display:inline-block;background:#1e3a8a;font-size:11px;padding:3px 10px;border-radius:4px;margin-bottom:8px;opacity:.85}
+.q-header h2{font-size:18px;font-weight:700;line-height:1.7}
+.q-body{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;background:#f9fafb;position:relative}
+.q-body-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.04;pointer-events:none}
+.q-body-bg svg{width:160px;height:160px}
+.prompt-text{font-size:13px;font-weight:700;color:#6b7280;animation:pulse 2s ease-in-out infinite;margin-bottom:16px}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.btn-answer{background:#f97316;color:#fff;font-size:17px;font-weight:700;padding:16px 48px;border-radius:999px;box-shadow:0 4px 16px rgba(249,115,22,.35);transition:background .2s;display:flex;align-items:center;gap:8px}
+.btn-answer:hover{background:#ea580c}.btn-answer:active{transform:scale(.96)}
+.answer-area{text-align:center;width:100%;position:relative;z-index:1}
+.answer-label{font-size:12px;color:#9ca3af;margin-bottom:4px}
+.answer-value{font-size:28px;font-weight:900;color:#dc2626;word-break:break-word;padding:16px 0;border-bottom:2px solid #fee2e2;margin-bottom:28px}
+.btn-next{width:100%;background:#2563eb;color:#fff;font-size:17px;font-weight:700;padding:16px;border-radius:12px;box-shadow:0 4px 16px rgba(37,99,235,.3);display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s}
+.btn-next:hover{background:#1d4ed8}
+.footer-logo{margin-top:32px;opacity:.35}.footer-logo img{height:24px;object-fit:contain}
+.trophy{color:#eab308;margin-bottom:8px}
+.card h2{font-size:22px;font-weight:900;color:#111827;margin-bottom:8px}
+.card .done-text{font-size:14px;color:#6b7280;line-height:1.8}
+.btn-retry{background:#2563eb;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:999px;box-shadow:0 4px 16px rgba(37,99,235,.3);margin-top:20px;transition:background .2s}
+.btn-retry:hover{background:#1d4ed8}
+.done-footer{margin-top:28px;padding-top:16px;border-top:1px solid #f3f4f6}
+.done-footer img{height:28px;object-fit:contain;opacity:.4}
+</style></head><body>
+<div id="startScreen" class="screen active">
+  <div class="card">
+    <img src="${LOGO}" alt="ロゴ" class="logo">
+    <h1>一問一答 暗記ドリル<span>${title}</span></h1>
+    <p class="subtitle">教科書 ${page} 対応</p>
+    <div class="how-to">
+      <b>📖 使い方</b>
+      <ol><li>ノートとペンを用意しよう</li><li>問題が出たらノートに答えを書こう</li><li>「答えを見る」で確認しよう</li></ol>
+    </div>
+    <div style="margin-top:20px">
+      <button class="btn-primary" onclick="startNormal()">▶ 順番通りにスタート</button>
+      <button class="btn-outline" onclick="startShuffle()">🔀 ランダム出題でスタート</button>
+    </div>
+  </div>
+</div>
+<div id="quizScreen" class="screen">
+  <div class="q-top"><span id="progress"></span><button onclick="goStart()">トップへ戻る</button></div>
+  <div class="q-card">
+    <div class="q-header">
+      <span class="q-category" id="qCategory"></span>
+      <h2 id="qText"></h2>
+    </div>
+    <div class="q-body">
+      <div class="q-body-bg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+      <div id="beforeAnswer" style="text-align:center;position:relative;z-index:1">
+        <p class="prompt-text">ノートに答えを書こう</p>
+        <button class="btn-answer" onclick="revealAnswer()">✓ 答えを見る</button>
+      </div>
+      <div id="afterAnswer" class="answer-area" style="display:none">
+        <p class="answer-label">正解は...</p>
+        <div class="answer-value" id="aText"></div>
+        <button class="btn-next" onclick="nextQuestion()">次の問題へ ▶</button>
+      </div>
+    </div>
+  </div>
+  <div class="footer-logo"><img src="${LOGO}" alt="ロゴ"></div>
+</div>
+<div id="doneScreen" class="screen">
+  <div class="card">
+    <div class="trophy"><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+    <h2>おつかれさま！</h2>
+    <p class="done-text">全<span id="totalCount"></span>問 終了です。<br>間違えた問題は必ず解き直そう。</p>
+    <button class="btn-retry" onclick="goStart()">もう一度やる</button>
+    <div class="done-footer"><img src="${LOGO}" alt="ロゴ"></div>
+  </div>
+</div>
+<script>
+var DATA=${jsonData};
+var questions=[],idx=0;
+function show(id){document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active')});document.getElementById(id).classList.add('active')}
+function renderQuestion(){var q=questions[idx];document.getElementById('progress').textContent='第 '+(idx+1)+' 問 / 全 '+questions.length+' 問';document.getElementById('qCategory').textContent=q.category;document.getElementById('qText').textContent=q.question;document.getElementById('aText').textContent=q.answer;document.getElementById('beforeAnswer').style.display='';document.getElementById('afterAnswer').style.display='none'}
+function startNormal(){questions=DATA.slice();idx=0;renderQuestion();show('quizScreen')}
+function startShuffle(){questions=DATA.slice().sort(function(){return 0.5-Math.random()});idx=0;renderQuestion();show('quizScreen')}
+function revealAnswer(){document.getElementById('beforeAnswer').style.display='none';document.getElementById('afterAnswer').style.display=''}
+function nextQuestion(){if(idx<questions.length-1){idx++;renderQuestion();window.scrollTo(0,0)}else{document.getElementById('totalCount').textContent=questions.length;show('doneScreen')}}
+function goStart(){idx=0;show('startScreen')}
+<\/script></body></html>`;
+}
+
+// =============================================
+// 印刷スタイル
+// =============================================
+const printStyle = document.createElement('style');
+printStyle.textContent = `
+  @media print {
+    .header, .page-heading, .card:first-child, .sheet-controls, nav { display: none !important; }
+    .page { display: block !important; padding: 0; }
+    #sheet-content { display: block !important; }
+    body { background: white; }
+    .sheet-footer { position: fixed; bottom: 10px; right: 10px; }
+  }
+`;
+document.head.appendChild(printStyle);
+</script>
+</body>
+</html>

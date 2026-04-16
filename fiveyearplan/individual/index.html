@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>まんてん個別 5カ年計画シミュレーター パターン①29教室</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP','Hiragino Sans',sans-serif;background:linear-gradient(135deg,#f8f9fa,#e8ecef);min-height:100vh;color:#333}
+.header{background:linear-gradient(135deg,#1B4965,#2d7a9c);color:#fff;padding:16px 20px}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.header h1{font-size:18px;font-weight:700}
+.header .sub{font-size:12px;opacity:.8}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px}
+.badge-info{background:rgba(255,255,255,.2);color:#fff}
+.badge-warn{background:#f8f4e8;color:#666;border:1px solid #e8dcc0}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:6px 14px;border:2px solid transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:#fff;color:#666;transition:.2s}
+.tab.active{border-color:#1B4965;background:rgba(27,73,101,.07);color:#1B4965;font-weight:700}
+.tab:hover{background:rgba(27,73,101,.04)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi-label{font-size:11px;color:#888;margin-bottom:2px}
+.kpi-value{font-size:22px;font-weight:900}
+.kpi-sub{font-size:11px;color:#888;margin-top:2px}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;overflow:hidden}
+.card-header{padding:12px 16px;font-weight:700;font-size:14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.card-body{padding:12px 16px}
+.card-body.collapsed{display:none}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:11px;width:100%;min-width:1020px}
+th{background:#f8f9fa;padding:6px 4px;text-align:center;font-weight:600;position:sticky;top:0;z-index:2;border-bottom:2px solid #ddd;font-size:10px;white-space:nowrap}
+th:first-child{position:sticky;left:0;z-index:3;text-align:left;padding-left:8px}
+td{padding:4px 4px;text-align:right;white-space:nowrap;border-bottom:1px solid #f0f0f0}
+td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;background:inherit;z-index:1;border-right:1px solid #e8e8e8}
+.grp-header td{padding:5px 8px;font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;background:#f8f8f8;border-top:2px solid #e0e0e0}
+.row-bold td{font-weight:700}
+.row-highlight{background:#f0f4f8!important}
+.row-highlight td{background:#f0f4f8!important}
+.annual-col{background:#f8f8f8;border-left:1px solid #ddd;font-weight:700;color:#1B4965}
+.base-col{font-size:10px;color:#888;background:#fafaf5;border-right:1px solid #e8e8e8}
+.profit-pos{color:#2D6A4F}
+.profit-neg{color:#C1292E}
+.wd-rate-row td{color:#999;font-size:10px;font-style:italic}
+.chart-container{position:relative;height:300px;margin:10px 0}
+.classroom-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.cl-btn{padding:6px 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:12px;background:#fff;transition:.2s}
+.cl-btn.active{background:#1B4965;color:#fff;border-color:#1B4965}
+.cl-btn:hover{border-color:#1B4965}
+.edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:10px 0}
+.edit-field label{display:block;font-size:11px;color:#666;margin-bottom:2px}
+.edit-field input{width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+.edit-field input:focus{outline:none;border-color:#1B4965}
+.monthly-table{width:100%;border-collapse:collapse;font-size:12px}
+.monthly-table th{padding:6px;background:#f8f9fa;text-align:center;font-size:11px}
+.monthly-table td{padding:4px 6px;text-align:center}
+.monthly-table input{width:60px;padding:3px 4px;border:1px solid #ddd;border-radius:4px;text-align:right;font-size:12px}
+.year-summary-table{width:100%;border-collapse:collapse;font-size:13px}
+.year-summary-table th{padding:8px 10px;text-align:right;background:#f8f9fa;border-bottom:2px solid #ddd}
+.year-summary-table th:first-child{text-align:left}
+.year-summary-table td{padding:8px 10px;text-align:right;border-bottom:1px solid #f0f0f0}
+.year-summary-table td:first-child{text-align:left;font-weight:700}
+.year-summary-table tr:hover{background:rgba(27,73,101,.03)}
+.year-summary-table tr{cursor:pointer}
+.saving{position:fixed;top:10px;right:10px;background:#2D6A4F;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:999;display:none;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.loading{text-align:center;padding:60px;font-size:16px;color:#888}
+.sem-col{background:#eef4fb!important;border-left:2px solid #b3cde0;border-right:2px solid #b3cde0;font-weight:700;color:#1B4965}
+.sem-col-h{background:#ddeaf5!important;border-left:2px solid #b3cde0;border-right:2px solid #b3cde0;font-weight:700;color:#1B4965;font-size:10px}
+.year-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px;background:#e8f4fd;color:#1B4965;border:1px solid #b3d4ea;vertical-align:middle;font-weight:700}
+.new-badge{background:#fff3e0;color:#e65100;border:1px solid #ffcc80}
+.consolidated-badge{background:#1B4965;color:#fff;font-size:11px;padding:2px 8px;border-radius:6px;margin-left:6px}
+@media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.edit-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <span style="font-size:26px">📚</span>
+    <div>
+      <h1>まんてん個別 5カ年計画シミュレーター　パターン①29教室<span class="badge badge-info" id="header-badge"></span></h1>
+      <div class="sub" id="header-sub"></div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="loading" class="loading">データを読み込み中...</div>
+  <div id="app" style="display:none">
+
+    <!-- 年度タブ -->
+    <div class="tabs" id="year-tabs"></div>
+
+    <!-- KPI -->
+    <div class="kpi-grid" id="kpi-area"></div>
+
+    <!-- メインタブ -->
+    <div class="tabs" style="margin-bottom:8px">
+      <div class="tab active" onclick="switchMainTab(0)">📊 P&L</div>
+      <div class="tab" onclick="switchMainTab(1)">⚙ パラメータ</div>
+      <div class="tab" onclick="switchMainTab(2)">📋 教室マスタ</div>
+      <div class="tab" onclick="switchMainTab(3)">📈 推移</div>
+    </div>
+
+    <!-- P&Lタブ -->
+    <div id="main-tab-0" class="card">
+      <div class="card-header" onclick="toggleCard(this)">📊 <span id="pl-title"></span></div>
+      <div class="card-body">
+        <!-- 教室選択 -->
+        <div class="classroom-list" id="classroom-list"></div>
+        <div class="table-wrap" id="pl-table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- パラメータタブ -->
+    <div id="main-tab-1" class="card" style="display:none">
+      <div class="card-header">⚙ パラメータ編集</div>
+      <div class="card-body">
+        <div class="classroom-list" id="param-classroom-list" style="margin-bottom:12px"></div>
+        <div id="param-area"></div>
+      </div>
+    </div>
+
+    <!-- 教室マスタタブ -->
+    <div id="main-tab-2" style="display:none">
+      <div class="card">
+        <div class="card-header">📋 教室マスタ（全年度共通パラメータ）</div>
+        <div class="card-body">
+          <div style="font-size:12px;color:#666;margin-bottom:12px;padding:8px 12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">
+            ※ ここで編集した値は全年度に一括反映されます。給与1は初年度基本給（半期ごとに¥2,500自動昇給）。入会数・退会率も全年度共通。
+          </div>
+          <div class="table-wrap" id="master-table-area"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 推移タブ -->
+    <div id="main-tab-3" style="display:none">
+      <div class="card">
+        <div class="card-header">📈 年度別推移</div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <div class="tab active" id="scope-all" onclick="switchScope('all')">全教室</div>
+            <div class="tab" id="scope-19" onclick="switchScope('19')">既存19教室のみ</div>
+          </div>
+          <div class="chart-container"><canvas id="year-chart"></canvas></div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table class="year-summary-table" id="year-summary-table"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="saving" id="saving-indicator">💾 保存中...</div>
+
+<script>
+// ============================================
+// 定数
+// ============================================
+const MONTHS = ["4月","5月","6月","7月","8月","9月","10月","11月","12月","1月","2月","3月"];
+const SEM_RATES = [0.3, 0, 0, 0, 1.7, 0, 0, 0, 0, 1.5, 0, 0];
+const BONUS_MONTHS = [0, 6];
+const API = 'api/index.php';
+const ENROLL_BASE = [81, 59, 75, 148, 35, 70, 54, 57, 73, 60, 95, 132];
+const ENROLL_TOTAL = ENROLL_BASE.reduce((s,v)=>s+v, 0);
+const ENROLL_RATIOS = ENROLL_BASE.map(v=>v/ENROLL_TOTAL);
+const WD_BASE = [24, 15, 16, 32, 33, 23, 30, 22, 33, 32, 144, 239];
+const WD_TOTAL = WD_BASE.reduce((s,v)=>s+v, 0);
+const WD_RATIOS = WD_BASE.map(v=>v/WD_TOTAL);
+const SALARY_RAISE = 2500;
+const SALARY_RAISE_PM = 4000;
+const MASTER_FIELDS = ['conv_r','rent','water','electric','phone','travel','consume_r','promo_r',
+  'recruit_fee','staff_recruit','sys_per_st','sys_base','mat_buy_r','exam_buy_r',
+  'fee_r','welfare_r','repair','lease_cost','insurance','sanitation','other_exp',
+  'teacher_r','salary_pm','salary_mgr','salary_sub','salary_pm2','salary_mgr2','salary_sub2',
+  'legal_welf_r','tax_r','max_st'];
+const GROUP_NAMES = {kpi:"KPI・生徒数",rev:"売上",admin:"経費（管理費）",labor:"経費（人件費）",summary:"合計"};
+
+// ============================================
+// 状態
+// ============================================
+let STATE = {
+  years: [],        // year_settings
+  classrooms: {},   // {2025: [...], 2026: [...]}
+  yearIdx: 0,
+  clIdx: 0,
+  mainTab: 0,
+  plMode: 'single', // 'single' | 'consolidated19'
+  results: {},      // 計算結果キャッシュ
+  yearChart: null,
+  scope: 'all',     // 'all' or '19'
+};
+
+// ============================================
+// 計算エンジン (Excel準拠)
+// ============================================
+function distributeEnroll(annual) {
+  if(annual<=0) return [0,0,0,0,0,0,0,0,0,0,0,0];
+  const raw = ENROLL_RATIOS.map(r => annual * r);
+  const result = raw.map(v => Math.round(v));
+  let diff = annual - result.reduce((s,v) => s+v, 0);
+  const remainders = raw.map((v,i) => ({i, r: v - Math.floor(v)}));
+  remainders.sort((a,b) => b.r - a.r);
+  for(let j=0; diff>0; j++){result[remainders[j%12].i]++; diff--;}
+  for(let j=remainders.length-1; diff<0; j--){result[remainders[j%12].i]--; diff++;}
+  return result;
+}
+
+// Opening year: distribute only from open_month onward
+function distributeEnrollOpen(annual, openMonth) {
+  if(openMonth < 0 || openMonth === 0) return distributeEnroll(annual);
+  if(annual<=0) return [0,0,0,0,0,0,0,0,0,0,0,0];
+  // Only use ratios from openMonth onward
+  const activeRatios = ENROLL_RATIOS.map((r,i) => i >= openMonth ? r : 0);
+  const ratioSum = activeRatios.reduce((s,v) => s+v, 0);
+  if(ratioSum === 0) return [0,0,0,0,0,0,0,0,0,0,0,0];
+  const normalized = activeRatios.map(r => r / ratioSum);
+  const raw = normalized.map(r => annual * r);
+  const result = raw.map(v => Math.round(v));
+  let diff = annual - result.reduce((s,v) => s+v, 0);
+  const remainders = raw.map((v,i) => ({i, r: v - Math.floor(v)})).filter(x => x.r > 0);
+  remainders.sort((a,b) => b.r - a.r);
+  for(let j=0; diff>0 && remainders.length; j++){result[remainders[j%remainders.length].i]++; diff--;}
+  for(let j=remainders.length-1; diff<0 && remainders.length; j--){result[remainders[Math.abs(j)%remainders.length].i]--; diff++;}
+  return result;
+}
+
+function distributeWd(annual) {
+  if(annual<=0) return [0,0,0,0,0,0,0,0,0,0,0,0];
+  const raw = WD_RATIOS.map(r => annual * r);
+  const result = raw.map(v => Math.round(v));
+  let diff = annual - result.reduce((s,v) => s+v, 0);
+  const remainders = raw.map((v,i) => ({i, r: v - Math.floor(v)}));
+  remainders.sort((a,b) => b.r - a.r);
+  for(let j=0; diff>0; j++){result[remainders[j%12].i]++; diff--;}
+  for(let j=remainders.length-1; diff<0; j--){result[remainders[j%12].i]--; diff++;}
+  return result;
+}
+
+function calcClassroom(p, bonusMult, fiscalYear) {
+  const bm = bonusMult || 2.5;
+  const om = (p.open_month != null && p.open_month >= 0) ? p.open_month : -1;
+  const INIT_COST = 4000000;
+  const firstYear = STATE.years[0].fiscal_year;
+
+  // 退会数の反復推定
+  const wdRate = p.wd_rate || 0;
+  let wdMonthly = [0,0,0,0,0,0,0,0,0,0,0,0];
+  let annualWd = 0;
+  for (let iter = 0; iter < 3; iter++) {
+    let estTotalSt = 0;
+    let tmpSt = p.start_st;
+    for (let m = 0; m < 12; m++) {
+      const prevWdEst = m === 0 ? (p.start_wd || 0) : wdMonthly[m-1];
+      const base = tmpSt - prevWdEst;
+      let active = base + p.enroll[m];
+      if (p.max_st && active > p.max_st) active = p.max_st;
+      estTotalSt += active;
+      tmpSt = active;
+    }
+    annualWd = Math.round(wdRate / 100 * estTotalSt);
+    wdMonthly = distributeWd(annualWd);
+  }
+
+  // 上期・下期の基本給
+  // salary_pm/mgr/sub = 上期基本給
+  // salary_pm2/mgr2/sub2 = 下期基本給（0なら上期と同じ）
+  const basePmH1  = p.salary_pm  || 0;
+  const baseMgrH1 = p.salary_mgr || 0;
+  const baseSubH1 = p.salary_sub || 0;
+  const basePmH2  = (p.salary_pm2  > 0) ? p.salary_pm2  : basePmH1;
+  const baseMgrH2 = (p.salary_mgr2 > 0) ? p.salary_mgr2 : baseMgrH1;
+  const baseSubH2 = (p.salary_sub2 > 0) ? p.salary_sub2 : baseSubH1;
+
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const isPreOpen = (om > 0 && m < om);
+    const isOpenMonth = (om >= 0 && m === om);
+    const isSecondHalf = m >= 6;
+
+    // 自動昇給: 半期単位で加算（PM+4000, 他+2500）
+    const semesters = (fiscalYear - firstYear) * 2 + (isSecondHalf ? 1 : 0);
+    const basePm  = isSecondHalf
+      ? (basePmH2  > 0 ? basePmH2  + SALARY_RAISE_PM * semesters : 0)
+      : (basePmH1  > 0 ? basePmH1  + SALARY_RAISE_PM * semesters : 0);
+    const baseMgr = isSecondHalf
+      ? (baseMgrH2 > 0 ? baseMgrH2 + SALARY_RAISE * semesters : 0)
+      : (baseMgrH1 > 0 ? baseMgrH1 + SALARY_RAISE * semesters : 0);
+    const baseSub = isSecondHalf
+      ? (baseSubH2 > 0 ? baseSubH2 + SALARY_RAISE * semesters : 0)
+      : (baseSubH1 > 0 ? baseSubH1 + SALARY_RAISE * semesters : 0);
+
+    const prevSt = m === 0 ? p.start_st : months[m-1][4];
+    const prevWd = m === 0 ? (p.start_wd || 0) : months[m-1][3];
+    const base = prevSt - prevWd;
+    const enr = p.enroll[m];
+    let active = base + enr;
+    if (p.max_st && active > p.max_st) active = p.max_st;
+    const wd = wdMonthly[m];
+
+    if (isPreOpen) {
+      const salPm = basePm;
+      const salMgr = baseMgr;
+      const salSub = baseSub;
+      const legalW = (salPm + salMgr + salSub) * p.legal_welf_r;
+      const laborTotal = salPm + salMgr + salSub + legalW;
+      const expTotal = laborTotal;
+      const profit = -expTotal;
+      months.push([0,0,0,0,0,0, 0,0,0,0,0,0,0, 0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,
+        0, salPm, salMgr, salSub, legalW, laborTotal, 0, expTotal, profit, 0]); // [44]=recruit_fee_part
+    } else {
+      const inq = p.conv_r > 0 ? Math.round(enr / p.conv_r) : 0;
+      const price = p.prices[m];
+      const tuition = active * price - enr * price / 2;
+      const fifth = tuition * 0.03;
+      const seminar = tuition * SEM_RATES[m];
+      const matSale = tuition * 0.075;
+      const examSale = tuition * 0.03;
+      const otherSale = tuition * 0.005;
+      const revenue = tuition + fifth + seminar + matSale + examSale + otherSale;
+      const consume = active * p.consume_r;
+      const promo = active * p.promo_r;
+      const sys = p.sys_per_st * active + p.sys_base;
+      const matBuy = matSale * p.mat_buy_r;
+      const examBuy = examSale * p.exam_buy_r;
+      const fee = active * p.fee_r;
+      const welfare = active * p.welfare_r;
+      const otherExpM = p.other_exp + (isOpenMonth ? INIT_COST : 0);
+      const adminTotal = p.rent + p.water + p.electric + p.phone + p.travel + consume + promo + p.recruit_fee + (p.recruit_fee_part||0) + p.ads[m] + p.staff_recruit + sys + matBuy + examBuy + fee + welfare + p.repair + p.lease_cost + p.insurance + p.sanitation + otherExpM;
+      const teacherPay = (tuition + seminar + otherSale) * p.teacher_r;
+      const skipBonus = (om >= 0 && isOpenMonth);
+      const bMul = BONUS_MONTHS.includes(m) && !skipBonus ? bm : 1;
+      const salPm = basePm * bMul;
+      const salMgr = baseMgr * bMul;
+      const salSub = baseSub * bMul;
+      const legalW = (salPm + salMgr + salSub) * p.legal_welf_r;
+      const laborTotal = teacherPay + salPm + salMgr + salSub + legalW;
+      const tax = revenue * p.tax_r;
+      const expTotal = adminTotal + laborTotal + tax;
+      const profit = revenue - expTotal;
+      const cpo = enr > 0 ? p.ads[m] / enr : 0;
+      months.push([inq,enr,cpo,wd,active,price,tuition,fifth,seminar,SEM_RATES[m],matSale,examSale,otherSale,revenue,
+        p.rent,p.water,p.electric,p.phone,p.travel,consume,promo,p.recruit_fee,p.ads[m],p.staff_recruit,sys,matBuy,examBuy,fee,welfare,
+        p.repair,p.lease_cost,p.insurance,p.sanitation,otherExpM,adminTotal,teacherPay,salPm,salMgr,salSub,legalW,laborTotal,tax,expTotal,profit,
+        p.recruit_fee_part||0]); // [44]=recruit_fee_part
+    }
+  }
+  const sum = (idx) => months.reduce((s,r) => s + r[idx], 0);
+  const last = months[11];
+  return { months, revenue: sum(13), expense: sum(42), profit: sum(43), totalEnroll: sum(1), totalWd: sum(3), endStudents: last[4] - last[3] };
+}
+
+function calcAllResults() {
+  STATE.results = {};
+  STATE.years.forEach((ys, yi) => {
+    const fy = ys.fiscal_year;
+    const cls = STATE.classrooms[fy] || [];
+    STATE.results[fy] = cls.map(c => calcClassroom(c, ys.bonus_mult, fy));
+  });
+  // 全社ダッシュボード向けエクスポート（API書き込み）
+  try {
+    const exportData = STATE.years.map(ys => {
+      const f = ys.fiscal_year;
+      const res = STATE.results[f] || [];
+      const monthlyRev = Array(12).fill(0);
+      const monthlyExp = Array(12).fill(0);
+      const monthlyPro = Array(12).fill(0);
+      res.forEach(r => {
+        (r.months || []).forEach((m, mi) => {
+          monthlyRev[mi] += Math.round(m[13] || 0);
+          monthlyExp[mi] += Math.round(m[42] || 0);
+          monthlyPro[mi] += Math.round(m[43] || 0);
+        });
+      });
+      return {
+        fy: f,
+        revenue: monthlyRev.reduce((s,v)=>s+v, 0),
+        expense: monthlyExp.reduce((s,v)=>s+v, 0),
+        profit:  monthlyPro.reduce((s,v)=>s+v, 0),
+        rooms:   res.length,
+        monthly_revenue: JSON.stringify(monthlyRev),
+        monthly_expense: JSON.stringify(monthlyExp),
+        monthly_profit:  JSON.stringify(monthlyPro),
+      };
+    });
+    apiPost('export_write', { data: exportData }).catch(()=>{});
+  } catch(e) {}
+}
+
+// ダッシュボード向けexport_write（individual専用エンドポイント）
+async function exportToDashboard(exportData) {
+  try {
+    const fd = new FormData();
+    fd.append('route', 'export_write');
+    fd.append('sim_type', 'individual');
+    fd.append('data', JSON.stringify(exportData));
+    await fetch(API, { method: 'POST', body: fd });
+  } catch(e) {}
+}
+
+// ============================================
+// P&L行定義
+// ============================================
+const PL_ROWS = [
+  {label:"問合せ数",idx:0,fmt:"num",group:"kpi"},
+  {label:"入会数",idx:1,fmt:"num",group:"kpi"},
+  {label:"CPO",idx:2,fmt:"yen",group:"kpi"},
+  {label:"退会数",idx:3,fmt:"num",group:"kpi"},
+  {label:"退会率(年間)",idx:-1,fmt:"pct",group:"kpi",special:"wdRate"},
+  {label:"生徒数",idx:4,fmt:"num",group:"kpi"},
+  {label:"授業料単価(税込)",idx:5,fmt:"yen",group:"kpi"},
+  {label:"授業料売上",idx:6,fmt:"yen",group:"rev"},
+  {label:"5週目請求",idx:7,fmt:"yen",group:"rev"},
+  {label:"講習会売上",idx:8,fmt:"yen",group:"rev"},
+  {label:"教材売上",idx:10,fmt:"yen",group:"rev"},
+  {label:"模試売上",idx:11,fmt:"yen",group:"rev"},
+  {label:"その他売上",idx:12,fmt:"yen",group:"rev"},
+  {label:"売上合計",idx:13,fmt:"yen",group:"rev",bold:true,highlight:true},
+  {label:"家賃",idx:14,fmt:"yen",group:"admin"},
+  {label:"水道光熱",idx:15,fmt:"yen",group:"admin"},
+  {label:"電気",idx:16,fmt:"yen",group:"admin"},
+  {label:"電話",idx:17,fmt:"yen",group:"admin"},
+  {label:"交通費",idx:18,fmt:"yen",group:"admin"},
+  {label:"消耗品費",idx:19,fmt:"yen",group:"admin"},
+  {label:"販促費",idx:20,fmt:"yen",group:"admin"},
+  {label:"正社員求人費",idx:21,fmt:"yen",group:"admin",sub:true},
+  {label:"アルバイト求人費",idx:44,fmt:"yen",group:"admin",sub:true},
+  {label:"広告宣伝費",idx:22,fmt:"yen",group:"admin"},
+  {label:"人材紹介費",idx:23,fmt:"yen",group:"admin"},
+  {label:"システム費",idx:24,fmt:"yen",group:"admin"},
+  {label:"教材仕入",idx:25,fmt:"yen",group:"admin"},
+  {label:"模試仕入",idx:26,fmt:"yen",group:"admin"},
+  {label:"決済手数料",idx:27,fmt:"yen",group:"admin"},
+  {label:"福利厚生費",idx:28,fmt:"yen",group:"admin"},
+  {label:"修繕費",idx:29,fmt:"yen",group:"admin"},
+  {label:"リース",idx:30,fmt:"yen",group:"admin"},
+  {label:"保険",idx:31,fmt:"yen",group:"admin"},
+  {label:"衛生費",idx:32,fmt:"yen",group:"admin"},
+  {label:"その他経費",idx:33,fmt:"yen",group:"admin"},
+  {label:"管理費計",idx:34,fmt:"yen",group:"admin",bold:true,highlight:true},
+  {label:"講師人件費",idx:35,fmt:"yen",group:"labor"},
+  {label:"PM",idx:36,fmt:"yen",group:"labor"},
+  {label:"教室長",idx:37,fmt:"yen",group:"labor"},
+  {label:"副教室長",idx:38,fmt:"yen",group:"labor"},
+  {label:"法定福利費",idx:39,fmt:"yen",group:"labor"},
+  {label:"人件費計",idx:40,fmt:"yen",group:"labor",bold:true,highlight:true},
+  {label:"租税公課",idx:41,fmt:"yen",group:"summary"},
+  {label:"経費合計",idx:42,fmt:"yen",group:"summary",bold:true,highlight:true},
+  {label:"営業利益",idx:43,fmt:"yen",group:"summary",bold:true,highlight:true,profitColor:true},
+];
+
+// ============================================
+// フォーマット
+// ============================================
+function fmtYen(v){return Math.round(v).toLocaleString()}
+function fmtShort(v){
+  const a=Math.abs(v);
+  if(a>=1e8)return (v/1e8).toFixed(1)+"億";
+  if(a>=1e4)return Math.round(v/1e4).toLocaleString()+"万";
+  return Math.round(v).toLocaleString();
+}
+function fmtCell(fmt,v){
+  if(fmt==="yen")return fmtYen(v);
+  if(fmt==="num")return Math.round(v).toLocaleString();
+  if(fmt==="pct")return (v*100).toFixed(1)+"%";
+  return v;
+}
+function getAnnual(idx,M){
+  if(idx===4)return M[11][4];
+  if(idx===5){const ts=M.reduce((s,r)=>s+r[4],0);return ts>0?Math.round(M.reduce((s,r)=>s+r[6],0)/ts):0}
+  if(idx===9)return null;
+  if(idx===2){const a=M.reduce((s,r)=>s+r[22],0);const e=M.reduce((s,r)=>s+r[1],0);return e>0?a/e:0}
+  return M.reduce((s,r)=>s+r[idx],0);
+}
+
+// 上期(m=0-5) / 下期(m=6-11) 集計
+function calcSemester(data, idx, sem) {
+  const slice = sem === 0 ? data.slice(0,6) : data.slice(6,12);
+  if(idx === 4) return sem===0 ? data[5][4] : data[11][4];
+  if(idx === 5){ const ts=slice.reduce((s,r)=>s+r[4],0); return ts>0?Math.round(slice.reduce((s,r)=>s+r[6],0)/ts):0; }
+  if(idx === 9) return null;
+  if(idx === 2){ const a=slice.reduce((s,r)=>s+r[22],0); const e=slice.reduce((s,r)=>s+r[1],0); return e>0?a/e:0; }
+  return slice.reduce((s,r)=>s+r[idx],0);
+}
+
+// 当該年度の全教室を月次合算した data 配列を返す
+// staffCount: {pm, mgr, sub} も一緒に返す
+function calcConsolidated19Months() {
+  const cls = curClassrooms();
+  const results = curResults();
+  const merged = [];
+  for(let m=0; m<12; m++){
+    const row = new Array(44).fill(0);
+    cls.forEach((c,ci)=>{
+      const mrow = results[ci]?.months[m];
+      if(!mrow) return;
+      for(let k=0;k<44;k++) row[k] += mrow[k];
+    });
+    merged.push(row);
+  }
+  // 単価(idx5)を生徒数加重平均で再計算
+  for(let m=0;m<12;m++){
+    merged[m][5] = merged[m][4]>0 ? Math.round(merged[m][6]/merged[m][4]) : 0;
+  }
+  // スタッフ人数カウント（氏名が入力されている教室のみカウント）
+  const staffCount = {pm:0, mgr:0, sub:0};
+  cls.forEach(c=>{
+    if(c.salary_pm  > 0 || c.name_pm)  staffCount.pm++;
+    if(c.salary_mgr > 0 || c.name_mgr) staffCount.mgr++;
+    if(c.salary_sub > 0 || c.name_sub) staffCount.sub++;
+  });
+  merged._staffCount = staffCount;
+  return merged;
+}
+
+// ============================================
+// 教室開校日マスタ
+// ============================================
+const CLASSROOM_OPEN_DATES = {
+  '兵庫駅前':   '2016-04-01',
+  '湊川':       '2019-02-01',
+  '新長田':     '2020-02-01',
+  '東垂水':     '2021-02-01',
+  '須磨月見山': '2021-06-01',
+  '舞子坂':     '2021-06-01',
+  '大久保':     '2021-12-01',
+  '西明石':     '2021-12-01',
+  '垂水星陵台': '2022-10-01',
+  '西鈴蘭台':   '2022-11-01',
+  '大石':       '2023-02-01',
+  '二見':       '2023-02-01',
+  '六甲':       '2023-05-01',
+  '加古川':     '2023-09-01',
+  '西新町':     '2023-10-01',
+  '山の街':     '2023-12-04',
+  '東加古川':   '2024-02-01',
+  '住吉駅前':   '2024-02-26',
+  '垂水駅前':   '2024-03-21',
+};
+
+// 教室名から〇年目を計算（年度基準: 4月始まり）
+// 発足年度（開校した年度）= 1年目
+function getClassroomYearNum(name, fiscalYear) {
+  const dateStr = CLASSROOM_OPEN_DATES[name];
+  if(!dateStr) return null; // マスタにない場合はnull → 呼び出し側でopen_fiscal_yearを使う
+  const open = new Date(dateStr);
+  // 開校年度: 開校月が4月以降なら同年、3月以前なら前年
+  const openFiscalYear = open.getMonth() >= 3 ? open.getFullYear() : open.getFullYear() - 1;
+  // 発足年度 = 1年目
+  return fiscalYear - openFiscalYear + 1;
+}
+
+// 教室オブジェクトから年数を取得
+function getYearNum(c, fiscalYear) {
+  // 1. 開校日マスタから計算（既存19教室）
+  const fromMaster = getClassroomYearNum(c.name, fiscalYear);
+  if(fromMaster !== null) return fromMaster;
+  // 2. DBのopen_fiscal_yearカラム（明示的に設定されている場合）
+  if(c.open_fiscal_year != null && c.open_fiscal_year > 0){
+    return fiscalYear - c.open_fiscal_year + 1;
+  }
+  // 3. STATEの全年度データから「この教室名が最初に登場する年度」を開校年度とする
+  const allFiscalYears = STATE.years.map(y => y.fiscal_year).sort((a,b)=>a-b);
+  for(const fy of allFiscalYears){
+    const cls = STATE.classrooms[fy] || [];
+    if(cls.some(x => x.name === c.name)){
+      return fiscalYear - fy + 1;
+    }
+  }
+  // 4. フォールバック
+  return fiscalYear - STATE.years[0].fiscal_year + 1;
+}
+
+// ============================================
+// API通信
+// ============================================
+async function apiGet(route){
+  const r=await fetch(API+'?route='+route+'&_t='+Date.now());
+  return r.json();
+}
+async function apiPost(route,data){
+  const fd=new FormData();
+  fd.append('route',route);
+  for(const[k,v]of Object.entries(data))fd.append(k,typeof v==='object'?JSON.stringify(v):v);
+  const r=await fetch(API,{method:'POST',body:fd});
+  return r.json();
+}
+
+const saveTimers={};
+let savePending=0;
+function showSaving(){document.getElementById('saving-indicator').style.display='block'}
+function hideSaving(){if(savePending<=0){savePending=0;document.getElementById('saving-indicator').style.display='none'}}
+
+async function saveField(id,field,value){
+  showSaving();
+  savePending++;
+  const key=id+'__'+field;
+  clearTimeout(saveTimers[key]);
+  saveTimers[key]=setTimeout(async()=>{
+    try{
+      await apiPost('classroom',{action:'update',id,field,value:typeof value==='object'?JSON.stringify(value):value});
+    }finally{
+      savePending--;
+      hideSaving();
+    }
+  },500);
+}
+
+// ============================================
+// 初期ロード
+// ============================================
+async function init(){
+  try{
+    const data=await apiGet('all');
+    // Check if API returned an error
+    if(data.error){
+      document.getElementById('loading').innerHTML='<div style="color:#C1292E">API Error:<br><br><b>'+data.error+'</b><br><br>config.php のDB設定を確認してください</div>';
+      return;
+    }
+    if(!data.years||!data.classrooms){
+      document.getElementById('loading').innerHTML='<div style="color:#C1292E">API response format error:<br><br><pre style="text-align:left;max-width:600px;margin:0 auto;overflow:auto;font-size:11px">'+JSON.stringify(data,null,2).substring(0,500)+'</pre></div>';
+      return;
+    }
+    STATE.years=data.years;
+    STATE.classrooms=data.classrooms;
+    calcAllResults();
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='block';
+    const totalRooms=Object.values(STATE.classrooms).reduce((s,a)=>s+a.length,0);
+    document.getElementById('header-badge').textContent=STATE.years.length+'カ年計画 ('+STATE.years[0].fiscal_year+'-'+STATE.years[STATE.years.length-1].fiscal_year+')';
+    document.getElementById('header-sub').textContent='全'+totalRooms+'教室データ反映済';
+    renderYearTabs();
+    renderAll();
+  }catch(e){
+    document.getElementById('loading').innerHTML='<div style="color:#C1292E">データの読み込みに失敗しました<br><br>'+e.message+'<br><br>api/index.php?route=test でAPI動作を確認してください</div>';
+  }
+}
+
+// ============================================
+// レンダリング
+// ============================================
+function curYear(){return STATE.years[STATE.yearIdx]}
+function curClassrooms(){return STATE.classrooms[curYear().fiscal_year]||[]}
+function curResults(){return STATE.results[curYear().fiscal_year]||[]}
+
+function renderYearTabs(){
+  const el=document.getElementById('year-tabs');
+  el.innerHTML='';
+  STATE.years.forEach((ys,i)=>{
+    const cls=STATE.classrooms[ys.fiscal_year]||[];
+    const btn=document.createElement('div');
+    btn.className='tab'+(i===STATE.yearIdx?' active':'');
+    btn.textContent=ys.fiscal_year+'年度 '+cls.length+'室';
+    btn.onclick=()=>{STATE.yearIdx=i;STATE.clIdx=0;renderYearTabs();renderAll()};
+    el.appendChild(btn);
+  });
+}
+
+function renderAll(){
+  renderKPI();
+  renderClassroomList();
+  renderPLTable();
+  renderParamArea();
+  renderYearSummary();
+}
+
+function renderKPI(){
+  const results=curResults();
+  const t={revenue:0,expense:0,profit:0,enroll:0,wd:0,endSt:0,totalSt:0};
+  results.forEach(r=>{t.revenue+=r.revenue;t.expense+=r.expense;t.profit+=r.profit;t.enroll+=r.totalEnroll;t.wd+=r.totalWd;t.endSt+=r.endStudents;t.totalSt+=r.months.reduce((s,m)=>s+m[4],0)});
+  const fy=curYear().fiscal_year;
+  const bLabel=curYear().bonus_mult===2.5?'賞与2.5倍':'賞与2.0倍';
+  const wdRate=t.totalSt>0?(t.wd/t.totalSt*100).toFixed(2):0;
+
+  document.getElementById('kpi-area').innerHTML=`
+    <div class="kpi"><div class="kpi-label">${fy}年度 売上</div><div class="kpi-value" style="color:#1B4965">${fmtShort(t.revenue)}</div><div class="kpi-sub">${bLabel}</div></div>
+    <div class="kpi"><div class="kpi-label">経費</div><div class="kpi-value" style="color:#E07A5F">${fmtShort(t.expense)}</div><div class="kpi-sub">${curClassrooms().length}教室合計</div></div>
+    <div class="kpi"><div class="kpi-label">営業利益</div><div class="kpi-value" style="color:${t.profit>=0?'#2D6A4F':'#C1292E'}">${fmtShort(t.profit)}</div><div class="kpi-sub">利益率 ${t.revenue>0?(t.profit/t.revenue*100).toFixed(1):0}%</div></div>
+    <div class="kpi"><div class="kpi-label">入会/退会</div><div class="kpi-value" style="color:#00796B">${t.enroll}/${t.wd}</div><div class="kpi-sub">退会率 ${wdRate}% | 純増${t.enroll-t.wd}名</div></div>
+    <div class="kpi"><div class="kpi-label">年度末生徒数</div><div class="kpi-value" style="color:#3D5A80">${t.endSt}名</div><div class="kpi-sub">${curClassrooms().length}教室</div></div>
+  `;
+}
+
+function renderClassroomList(){
+  const el=document.getElementById('classroom-list');
+  const cls=curClassrooms();
+  const results=curResults();
+  const fy=curYear().fiscal_year;
+  el.innerHTML='';
+
+  // 年度全教室 合算ボタン
+  const btnAll=document.createElement('div');
+  const isConsolidated=STATE.plMode==='consolidated19';
+  btnAll.className='cl-btn'+(isConsolidated?' active':'');
+  if(!isConsolidated) btnAll.style.cssText='background:#f0f4f8;color:#1B4965;border-color:#1B4965;font-weight:700';
+  btnAll.innerHTML=`📊 ${fy}年度 全教室<br><span style="font-size:10px;opacity:.85">${cls.length}教室 合算P&L</span>`;
+  btnAll.onclick=()=>{STATE.plMode='consolidated19';renderClassroomList();renderPLTable();};
+  el.appendChild(btnAll);
+
+  // 区切り線
+  const sep=document.createElement('div');
+  sep.style.cssText='width:1px;background:#ddd;margin:2px 4px;align-self:stretch';
+  el.appendChild(sep);
+
+  cls.forEach((c,i)=>{
+    const btn=document.createElement('div');
+    const isActive=STATE.plMode==='single'&&i===STATE.clIdx;
+    btn.className='cl-btn'+(isActive?' active':'');
+    const r=results[i];
+    const yearNum = getYearNum(c, fy);
+    const isNew = yearNum === 1;
+    const badgeCls = isNew ? 'year-badge new-badge' : 'year-badge';
+    btn.innerHTML=c.name+`<span class="${badgeCls}">${yearNum}年目</span>`+'<br><span style="font-size:10px;opacity:.7">利益:'+fmtShort(r.profit)+' | '+r.endStudents+'名</span>';
+    btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderPLTable();renderParamArea()};
+    el.appendChild(btn);
+  });
+
+  if(isConsolidated){
+    document.getElementById('pl-title').innerHTML=`${fy}年度 全教室 合算P&L <span class="consolidated-badge">${cls.length}教室合算</span>`;
+  } else {
+    const c=cls[STATE.clIdx];
+    const yearNum = getYearNum(c, fy);
+    document.getElementById('pl-title').innerHTML=(c?.name||'')+` <span class="year-badge">${yearNum}年目</span>` +' P&L（月次）';
+  }
+
+  // パラメータタブ用教室リスト
+  const paramEl=document.getElementById('param-classroom-list');
+  if(paramEl){
+    paramEl.innerHTML='';
+    cls.forEach((c,i)=>{
+      const btn=document.createElement('div');
+      const isActive=i===STATE.clIdx;
+      btn.className='cl-btn'+(isActive?' active':'');
+      const r=results[i];
+      const yearNum=getYearNum(c,fy);
+      const isNew=yearNum===1;
+      const badgeCls=isNew?'year-badge new-badge':'year-badge';
+      btn.innerHTML=c.name+`<span class="${badgeCls}">${yearNum}年目</span>`+'<br><span style="font-size:10px;opacity:.7">利益:'+fmtShort(r.profit)+' | '+r.endStudents+'名</span>';
+      btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderParamArea();};
+      paramEl.appendChild(btn);
+    });
+  }
+}
+
+function renderPLTable(){
+  const results=curResults();
+  if(!results.length)return;
+
+  const isConsolidated = STATE.plMode==='consolidated19';
+  let data, p, staffCount=null;
+  if(isConsolidated){
+    data = calcConsolidated19Months();
+    staffCount = data._staffCount;
+    p = null;
+  } else {
+    data = results[STATE.clIdx].months;
+    p = curClassrooms()[STATE.clIdx];
+  }
+
+  // 合算時: スタッフ人数インフォバー
+  let staffInfoHtml = '';
+  if(isConsolidated && staffCount){
+    const fy = curYear().fiscal_year;
+    const cls = curClassrooms();
+    staffInfoHtml = `<div style="margin-bottom:8px;padding:8px 14px;background:#f0f4ff;border-radius:8px;border:1px solid #c5cae9;font-size:12px;display:flex;gap:20px;flex-wrap:wrap">
+      <span>👤 <b>${fy}年度 ${cls.length}教室合算</b></span>
+      <span>PM: <b>${staffCount.pm}名</b></span>
+      <span>教室長: <b>${staffCount.mgr}名</b></span>
+      <span>副教室長: <b>${staffCount.sub}名</b></span>
+      <span style="color:#888">（給与設定あり or 氏名入力ありの教室数）</span>
+    </div>`;
+  }
+
+  // ヘッダー: 項目 | [基準値] | 4〜9月 | 上期計 | 10〜3月 | 下期計 | 年計
+  let html='<table><thead><tr>';
+  html+='<th style="min-width:120px;position:sticky;left:0;z-index:3;background:#f8f9fa">項目</th>';
+  if(!isConsolidated) html+='<th style="min-width:70px" class="base-col">基準値</th>';
+  MONTHS.slice(0,6).forEach(m=>{ html+=`<th>${m}</th>`; });
+  html+='<th class="sem-col-h">上期計</th>';
+  MONTHS.slice(6,12).forEach(m=>{ html+=`<th>${m}</th>`; });
+  html+='<th class="sem-col-h">下期計</th>';
+  html+='<th style="min-width:80px;background:#e8eef4;color:#1B4965;font-weight:700;border-left:2px solid #9ab;font-size:10px">年計</th>';
+  html+='</tr></thead><tbody>';
+
+  let lastGroup='';
+  PL_ROWS.forEach(row=>{
+    if(row.group!==lastGroup){
+      lastGroup=row.group;
+      const span = isConsolidated ? 21 : 22;
+      html+=`<tr class="grp-header"><td colspan="${span}">${GROUP_NAMES[row.group]}</td></tr>`;
+    }
+
+    // 退会率(年間) 特殊行
+    if(row.special==='wdRate'){
+      const totalWd=data.reduce((s,m)=>s+m[3],0);
+      const totalSt=data.reduce((s,m)=>s+m[4],0);
+      const annRate=totalSt>0?totalWd/totalSt:0;
+      const wdH1=data.slice(0,6).reduce((s,m)=>s+m[3],0), stH1=data.slice(0,6).reduce((s,m)=>s+m[4],0);
+      const wdH2=data.slice(6,12).reduce((s,m)=>s+m[3],0), stH2=data.slice(6,12).reduce((s,m)=>s+m[4],0);
+      html+=`<tr class="wd-rate-row"><td>${row.label}</td>`;
+      if(!isConsolidated) html+='<td class="base-col">-</td>';
+      data.slice(0,6).forEach(md=>{ const r=md[4]>0?md[3]/md[4]:0; html+=`<td>${(r*100).toFixed(1)}%</td>`; });
+      html+=`<td class="sem-col">${stH1>0?(wdH1/stH1*100).toFixed(2):'0.00'}%</td>`;
+      data.slice(6,12).forEach(md=>{ const r=md[4]>0?md[3]/md[4]:0; html+=`<td>${(r*100).toFixed(1)}%</td>`; });
+      html+=`<td class="sem-col">${stH2>0?(wdH2/stH2*100).toFixed(2):'0.00'}%</td>`;
+      html+=`<td class="annual-col">${(annRate*100).toFixed(2)}%</td></tr>`;
+      return;
+    }
+
+    const clsRow=row.highlight?'row-highlight':'';
+    const s0=calcSemester(data,row.idx,0);
+    const s1=calcSemester(data,row.idx,1);
+    const annVal=getAnnual(row.idx,data);
+    const baseRef=p?getBaseRef(row,p):'-';
+
+    // PM・教室長・副教室長の行ラベルに氏名を追記
+    let rowLabel = row.label;
+    if(p && !isConsolidated){
+      if(row.idx===36 && p.name_pm)  rowLabel += ` <span style="color:#888;font-size:10px;font-weight:400">${p.name_pm}</span>`;
+      if(row.idx===37 && p.name_mgr) rowLabel += ` <span style="color:#888;font-size:10px;font-weight:400">${p.name_mgr}</span>`;
+      if(row.idx===38 && p.name_sub) rowLabel += ` <span style="color:#888;font-size:10px;font-weight:400">${p.name_sub}</span>`;
+    }
+
+    html+=`<tr class="${row.bold?'row-bold':''} ${clsRow}">`;
+    html+=`<td>${rowLabel}</td>`;
+    if(!isConsolidated) html+=`<td class="base-col">${baseRef}</td>`;
+    data.slice(0,6).forEach(md=>{
+      const v=md[row.idx];
+      const col=row.profitColor?(v>=0?'profit-pos':'profit-neg'):'';
+      html+=`<td class="${col}">${fmtCell(row.fmt,v)}</td>`;
+    });
+    const sc0=row.profitColor?(s0>=0?'profit-pos':'profit-neg'):'';
+    html+=`<td class="sem-col ${sc0}">${s0==null?'-':fmtCell(row.fmt,s0)}</td>`;
+    data.slice(6,12).forEach(md=>{
+      const v=md[row.idx];
+      const col=row.profitColor?(v>=0?'profit-pos':'profit-neg'):'';
+      html+=`<td class="${col}">${fmtCell(row.fmt,v)}</td>`;
+    });
+    const sc1=row.profitColor?(s1>=0?'profit-pos':'profit-neg'):'';
+    html+=`<td class="sem-col ${sc1}">${s1==null?'-':fmtCell(row.fmt,s1)}</td>`;
+    const ac=row.profitColor?(annVal>=0?'profit-pos':'profit-neg'):'';
+    html+=`<td class="annual-col ${ac}">${annVal==null?'-':fmtCell(row.fmt,annVal)}</td></tr>`;
+  });
+
+  html+='</tbody></table>';
+  document.getElementById('pl-table-wrap').innerHTML=staffInfoHtml+html;
+}
+
+function getBaseRef(row,p){
+  const f=n=>Math.round(n).toLocaleString();
+  switch(row.idx){
+    case 0:return p.conv_r>0?'率'+Math.round(p.conv_r*100)+'%':'-';
+    case 1:return'年間'+p.enroll.reduce((s,v)=>s+v,0)+'名';case 2:return'-';case 3:return'率'+(p.wd_rate||0)+'%';
+    case 4:return'期首'+p.start_st+'名';case 5:return'月別設定';
+    case 6:case 7:case 8:case 10:case 11:case 12:case 13:return'-';
+    case 9:return'月別設定';
+    case 14:return f(p.rent);case 15:return f(p.water);case 16:return f(p.electric);
+    case 17:return f(p.phone);case 18:return f(p.travel);
+    case 19:return p.consume_r+'/人';case 20:return p.promo_r+'/人';
+    case 21:return f(p.recruit_fee);case 22:return'月別設定';case 23:return f(p.staff_recruit);case 44:return f(p.recruit_fee_part||0);
+    case 24:return p.sys_per_st+'/人+'+f(p.sys_base);
+    case 25:return'売上×'+p.mat_buy_r;case 26:return'売上×'+p.exam_buy_r;
+    case 27:return p.fee_r+'/人';case 28:return p.welfare_r+'/人';
+    case 29:return f(p.repair);case 30:return f(p.lease_cost);case 31:return f(p.insurance);
+    case 32:return f(p.sanitation);case 33:return f(p.other_exp);case 34:return'-';
+    case 35:return'授業料×'+p.teacher_r;
+    case 36:{const fy=curYear().fiscal_year;const s=(fy-STATE.years[0].fiscal_year)*2;const v1=p.salary_pm||0;const v2=p.salary_pm2||0;return v1>0?(v2>0?'上¥'+(v1+SALARY_RAISE_PM*s).toLocaleString()+'/下¥'+(v2+SALARY_RAISE_PM*(s+1)).toLocaleString():'¥'+(v1+SALARY_RAISE_PM*s).toLocaleString()+'〜'):'-'}
+    case 37:{const fy2=curYear().fiscal_year;const s2=(fy2-STATE.years[0].fiscal_year)*2;const v1=p.salary_mgr||0;const v2=p.salary_mgr2||0;return v1>0?(v2>0?'上¥'+(v1+SALARY_RAISE*s2).toLocaleString()+'/下¥'+(v2+SALARY_RAISE*(s2+1)).toLocaleString():'¥'+(v1+SALARY_RAISE*s2).toLocaleString()+'〜'):'-'}
+    case 38:{const fy3=curYear().fiscal_year;const s3=(fy3-STATE.years[0].fiscal_year)*2;const v1=p.salary_sub||0;const v2=p.salary_sub2||0;return v1>0?(v2>0?'上¥'+(v1+SALARY_RAISE*s3).toLocaleString()+'/下¥'+(v2+SALARY_RAISE*(s3+1)).toLocaleString():'¥'+(v1+SALARY_RAISE*s3).toLocaleString()+'〜'):'-'}
+    case 39:return'給与×'+p.legal_welf_r;case 40:return'-';case 41:return'売上×'+p.tax_r;
+    default:return'-';
+  }
+}
+
+// ============================================
+// パラメータ編集
+// ============================================
+function renderParamArea(){
+  const p=curClassrooms()[STATE.clIdx];
+  if(!p)return;
+  const el=document.getElementById('param-area');
+
+  const fields=[
+    {k:'start_st',l:'期首生徒数',s:'名'},{k:'conv_r',l:'問合せ→入会率',s:'',step:0.01},
+    {k:'rent',l:'家賃'},{k:'water',l:'水道光熱'},{k:'electric',l:'電気'},{k:'phone',l:'電話'},
+    {k:'travel',l:'交通費'},{k:'consume_r',l:'消耗品/人'},{k:'promo_r',l:'販促費/人'},
+    {k:'recruit_fee',l:'正社員求人費'},{k:'recruit_fee_part',l:'アルバイト求人費'},{k:'staff_recruit',l:'人材紹介'},
+    {k:'sys_per_st',l:'システム/人'},{k:'sys_base',l:'システム基本'},
+    {k:'mat_buy_r',l:'教材仕入率',step:0.01},{k:'exam_buy_r',l:'模試仕入率',step:0.01},
+    {k:'fee_r',l:'決済手数料/人',step:1},{k:'welfare_r',l:'福利厚生/人',step:1},
+    {k:'repair',l:'修繕費'},{k:'lease_cost',l:'リース'},{k:'insurance',l:'保険'},
+    {k:'sanitation',l:'衛生費'},{k:'other_exp',l:'その他経費'},
+    {k:'teacher_r',l:'講師報酬率',step:0.01},{k:'legal_welf_r',l:'法定福利率',step:0.01},{k:'tax_r',l:'租税公課率',step:0.01},
+  ];
+
+  let html='<h3 style="font-size:14px;margin-bottom:8px">'+p.name+' 基本パラメータ <span style="font-size:11px;color:#888;font-weight:400">（編集すると全年度に反映）</span></h3>';
+
+  // スタッフ氏名入力
+  html+=`<div style="margin-bottom:12px;padding:10px 14px;background:#f0f4ff;border-radius:8px;border:1px solid #c5cae9">`;
+  html+=`<div style="font-size:12px;font-weight:700;color:#3D5A80;margin-bottom:8px">👤 担当スタッフ氏名</div>`;
+  html+=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">`;
+  [
+    {k:'name_pm',  l:'PM 氏名',     placeholder:'例：山田 太郎'},
+    {k:'name_mgr', l:'教室長 氏名', placeholder:'例：田中 花子'},
+    {k:'name_sub', l:'副教室長 氏名',placeholder:'例：鈴木 一郎'},
+  ].forEach(f=>{
+    html+=`<div class="edit-field"><label style="font-weight:600">${f.l}</label>
+      <input type="text" value="${p[f.k]||''}" placeholder="${f.placeholder}"
+        style="width:100%;padding:6px 8px;border:1px solid #b3cde0;border-radius:6px;font-size:13px"
+        data-id="${p.id}" data-field="${f.k}" onchange="onNameChange(this)"></div>`;
+  });
+  html+=`</div></div>`;
+
+  // Open month selector for new classrooms
+  const om = p.open_month != null ? p.open_month : -1;
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:8px 12px;background:'+(om>=0?'#fff8e1':'#f8f8f8')+';border-radius:8px;border:1px solid '+(om>=0?'#ffe082':'#e0e0e0')+'">';
+  html+='<label style="font-weight:700;font-size:12px">開校区分</label>';
+  html+=`<select style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px" data-id="${p.id}" onchange="onOpenMonthChange(this)">`;
+  html+='<option value="-1"'+(om===-1?' selected':'')+'>既存教室（通常）</option>';
+  html+='<option value="0"'+(om===0?' selected':'')+'>新規 4月開校（初期費用400万）</option>';
+  html+='<option value="6"'+(om===6?' selected':'')+'>新規 10月開校（初期費用400万/研修4月〜）</option>';
+  html+='</select>';
+  if(om>=0){
+    const label = om===0 ? '4月に初期費用400万 / 管理費4月〜' : '10月に初期費用400万 / 管理費10月〜 / 給与4月〜(研修)';
+    html+='<span style="font-size:11px;color:#e65100">⚠ '+label+'</span>';
+  }
+  html+='</div>';
+
+  html+='<div class="edit-grid">';
+  fields.forEach(f=>{
+    const v=p[f.k];
+    html+=`<div class="edit-field"><label>${f.l}</label><input type="number" value="${v}" step="${f.step||1}" data-id="${p.id}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+  });
+  html+='</div>';
+
+  // Salary auto-increment preview & 上期・下期基本給入力
+  const fy = curYear().fiscal_year;
+  const firstYear = STATE.years[0].fiscal_year;
+  const sem0 = (fy - firstYear) * 2;  // 上期の昇給回数
+  const sem1 = sem0 + 1;               // 下期の昇給回数
+
+  html+='<h3 style="font-size:14px;margin:16px 0 8px">💰 基本給設定（上期・下期）</h3>';
+  html+='<div style="padding:10px 14px;background:#f0f4ff;border-radius:8px;border:1px solid #c5cae9;font-size:12px;margin-bottom:10px">';
+  html+=`自動昇給: PM 半期+¥${SALARY_RAISE_PM.toLocaleString()} / 教室長・副教室長 半期+¥${SALARY_RAISE.toLocaleString()}<br>`;
+  html+='<span style="color:#888">※ 下期基本給を0にすると上期と同じ金額が適用されます</span>';
+  html+='</div>';
+
+  const salRoles = [
+    {l:'PM',        k1:'salary_pm',  k2:'salary_pm2',  raise:SALARY_RAISE_PM},
+    {l:'教室長',    k1:'salary_mgr', k2:'salary_mgr2', raise:SALARY_RAISE},
+    {l:'副教室長',  k1:'salary_sub', k2:'salary_sub2', raise:SALARY_RAISE},
+  ];
+
+  html+='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px">';
+  salRoles.forEach(r=>{
+    const v1 = p[r.k1]||0;
+    const v2 = p[r.k2]||0;
+    const eff1 = v1>0 ? v1 + r.raise*sem0 : 0;
+    const eff2 = v2>0 ? v2 + r.raise*sem1 : (v1>0 ? v1 + r.raise*sem1 : 0);
+    const eff2label = v2>0 ? '¥'+eff2.toLocaleString() : (v1>0 ? '¥'+eff2.toLocaleString()+' (上期準拠)' : '-');
+    html+=`<div style="flex:1;min-width:220px;background:#fff;border:1px solid #dde3ed;border-radius:10px;overflow:hidden">`;
+    // カードヘッダー
+    html+=`<div style="background:#1B4965;color:#fff;padding:7px 14px;font-weight:700;font-size:13px">${r.l}</div>`;
+    // 上期行
+    html+=`<div style="padding:10px 14px;border-bottom:1px solid #f0f0f0">`;
+    html+=`<div style="font-size:11px;color:#888;margin-bottom:4px">上期（4〜9月）</div>`;
+    html+=`<div style="display:flex;align-items:center;gap:8px">`;
+    html+=`<span style="font-size:11px;color:#555">基本給</span>`;
+    html+=`<input type="number" value="${v1}" placeholder="0"
+        style="width:110px;padding:4px 8px;border:1px solid #b3cde0;border-radius:4px;font-size:13px;text-align:right"
+        data-id="${p.id}" data-field="${r.k1}" onchange="onParamChange(this)">`;
+    html+=`<span style="font-size:11px;color:#555">→ 実支給</span>`;
+    html+=`<span style="font-weight:700;color:${v1>0?'#1B4965':'#bbb'};font-size:13px">${v1>0?'¥'+eff1.toLocaleString():'-'}</span>`;
+    html+=`</div></div>`;
+    // 下期行
+    html+=`<div style="padding:10px 14px;background:#fafbff">`;
+    html+=`<div style="font-size:11px;color:#888;margin-bottom:4px">下期（10〜3月）</div>`;
+    html+=`<div style="display:flex;align-items:center;gap:8px">`;
+    html+=`<span style="font-size:11px;color:#555">基本給</span>`;
+    html+=`<input type="number" value="${v2}" placeholder="0=上期と同じ"
+        style="width:110px;padding:4px 8px;border:1px solid #b3cde0;border-radius:4px;font-size:13px;text-align:right"
+        data-id="${p.id}" data-field="${r.k2}" onchange="onParamChange(this)">`;
+    html+=`<span style="font-size:11px;color:#555">→ 実支給</span>`;
+    html+=`<span style="font-weight:700;color:${(v1>0||v2>0)?'#1B4965':'#bbb'};font-size:13px">${eff2label}</span>`;
+    html+=`</div></div>`;
+    html+=`</div>`;
+  });
+  html+='</div>';
+
+  // 月次データ - 年間入会数・退会数と自動配分
+  const actualEnroll = p.enroll.reduce((s,v)=>s+v, 0);
+  const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
+  let annualEnroll = actualEnroll;
+  if(om2 > 0){
+    const activeSum = ENROLL_RATIOS.filter((_,i) => i >= om2).reduce((s,v)=>s+v,0);
+    annualEnroll = activeSum > 0 ? Math.round(actualEnroll / activeSum) : actualEnroll;
+  }
+  const annualWd = p.annual_wd || 0;
+  const wdRate = p.wd_rate || 0;
+  // Recalculate actual annualWd from rate for display
+  let estTotalSt = 0; let tmpSt2 = p.start_st;
+  for(let m=0;m<12;m++){const b=m===0?(tmpSt2-(p.start_wd||0)):tmpSt2;let a=b+p.enroll[m];if(p.max_st&&a>p.max_st)a=p.max_st;estTotalSt+=a;tmpSt2=a;}
+  const calcAnnualWd = Math.round(wdRate / 100 * estTotalSt);
+  const wdMonthly = distributeWd(calcAnnualWd);
+
+  html+='<h3 style="font-size:14px;margin:16px 0 8px">入会・退会（年間設定 → 月別自動配分）</h3>';
+
+  // 入会数・退会率 入力エリア
+  html+='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">';
+  html+='<div style="flex:1;min-width:250px;padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
+  html+=`<label style="font-weight:700;font-size:13px;color:#2D6A4F">年間入会数</label>`;
+  html+=`<input type="number" value="${annualEnroll}" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-id="${p.id}" onchange="onAnnualEnrollChange(this)">`;
+  html+='<span style="font-size:11px;color:#666">名'+(om2>0?' (開校年は'+actualEnroll+'名)':'')+'</span></div>';
+  html+='<div style="flex:1;min-width:300px;padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
+  html+=`<label style="font-weight:700;font-size:13px;color:#C1292E">年間退会率</label>`;
+  html+=`<input type="number" value="${wdRate}" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-id="${p.id}" onchange="onWdRateChange(this)">`;
+  html+='<span style="font-size:11px;color:#666">% → 退会'+calcAnnualWd+'名 | 純増'+(actualEnroll-calcAnnualWd)+'名</span></div>';
+  html+='</div>';
+
+  html+='<div class="table-wrap"><table class="monthly-table"><thead><tr><th>項目</th>';
+  MONTHS.forEach(m=>{html+='<th>'+m+'</th>'});
+  html+='<th style="background:#f0f0f0;font-weight:700">年計</th></tr></thead><tbody>';
+
+  // 入会数
+  html+='<tr><td style="font-weight:600;color:#2D6A4F">入会数</td>';
+  p.enroll.forEach(v=>{html+='<td style="color:#2D6A4F;font-weight:500">'+v+'</td>'});
+  html+='<td style="background:#e8f5e9;font-weight:700;color:#2D6A4F">'+actualEnroll+'</td></tr>';
+
+  // 入会比率
+  html+='<tr><td style="font-size:10px;color:#999;font-style:italic">入会比率</td>';
+  ENROLL_RATIOS.forEach(r=>{html+='<td style="font-size:10px;color:#999;font-style:italic">'+(r*100).toFixed(1)+'%</td>'});
+  html+='<td style="font-size:10px;color:#999;background:#f8f8f8">100%</td></tr>';
+
+  // 退会数
+  html+='<tr><td style="font-weight:600;color:#C1292E">退会数</td>';
+  wdMonthly.forEach(v=>{html+='<td style="color:#C1292E;font-weight:500">'+v+'</td>'});
+  html+='<td style="background:#fef5f5;font-weight:700;color:#C1292E">'+calcAnnualWd+'</td></tr>';
+
+  // 退会比率
+  html+='<tr><td style="font-size:10px;color:#999;font-style:italic">退会比率</td>';
+  WD_RATIOS.forEach(r=>{html+='<td style="font-size:10px;color:#999;font-style:italic">'+(r*100).toFixed(1)+'%</td>'});
+  html+='<td style="font-size:10px;color:#999;background:#f8f8f8">100%</td></tr>';
+
+  // 単価・広告費（従来通り編集可能）
+  ['prices','ads'].forEach(field=>{
+    const labels={prices:'授業料単価',ads:'広告費'};
+    html+='<tr><td style="font-weight:600">'+labels[field]+'</td>';
+    p[field].forEach((v,mi)=>{
+      html+=`<td><input type="number" value="${v}" data-id="${p.id}" data-field="${field}" data-mi="${mi}" onchange="onArrayChange(this)"></td>`;
+    });
+    html+='<td style="background:#f8f8f8;font-size:10px;color:#888">'+p[field].reduce((s,v)=>s+v,0).toLocaleString()+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+
+  el.innerHTML=html;
+}
+
+function onParamChange(el){
+  const id=el.dataset.id;
+  const field=el.dataset.field;
+  const val=parseFloat(el.value)||0;
+  const p=curClassrooms()[STATE.clIdx];
+  p[field]=val;
+  saveField(id,field,val);
+
+  // If master field, sync to all years
+  if(MASTER_FIELDS.includes(field)){
+    const clName = p.name;
+    STATE.years.forEach(ys=>{
+      const fy = ys.fiscal_year;
+      const cls = STATE.classrooms[fy] || [];
+      const match = cls.find(c => c.name === clName && c.id !== p.id);
+      if(match){
+        match[field] = val;
+        saveField(match.id, field, val);
+      }
+    });
+  }
+
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();
+}
+
+function onArrayChange(el){
+  const id=el.dataset.id;
+  const field=el.dataset.field;
+  const mi=parseInt(el.dataset.mi);
+  const val=parseInt(el.value)||0;
+  const p=curClassrooms()[STATE.clIdx];
+  p[field][mi]=val;
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();
+  saveField(id,field,p[field]);
+}
+
+function onAnnualEnrollChange(el){
+  const id=el.dataset.id;
+  const annual=parseInt(el.value)||0;
+  const p=curClassrooms()[STATE.clIdx];
+  const om = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
+  p.enroll = om > 0 ? distributeEnrollOpen(annual, om) : distributeEnroll(annual);
+  saveField(id,'enroll',p.enroll);
+
+  // Sync to all years (smart: opening year gets partial distribution)
+  const clName=p.name;
+  STATE.years.forEach(ys=>{
+    const cls=STATE.classrooms[ys.fiscal_year]||[];
+    const match=cls.find(c=>c.name===clName&&c.id!==p.id);
+    if(match){
+      const mOm = (match.open_month != null && match.open_month > 0) ? match.open_month : -1;
+      match.enroll = mOm > 0 ? distributeEnrollOpen(annual, mOm) : distributeEnroll(annual);
+      saveField(match.id,'enroll',match.enroll);
+    }
+  });
+
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();renderParamArea();
+}
+
+function onWdRateChange(el){
+  const id=el.dataset.id;
+  const rate=parseFloat(el.value)||0;
+  const p=curClassrooms()[STATE.clIdx];
+  p.wd_rate=rate;
+  saveField(id,'wd_rate',rate);
+
+  // Sync to all years
+  const clName=p.name;
+  STATE.years.forEach(ys=>{
+    const cls=STATE.classrooms[ys.fiscal_year]||[];
+    const match=cls.find(c=>c.name===clName&&c.id!==p.id);
+    if(match){match.wd_rate=rate;saveField(match.id,'wd_rate',rate);}
+  });
+
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();renderParamArea();
+}
+
+function onOpenMonthChange(el){
+  const id=el.dataset.id;
+  const val=parseInt(el.value);
+  const p=curClassrooms()[STATE.clIdx];
+  p.open_month=val;
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();renderParamArea();
+  saveField(id,'open_month',val);
+}
+
+function onNameChange(el){
+  const id=el.dataset.id;
+  const field=el.dataset.field;
+  const val=el.value;
+  const p=curClassrooms()[STATE.clIdx];
+  p[field]=val;
+  // 全年度の同教室に氏名を同期（DBも更新）
+  const clName=p.name;
+  STATE.years.forEach(ys=>{
+    const cls=STATE.classrooms[ys.fiscal_year]||[];
+    const match=cls.find(c=>c.name===clName);
+    if(match){
+      match[field]=val;
+      saveField(match.id,field,val);
+    }
+  });
+  renderPLTable();
+}
+
+// ============================================
+// 年度別推移
+// ============================================
+function getBase19Names(){
+  // 2025年度（最初の年度）の教室名リストを取得
+  const firstYear = STATE.years[0].fiscal_year;
+  return (STATE.classrooms[firstYear]||[]).map(c=>c.name);
+}
+
+function renderYearSummary(){
+  const is19 = STATE.scope === '19';
+  const base19 = is19 ? getBase19Names() : null;
+
+  // タブスタイル更新
+  document.getElementById('scope-all').className = 'tab' + (is19?'':' active');
+  document.getElementById('scope-19').className = 'tab' + (is19?' active':'');
+
+  let html='<thead><tr><th style="text-align:left">年度</th><th>教室数</th><th>生徒数(末)</th><th>入会</th><th>退会</th><th>退会率</th><th>売上</th><th>経費</th><th>利益</th><th>利益率</th></tr></thead><tbody>';
+  const summaries=[];
+  STATE.years.forEach((ys,i)=>{
+    const fy=ys.fiscal_year;
+    const cls=STATE.classrooms[fy]||[];
+    const res=STATE.results[fy]||[];
+    const s={year:fy,rooms:0,revenue:0,expense:0,profit:0,enroll:0,wd:0,endSt:0,totalSt:0};
+    cls.forEach((c,ci)=>{
+      if(is19 && !base19.includes(c.name)) return;
+      const r=res[ci];
+      if(!r) return;
+      s.rooms++;
+      s.revenue+=r.revenue;s.expense+=r.expense;s.profit+=r.profit;
+      s.enroll+=r.totalEnroll;s.wd+=r.totalWd;s.endSt+=r.endStudents;
+      s.totalSt+=r.months.reduce((sum,m)=>sum+m[4],0);
+    });
+    summaries.push(s);
+    const wdRate=s.totalSt>0?(s.wd/s.totalSt*100).toFixed(2)+'%':'-';
+    const profitRate=s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'-';
+    const bg=i===STATE.yearIdx?'rgba(27,73,101,.05)':'';
+    html+=`<tr style="background:${bg}" onclick="STATE.yearIdx=${i};STATE.clIdx=0;renderYearTabs();renderAll()">
+      <td>${fy}年度</td><td>${s.rooms}</td><td>${s.endSt}名</td>
+      <td style="color:#2D6A4F">${s.enroll}</td><td style="color:#C1292E">${s.wd}</td>
+      <td style="color:#e67e22;font-weight:600">${wdRate}</td>
+      <td>${fmtYen(s.revenue)}</td><td>${fmtYen(s.expense)}</td>
+      <td style="font-weight:700;color:${s.profit>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.profit)}</td>
+      <td>${profitRate}</td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('year-summary-table').innerHTML=html;
+
+  // チャート
+  const chartTitle = is19 ? '既存19教室の推移' : '全教室の推移';
+  const ctx=document.getElementById('year-chart');
+  if(STATE.yearChart)STATE.yearChart.destroy();
+  STATE.yearChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:summaries.map(s=>s.year+'年度'),
+      datasets:[
+        {label:'売上',data:summaries.map(s=>Math.round(s.revenue)),backgroundColor:'rgba(27,73,101,0.7)',order:2},
+        {label:'経費',data:summaries.map(s=>Math.round(s.expense)),backgroundColor:'rgba(224,122,95,0.7)',order:2},
+        {label:'利益',data:summaries.map(s=>Math.round(s.profit)),type:'line',borderColor:'#2D6A4F',backgroundColor:'rgba(45,106,79,0.1)',fill:true,tension:.3,order:1,pointRadius:4}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{title:{display:true,text:chartTitle,font:{size:14}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmtShort(ctx.raw)}}},
+      scales:{y:{ticks:{callback:v=>fmtShort(v)}}}
+    }
+  });
+}
+
+function switchScope(scope){
+  STATE.scope=scope;
+  renderYearSummary();
+}
+
+// ============================================
+// 教室マスタ一覧
+// ============================================
+function renderMasterTable(){
+  const el = document.getElementById('master-table-area');
+  const fy = curYear().fiscal_year;
+
+  // Collect all unique classrooms (first occurrence = base)
+  const masterMap = {};
+  STATE.years.forEach(ys=>{
+    const cls = STATE.classrooms[ys.fiscal_year] || [];
+    cls.forEach(c=>{
+      if(!masterMap[c.name]) masterMap[c.name] = c;
+    });
+  });
+  const masterCls = Object.values(masterMap);
+
+  // Use first year's data as reference for enrollment/wd_rate display
+  const firstFy = STATE.years[0].fiscal_year;
+  const yearCls = STATE.classrooms[firstFy] || [];
+  const yearMap = {};
+  yearCls.forEach(c=>{ yearMap[c.name] = c; });
+
+  let html='';
+
+  const cols = [
+    {k:'name',l:'教室名',readonly:true,w:100},
+    {k:'_enroll',l:'年間入会数',w:75,yearly:true,color:'#2D6A4F'},
+    {k:'_wd_rate',l:'退会率%',w:75,yearly:true,step:0.01,color:'#C1292E'},
+    {k:'conv_r',l:'入会率',step:0.01,w:60},
+    {k:'rent',l:'家賃',w:80},
+    {k:'water',l:'水道光熱',w:65},
+    {k:'electric',l:'電気',w:65},
+    {k:'phone',l:'電話',w:65},
+    {k:'travel',l:'交通費',w:65},
+    {k:'consume_r',l:'消耗品/人',w:65},
+    {k:'promo_r',l:'販促費/人',w:65},
+    {k:'recruit_fee',l:'正社員求人費',w:70},{k:'recruit_fee_part',l:'アルバイト求人費',w:70},
+    {k:'staff_recruit',l:'人材紹介',w:70},
+    {k:'sys_per_st',l:'システム/人',w:70},
+    {k:'sys_base',l:'システム基本',w:75},
+    {k:'mat_buy_r',l:'教材仕入率',step:0.01,w:70},
+    {k:'exam_buy_r',l:'模試仕入率',step:0.01,w:70},
+    {k:'fee_r',l:'手数料/人',w:65},
+    {k:'welfare_r',l:'福利厚生/人',w:70},
+    {k:'repair',l:'修繕費',w:65},
+    {k:'lease_cost',l:'リース',w:60},
+    {k:'insurance',l:'保険',w:60},
+    {k:'sanitation',l:'衛生費',w:60},
+    {k:'other_exp',l:'その他経費',w:70},
+    {k:'teacher_r',l:'講師報酬率',step:0.01,w:70},
+    {k:'salary_pm',l:'PM(基本)',w:85},
+    {k:'salary_mgr',l:'教室長(基本)',w:90},
+    {k:'salary_sub',l:'副教室長(基本)',w:95},
+    {k:'legal_welf_r',l:'法定福利率',step:0.01,w:70},
+    {k:'tax_r',l:'租税公課率',step:0.01,w:70},
+    {k:'max_st',l:'定員',w:55},
+  ];
+
+  html+='<table style="border-collapse:collapse;font-size:12px;white-space:nowrap">';
+  html+='<thead><tr style="background:#1B4965;color:#fff">';
+  cols.forEach(c=>{
+    const bgH = c.yearly ? '#2c5f2d' : (c.readonly ? '#1B4965' : 'inherit');
+    html+=`<th style="padding:6px 4px;position:${c.readonly?'sticky':'static'};left:0;z-index:${c.readonly?2:1};background:${bgH};min-width:${c.w}px;font-weight:600">${c.l}</th>`;
+  });
+  html+='</tr></thead><tbody>';
+
+  masterCls.forEach((p,ci)=>{
+    const bg = ci%2===0 ? '#fff' : '#f8f9fa';
+    const yp = yearMap[p.name]; // year-specific data
+    html+=`<tr style="background:${bg}">`;
+    cols.forEach(c=>{
+      if(c.readonly){
+        html+=`<td style="padding:4px 6px;font-weight:700;position:sticky;left:0;background:${bg};border-right:2px solid #ddd;z-index:1">${p[c.k]}</td>`;
+      } else if(c.k === '_enroll'){
+        // Show full-year equivalent for opening-year classrooms
+        let displayVal = '-';
+        if(yp){
+          const mOm = (yp.open_month != null && yp.open_month > 0) ? yp.open_month : -1;
+          if(mOm > 0){
+            // Reverse-calculate full-year from partial: partial / activeRatioSum
+            const activeSum = ENROLL_RATIOS.filter((_,i) => i >= mOm).reduce((s,v)=>s+v,0);
+            const actual = yp.enroll.reduce((s,v)=>s+v,0);
+            displayVal = activeSum > 0 ? Math.round(actual / activeSum) : actual;
+          } else {
+            displayVal = yp.enroll.reduce((s,v)=>s+v,0);
+          }
+          html+=`<td style="padding:2px;background:${ci%2===0?'#f0f8f0':'#e8f5e9'}"><input type="number" value="${displayVal}" style="width:100%;padding:3px 4px;border:1px solid #a5d6a7;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#2D6A4F;font-weight:600" data-name="${p.name}" onchange="onMasterEnrollChange(this)"></td>`;
+        } else {
+          html+=`<td style="padding:4px;color:#999;text-align:center">-</td>`;
+        }
+      } else if(c.k === '_wd_rate'){
+        const v = yp ? (yp.wd_rate||0) : '-';
+        if(yp){
+          html+=`<td style="padding:2px;background:${ci%2===0?'#fef5f5':'#fce8e8'}"><input type="number" value="${v}" step="0.01" style="width:100%;padding:3px 4px;border:1px solid #ef9a9a;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#C1292E;font-weight:600" data-name="${p.name}" onchange="onMasterWdRateChange(this)"></td>`;
+        } else {
+          html+=`<td style="padding:4px;color:#999;text-align:center">-</td>`;
+        }
+      } else {
+        const v = p[c.k];
+        html+=`<td style="padding:2px"><input type="number" value="${v}" step="${c.step||1}" style="width:100%;padding:3px 4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:right;background:transparent" data-name="${p.name}" data-field="${c.k}" onchange="onMasterChange(this)"></td>`;
+      }
+    });
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+
+  // Salary auto-increment preview
+  const firstYear = STATE.years[0].fiscal_year;
+  html+='<div style="margin-top:16px;padding:12px;background:#f0f4ff;border-radius:8px;border:1px solid #c5cae9;font-size:12px">';
+  html+='<b>💰 自動昇給プレビュー</b>（PM: 半期+¥'+SALARY_RAISE_PM.toLocaleString()+' / 教室長・副教室長: 半期+¥'+SALARY_RAISE.toLocaleString()+'）<br>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">';
+  STATE.years.forEach(ys=>{
+    const fy = ys.fiscal_year;
+    const sem = (fy - firstYear) * 2;
+    html+=`<div style="padding:4px 8px;background:#fff;border-radius:4px;border:1px solid #e0e0e0">${fy}年度: PM <b>+¥${(SALARY_RAISE_PM*sem).toLocaleString()}</b>〜 / 他 <b>+¥${(SALARY_RAISE*sem).toLocaleString()}</b>〜</div>`;
+  });
+  html+='</div></div>';
+
+  el.innerHTML = html;
+}
+
+function onMasterChange(el){
+  const clName = el.dataset.name;
+  const field = el.dataset.field;
+  const step = el.step;
+  const val = step && parseFloat(step) < 1 ? parseFloat(el.value)||0 : parseInt(el.value)||0;
+
+  // Update all years for this classroom
+  STATE.years.forEach(ys=>{
+    const fy = ys.fiscal_year;
+    const cls = STATE.classrooms[fy] || [];
+    const match = cls.find(c => c.name === clName);
+    if(match){
+      match[field] = val;
+      saveField(match.id, field, val);
+    }
+  });
+
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();
+}
+
+function onMasterEnrollChange(el){
+  const clName = el.dataset.name;
+  const annual = parseInt(el.value)||0;
+  // Sync to ALL years (smart: opening year gets partial distribution)
+  STATE.years.forEach(ys=>{
+    const cls = STATE.classrooms[ys.fiscal_year] || [];
+    const match = cls.find(c => c.name === clName);
+    if(match){
+      const mOm = (match.open_month != null && match.open_month > 0) ? match.open_month : -1;
+      match.enroll = mOm > 0 ? distributeEnrollOpen(annual, mOm) : distributeEnroll(annual);
+      saveField(match.id, 'enroll', match.enroll);
+    }
+  });
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();
+}
+
+function onMasterWdRateChange(el){
+  const clName = el.dataset.name;
+  const rate = parseFloat(el.value)||0;
+  // Sync to ALL years
+  STATE.years.forEach(ys=>{
+    const cls = STATE.classrooms[ys.fiscal_year] || [];
+    const match = cls.find(c => c.name === clName);
+    if(match){
+      match.wd_rate = rate;
+      saveField(match.id, 'wd_rate', rate);
+    }
+  });
+  calcAllResults();
+  renderKPI();renderPLTable();renderClassroomList();
+}
+
+// ============================================
+// UI操作
+// ============================================
+function switchMainTab(idx){
+  STATE.mainTab=idx;
+  document.querySelectorAll('[id^="main-tab-"]').forEach((el,i)=>{el.style.display=i===idx?'':'none'});
+  document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
+  if(idx===2)renderMasterTable();
+  if(idx===3)renderYearSummary();
+}
+
+function toggleCard(header){
+  const body=header.nextElementSibling;
+  body.classList.toggle('collapsed');
+}
+
+// ============================================
+// 起動
+// ============================================
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

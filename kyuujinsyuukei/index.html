@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>求人広告集計ダッシュボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#f0f5fb; --surface:#fff; --surface2:#e8f0fb; --border:#c8d9ef;
+  --accent:#2563eb; --accent2:#0ea47a; --accent3:#d97706; --accent4:#dc2626; --accent5:#7c3aed;
+  --text:#1e2d45; --text2:#4f6a8a; --text3:#94aec8;
+  --hbg:#1e3a5f; --font:'Noto Sans JP',sans-serif; --mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh}
+
+.hdr{background:var(--hbg);padding:18px 32px;display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(30,58,95,.2)}
+.hdr-icon{width:34px;height:34px;background:rgba(255,255,255,.18);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px}
+.hdr h1{font-size:17px;font-weight:700;color:#fff;letter-spacing:.02em}
+.hdr-sub{font-size:11px;color:rgba(255,255,255,.5);margin-left:auto;font-family:var(--mono)}
+
+/* 税込バッジ */
+.tax-badge{background:rgba(255,255,255,.18);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-left:16px;letter-spacing:.04em}
+
+.nav{display:flex;background:var(--surface);border-bottom:2px solid var(--border);padding:0 32px;box-shadow:0 1px 4px rgba(37,99,235,.06)}
+.nav-btn{padding:13px 26px;background:transparent;border:none;border-bottom:3px solid transparent;color:var(--text2);cursor:pointer;font-family:var(--font);font-size:14px;font-weight:500;transition:all .2s;display:flex;align-items:center;gap:7px;margin-bottom:-2px}
+.nav-btn:hover{color:var(--accent)}
+.nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+
+.page{display:none}.page.active{display:block}
+
+.ytabs-wrap{padding:0 32px;background:var(--surface);border-bottom:1px solid var(--border)}
+.ytabs{display:flex;gap:4px;padding:16px 0 0;flex-wrap:wrap}
+.ytab{padding:8px 20px;background:var(--bg);border:1px solid var(--border);border-bottom:none;color:var(--text2);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;border-radius:8px 8px 0 0;transition:all .2s}
+.ytab:hover{background:var(--surface2);color:var(--accent)}
+.ytab.active{background:var(--surface);color:var(--accent);font-weight:700;box-shadow:0 -2px 0 var(--accent) inset}
+.ytab-add{color:var(--accent2)!important;border-color:var(--accent2)!important;border-style:dashed!important}
+.ytab-add:hover{background:rgba(14,164,122,.08)!important;color:var(--accent2)!important}
+
+.main{padding:26px 32px;max-width:1400px}
+
+.prow{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap;align-items:center}
+.pbtn{padding:5px 16px;background:var(--surface);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:13px;font-family:var(--font);border-radius:20px;transition:all .2s}
+.pbtn:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2)}
+.pbtn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.fiscal-label{font-size:12px;color:var(--text2);margin-left:4px;font-weight:500}
+
+.kgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:14px;margin-bottom:26px}
+.kcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden;transition:box-shadow .2s,border-color .2s;box-shadow:0 1px 4px rgba(37,99,235,.06)}
+.kcard:hover{box-shadow:0 4px 16px rgba(37,99,235,.12);border-color:var(--accent)}
+.kcard::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;border-radius:12px 12px 0 0}
+.kcard.bl::before{background:var(--accent)}.kcard.gr::before{background:var(--accent2)}
+.kcard.or::before{background:var(--accent3)}.kcard.rd::before{background:var(--accent4)}
+.kcard.pu::before{background:var(--accent5)}
+.klbl{font-size:11px;color:var(--text2);margin-bottom:7px;letter-spacing:.05em}
+.kval{font-family:var(--mono);font-size:26px;font-weight:500}
+.kcard.bl .kval{color:var(--accent)}.kcard.gr .kval{color:var(--accent2)}
+.kcard.or .kval{color:var(--accent3)}.kcard.rd .kval{color:var(--accent4)}
+.kcard.pu .kval{color:var(--accent5)}
+.ksub{font-size:11px;color:var(--text3);margin-top:3px}
+
+.crow{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+@media(max-width:860px){.crow{grid-template-columns:1fr}}
+.ccard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:0 1px 4px rgba(37,99,235,.06)}
+.ctitle{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:18px}
+.cwrap{position:relative;height:250px}
+
+.funnel{padding:6px 0}
+.frow{display:flex;align-items:center;margin-bottom:11px;gap:10px}
+.flbl{width:76px;font-size:12px;color:var(--text2);text-align:right;flex-shrink:0;font-weight:500}
+.fbar-wrap{flex:1;background:var(--surface2);border-radius:4px;height:26px;overflow:hidden}
+.fbar{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:10px;font-family:var(--mono);font-size:12px;font-weight:600;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.fpct{width:42px;font-family:var(--mono);font-size:11px;color:var(--text2);flex-shrink:0;font-weight:500}
+
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:22px;box-shadow:0 1px 4px rgba(37,99,235,.06)}
+.thead-row{padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.thead-row h3{font-size:14px;font-weight:700;color:var(--text)}
+.thead-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.tsearch{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 13px;color:var(--text);font-family:var(--font);font-size:13px;width:190px;outline:none}
+.tsearch:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--surface2)}
+th{padding:10px 14px;font-size:11px;font-weight:700;color:var(--text2);text-align:left;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none;transition:color .2s}
+th:hover{color:var(--accent)}
+th.asc::after{content:' ↑';color:var(--accent)}th.desc::after{content:' ↓';color:var(--accent)}
+td{padding:11px 14px;font-size:13px;border-top:1px solid var(--border);white-space:nowrap;color:var(--text)}
+tr:hover td{background:#eef4fd}
+.badge{display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.b-blue{background:rgba(37,99,235,.1);color:var(--accent)}
+.b-green{background:rgba(14,164,122,.12);color:var(--accent2)}
+.b-orange{background:rgba(217,119,6,.12);color:var(--accent3)}
+.b-red{background:rgba(220,38,38,.1);color:var(--accent4)}
+.b-purple{background:rgba(124,58,237,.1);color:var(--accent5)}
+.b-gray{background:rgba(79,106,138,.1);color:var(--text2)}
+.mono{font-family:var(--mono)}
+.empty{text-align:center;padding:44px;color:var(--text3);font-size:14px}
+.tax-tag{display:inline-block;font-size:10px;background:rgba(14,164,122,.12);color:var(--accent2);border-radius:4px;padding:1px 5px;margin-left:4px;font-family:var(--mono);font-weight:600;vertical-align:middle}
+
+.btn{padding:7px 17px;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-p{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.btn-p:hover{background:#1d4ed8}
+.btn-s{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
+.btn-s:hover{border-color:var(--accent);color:var(--accent);background:var(--surface2)}
+.btn-d{background:rgba(220,38,38,.07);color:var(--accent4);border:1px solid rgba(220,38,38,.2)}
+.btn-d:hover{background:rgba(220,38,38,.14)}
+.btn-sm{padding:4px 11px;font-size:12px}
+
+.sdot{width:23px;height:23px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid transparent}
+.sdot.pass{background:rgba(14,164,122,.12);border-color:var(--accent2);color:var(--accent2)}
+.sdot.fail{background:rgba(220,38,38,.1);border-color:var(--accent4);color:var(--accent4)}
+.sdot.waive{background:rgba(217,119,6,.1);border-color:var(--accent3);color:var(--accent3)}
+.sdot.pend{background:var(--surface2);border-color:var(--border);color:var(--text3)}
+
+.overlay{position:fixed;inset:0;background:rgba(15,30,60,.45);backdrop-filter:blur(2px);z-index:500;display:flex;align-items:center;justify-content:center;padding:22px;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;transform:translateY(16px);transition:transform .2s;box-shadow:0 20px 60px rgba(15,30,60,.18)}
+.overlay.open .modal{transform:translateY(0)}
+.mhead{padding:22px 26px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:16px 16px 0 0}
+.mhead h3{font-size:15px;font-weight:700}
+.mclose{background:none;border:none;color:var(--text2);font-size:20px;cursor:pointer;width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.mclose:hover{background:var(--border);color:var(--text)}
+.mbody{padding:22px 26px}
+.mfoot{padding:14px 26px 22px;display:flex;justify-content:flex-end;gap:9px;border-top:1px solid var(--border)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fgrp{display:flex;flex-direction:column;gap:5px}
+.fgrp.full{grid-column:1/-1}
+.flabel{font-size:12px;color:var(--text2);font-weight:600;letter-spacing:.03em}
+.finput,.fsel{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 13px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:all .2s;width:100%}
+.finput:focus,.fsel:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1);background:#fff}
+.fsel option{background:#fff;color:var(--text)}
+.cpr-preview{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 15px;grid-column:1/-1}
+.cpr-preview .clbl{font-size:11px;color:var(--text2);font-weight:600;margin-bottom:7px}
+.cpr-vals{display:flex;gap:22px;flex-wrap:wrap}
+.cpr-vals div span{font-size:11px;color:var(--text3)}
+.cpr-vals div b{font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:600;display:block}
+
+.fsel-filter{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 13px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;cursor:pointer}
+.fsel-filter:focus{border-color:var(--accent)}
+
+.toast{position:fixed;bottom:30px;right:30px;z-index:999;background:var(--accent);color:#fff;font-weight:600;font-size:13px;padding:11px 20px;border-radius:10px;box-shadow:0 4px 20px rgba(37,99,235,.3);transform:translateY(70px);opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:14px}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-icon">📊</div>
+  <h1>求人広告集計ダッシュボード</h1>
+  <span class="tax-badge">💴 税込表示</span>
+  <div class="hdr-sub">RECRUITMENT ANALYTICS</div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" id="navAd"   onclick="switchPage('ad')">📈 求人広告集計</button>
+  <button class="nav-btn"        id="navAppl" onclick="switchPage('appl')">👥 応募者別一覧</button>
+</div>
+
+<!-- PAGE: 求人広告集計 -->
+<div id="pageAd" class="page active">
+  <div class="ytabs-wrap">
+    <div class="ytabs" id="yearTabs"></div>
+  </div>
+  <div class="main">
+    <div class="prow" id="periodRow"></div>
+    <div class="kgrid" id="kpiGrid"></div>
+    <div class="crow">
+      <div class="ccard">
+        <div class="ctitle">媒体別 応募数</div>
+        <div class="cwrap"><canvas id="mediaChart"></canvas></div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">採用ファネル</div>
+        <div class="funnel" id="adFunnel"></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="thead-row">
+        <h3>媒体別詳細データ <span class="tax-tag">税込</span></h3>
+        <div class="thead-actions">
+          <input class="tsearch" id="adSearch" placeholder="媒体名で絞り込み…" oninput="renderAdTable()">
+          <button class="btn btn-p" onclick="openAdModal()">＋ 媒体を追加</button>
+        </div>
+      </div>
+      <div class="twrap">
+        <table>
+          <thead><tr>
+            <th data-col="quarter">期間</th>
+            <th data-col="media">求人媒体</th>
+            <th data-col="debit_date">引落日</th>
+            <th data-col="cost">費用</th>
+            <th data-col="apply_count">応募数</th>
+            <th data-col="interview">面接数</th>
+            <th data-col="offer_count">内定数</th>
+            <th data-col="hire_count">採用数</th>
+            <th data-col="cpr">CPR</th>
+            <th data-col="cpo">CPO</th>
+            <th>採用者名</th>
+            <th style="cursor:default">操作</th>
+          </tr></thead>
+          <tbody id="adBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: 応募者 -->
+<div id="pageAppl" class="page">
+  <div class="main">
+    <div class="kgrid" id="applKpi"></div>
+    <div class="crow">
+      <div class="ccard">
+        <div class="ctitle">応募経路別 人数</div>
+        <div class="cwrap"><canvas id="routeChart"></canvas></div>
+      </div>
+      <div class="ccard">
+        <div class="ctitle">選考ステップ別 通過数</div>
+        <div class="funnel" id="applFunnel"></div>
+      </div>
+    </div>
+    <div class="tcard">
+      <div class="thead-row">
+        <h3>応募者一覧 <span id="applCount" style="font-size:12px;color:var(--text2);font-weight:400;margin-left:6px"></span></h3>
+        <div class="thead-actions">
+          <input class="tsearch" id="applSearch" placeholder="氏名・経路で検索…" oninput="renderApplTable()">
+          <select class="fsel-filter" id="applRouteF" onchange="renderApplTable()"><option value="">すべての経路</option></select>
+          <select class="fsel-filter" id="applStatF" onchange="renderApplTable()">
+            <option value="">すべてのステータス</option>
+            <option value="hired">入社</option>
+            <option value="offered">内定</option>
+            <option value="interviewed">面接済</option>
+            <option value="doc_pass">書類通過</option>
+            <option value="doc_fail">書類NG</option>
+          </select>
+          <button class="btn btn-p" onclick="openApplModal()">＋ 応募者を追加</button>
+        </div>
+      </div>
+      <div class="twrap">
+        <table>
+          <thead><tr>
+            <th data-col="recv_date">受付日</th>
+            <th data-col="route">応募経路</th>
+            <th data-col="name">氏名</th>
+            <th data-col="gender">性別</th>
+            <th data-col="age">年齢</th>
+            <th>現職</th>
+            <th>業界経験</th>
+            <th>書類</th>
+            <th>一次面接</th>
+            <th>最終面接</th>
+            <th>内定</th>
+            <th>入社</th>
+            <th style="cursor:default">操作</th>
+          </tr></thead>
+          <tbody id="applBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 求人広告 -->
+<div class="overlay" id="adOverlay" onclick="overlayClose(event,'adOverlay')">
+  <div class="modal">
+    <div class="mhead">
+      <h3 id="adMTitle">求人媒体を追加</h3>
+      <button class="mclose" onclick="closeModal('adOverlay')">×</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="adId">
+      <div class="fgrid">
+        <div class="fgrp">
+          <label class="flabel">年度</label>
+          <select class="fsel" id="adFiscalYear"></select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">期間</label>
+          <select class="fsel" id="adQuarter">
+            <option value="4～7月">4～7月</option>
+            <option value="8～12月">8～12月</option>
+            <option value="1～3月">1～3月</option>
+          </select>
+        </div>
+        <div class="fgrp full">
+          <label class="flabel">求人媒体名 <span style="color:var(--accent4)">*</span></label>
+          <input type="text" class="finput" id="adMedia" placeholder="例: doda, airwork…">
+        </div>
+        <div class="fgrp full">
+          <label class="flabel">掲載期間</label>
+          <input type="text" class="finput" id="adPeriodStr" placeholder="例: 2026/04/01-2026/05/31">
+        </div>
+        <div class="fgrp full">
+          <label class="flabel">引き落とし日</label>
+          <input type="date" class="finput" id="adDebitDate">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">費用（税抜）</label>
+          <input type="number" class="finput" id="adCost" placeholder="0" min="0" oninput="previewCPR()">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">応募数</label>
+          <input type="number" class="finput" id="adApply" placeholder="0" min="0" oninput="previewCPR()">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">面接数</label>
+          <input type="number" class="finput" id="adInterview" placeholder="0" min="0">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">内定数</label>
+          <input type="number" class="finput" id="adOffer" placeholder="0" min="0">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">採用数</label>
+          <input type="number" class="finput" id="adHire" placeholder="0" min="0" oninput="previewCPR()">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">採用者名</label>
+          <input type="text" class="finput" id="adHireNames" placeholder="例: 山田、鈴木">
+        </div>
+        <div class="cpr-preview">
+          <div class="clbl">CPR・CPO 自動計算プレビュー（税込）</div>
+          <div class="cpr-vals">
+            <div><span>CPR（応募単価）</span><b id="cprPrev">-</b></div>
+            <div><span>CPO（採用単価）</span><b id="cpoPrev">-</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-s" onclick="closeModal('adOverlay')">キャンセル</button>
+      <button class="btn btn-p" onclick="saveAd()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 応募者 -->
+<div class="overlay" id="applOverlay" onclick="overlayClose(event,'applOverlay')">
+  <div class="modal">
+    <div class="mhead">
+      <h3 id="applMTitle">応募者を追加</h3>
+      <button class="mclose" onclick="closeModal('applOverlay')">×</button>
+    </div>
+    <div class="mbody">
+      <input type="hidden" id="applId">
+      <div class="fgrid">
+        <div class="fgrp">
+          <label class="flabel">受付日</label>
+          <input type="date" class="finput" id="applDate">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">応募経路</label>
+          <input type="text" class="finput" id="applRoute" placeholder="例: airwork" list="routeDL">
+          <datalist id="routeDL"></datalist>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">氏名 <span style="color:var(--accent4)">*</span></label>
+          <input type="text" class="finput" id="applName" placeholder="氏名">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">性別</label>
+          <select class="fsel" id="applGender">
+            <option value="">-</option><option>男</option><option>女</option><option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">年齢</label>
+          <input type="number" class="finput" id="applAge" placeholder="例: 28" min="18" max="70">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">現職</label>
+          <input type="text" class="finput" id="applJob" placeholder="現職・前職">
+        </div>
+        <div class="fgrp">
+          <label class="flabel">業界経験</label>
+          <select class="fsel" id="applExp">
+            <option value="">-</option><option value="あり">あり</option><option value="なし">なし</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">書類審査</label>
+          <select class="fsel" id="applDoc">
+            <option value="">未</option><option value="○">○ 通過</option><option value="×">× NG</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">一次面接</label>
+          <select class="fsel" id="applFirst">
+            <option value="">未</option><option value="○">○ 通過</option><option value="×">× NG</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">最終面接</label>
+          <select class="fsel" id="applFinal">
+            <option value="">未</option><option value="○">○ 通過</option><option value="×">× NG</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">内定</label>
+          <select class="fsel" id="applOffer">
+            <option value="">未</option><option value="○">○ 内定</option><option value="辞退">辞退</option>
+          </select>
+        </div>
+        <div class="fgrp">
+          <label class="flabel">入社</label>
+          <select class="fsel" id="applHire">
+            <option value="">未</option><option value="○">○ 入社</option><option value="辞退">辞退</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn btn-s" onclick="closeModal('applOverlay')">キャンセル</button>
+      <button class="btn btn-p" onclick="saveAppl()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  設定（税込固定）
+// ============================================================
+const API  = 'api/index.php';
+const TAX  = 1.1;  // 消費税率10%
+// DBの金額は税込で入っているのでそのまま表示（×1は不要、taxVal=そのまま返す）
+function taxVal(v) { return v; }
+
+// ============================================================
+//  API
+// ============================================================
+async function api(action, params={}) {
+  const qs = new URLSearchParams({action, _t: Date.now(), ...params}).toString();
+  const res = await fetch(`${API}?${qs}`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'API Error');
+  return data;
+}
+async function apiPost(body) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'API Error');
+  return data;
+}
+
+// ============================================================
+//  State
+// ============================================================
+let curYear='', curPeriod='all';
+let allYears=[], allQuarters=[];
+let adEntries=[], applicants=[];
+let adSortCol=null, adSortDir=-1;
+let applSortCol=null, applSortDir=-1;
+let mChartObj=null, rChartObj=null;
+
+// ============================================================
+//  Init
+// ============================================================
+(async () => {
+  try {
+    const d = await api('years');
+    allYears = d.years;
+    if (!allYears.length) allYears = ['2025年度'];
+    curYear = allYears[allYears.length - 1];
+    renderYearTabs();
+    await loadAdPage();
+  } catch(e) {
+    document.getElementById('adBody').innerHTML =
+      `<tr><td colspan="12" class="empty">接続エラー: ${e.message}</td></tr>`;
+  }
+})();
+
+// ============================================================
+//  Year Tabs（年度表示）
+// ============================================================
+function renderYearTabs() {
+  document.getElementById('yearTabs').innerHTML =
+    allYears.map(y =>
+      `<button class="ytab${y===curYear?' active':''}" onclick="selYear('${y}')">${y}</button>`
+    ).join('') +
+    `<button class="ytab ytab-add" onclick="addNewYear()" title="新しい年度を追加">＋ 年度追加</button>`;
+}
+async function selYear(y) {
+  curYear=y; curPeriod='all';
+  renderYearTabs();
+  await loadAdPage();
+}
+
+function addNewYear() {
+  // 直近年度の次を自動提案
+  const lastYear = allYears.length > 0
+    ? parseInt(allYears[allYears.length-1].replace('年度','')) + 1
+    : new Date().getFullYear();
+  const input = prompt(`追加する年度を入力してください\n例: ${lastYear}年度`, `${lastYear}年度`);
+  if (!input) return;
+  const newYear = input.trim();
+  if (!newYear.match(/^\d{4}年度$/)) {
+    alert('年度は「2026年度」のように入力してください');
+    return;
+  }
+  if (allYears.includes(newYear)) {
+    // すでに存在する年度ならそのタブに切り替えるだけ
+    selYear(newYear);
+    return;
+  }
+  allYears.push(newYear);
+  curYear = newYear;
+  curPeriod = 'all';
+  renderYearTabs();
+  // データなし状態で表示
+  adEntries = [];
+  allQuarters = ['4～7月','8～12月','1～3月'];
+  renderPeriodBtns();
+  renderAdAll();
+  showToast(`✓ ${newYear} を追加しました。媒体データを追加してください。`);
+}
+
+// ============================================================
+//  AD PAGE
+// ============================================================
+async function loadAdPage() {
+  document.getElementById('adBody').innerHTML =
+    '<tr><td colspan="12" class="loading"><span class="spin"></span>読み込み中…</td></tr>';
+  try {
+    const d = await api('ad_entries', {year: curYear});
+    adEntries   = d.entries;
+    allQuarters = d.quarters;
+    renderPeriodBtns();
+    renderAdAll();
+  } catch(e) {
+    document.getElementById('adBody').innerHTML =
+      `<tr><td colspan="12" class="empty">エラー: ${e.message}</td></tr>`;
+  }
+}
+
+function renderPeriodBtns() {
+  // 年度の期間表示（4月始まり）
+  const fy = curYear.replace('年度','');
+  const fyN = parseInt(fy);
+  const labels = {
+    '4～7月':  `4～7月（${fyN}年）`,
+    '8～12月': `8～12月（${fyN}年）`,
+    '1～3月':  `1～3月（${fyN+1}年）`,
+  };
+  document.getElementById('periodRow').innerHTML =
+    `<button class="pbtn${curPeriod==='all'?' active':''}" onclick="selPeriod('all')">年度全体</button>` +
+    allQuarters.map(q =>
+      `<button class="pbtn${curPeriod===q?' active':''}" onclick="selPeriod('${q}')">${labels[q]||q}</button>`
+    ).join('') +
+    `<span class="fiscal-label">📅 ${curYear}（${fyN}/4〜${fyN+1}/3）</span>`;
+}
+function selPeriod(p) { curPeriod=p; renderPeriodBtns(); renderAdAll(); }
+
+function filteredAd() {
+  return curPeriod==='all' ? adEntries : adEntries.filter(r=>r.quarter===curPeriod);
+}
+
+function renderAdAll() { renderKPI(); renderMediaChart(); renderAdFunnel(); renderAdTable(); }
+
+function renderKPI() {
+  const rows  = filteredAd();
+  const cost  = sum(rows,'cost'), apply=sum(rows,'apply_count'),
+        hire  = sum(rows,'hire_count'), intv=sum(rows,'interview');
+  const dispCost = taxVal(cost);
+  const dispCPR  = apply>0 ? taxVal(Math.round(cost/apply)) : null;
+  const dispCPO  = hire>0  ? taxVal(Math.round(cost/hire))  : null;
+  const taxSuffix = '（税込）';
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kcard bl"><div class="klbl">総費用${taxSuffix}</div><div class="kval">${fY(dispCost)}</div><div class="ksub">合計広告費</div></div>
+    <div class="kcard gr"><div class="klbl">総応募数</div><div class="kval">${apply}</div><div class="ksub">全媒体合計</div></div>
+    <div class="kcard or"><div class="klbl">面接数</div><div class="kval">${intv}</div><div class="ksub">応募→面接率 ${pct(intv,apply)}</div></div>
+    <div class="kcard rd"><div class="klbl">採用数</div><div class="kval">${hire}</div><div class="ksub">採用率 ${pct(hire,apply)}</div></div>
+    <div class="kcard bl"><div class="klbl">CPR${taxSuffix}</div><div class="kval" style="font-size:21px">${dispCPR!=null?fY(dispCPR):'-'}</div><div class="ksub">1応募あたり費用</div></div>
+    <div class="kcard gr"><div class="klbl">CPO${taxSuffix}</div><div class="kval" style="font-size:21px">${dispCPO!=null?fY(dispCPO):'-'}</div><div class="ksub">1採用あたり費用</div></div>`;
+}
+
+function renderMediaChart() {
+  const rows=filteredAd().filter(r=>r.apply_count>0);
+  const map={};rows.forEach(r=>{map[r.media]=(map[r.media]||0)+r.apply_count;});
+  const s=Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const cols=['#2563eb','#0ea47a','#d97706','#dc2626','#7c3aed','#db2777','#059669','#ca8a04'];
+  const ctx=document.getElementById('mediaChart').getContext('2d');
+  if(mChartObj)mChartObj.destroy();
+  mChartObj=new Chart(ctx,{type:'bar',
+    data:{labels:s.map(([k])=>k),datasets:[{data:s.map(([,v])=>v),backgroundColor:cols,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#4f6a8a',font:{family:'Noto Sans JP',size:11}},grid:{color:'#dce8f6'}},
+              y:{ticks:{color:'#4f6a8a',font:{family:'DM Mono',size:11}},grid:{color:'#dce8f6'},beginAtZero:true}}}});
+}
+
+function renderAdFunnel() {
+  const rows=filteredAd();
+  const a=sum(rows,'apply_count'),i=sum(rows,'interview'),o=sum(rows,'offer_count'),h=sum(rows,'hire_count'),mx=a||1;
+  document.getElementById('adFunnel').innerHTML=[
+    {l:'応募',v:a,c:'#2563eb'},{l:'面接',v:i,c:'#0ea47a'},{l:'内定',v:o,c:'#d97706'},{l:'採用',v:h,c:'#dc2626'}
+  ].map(s=>`<div class="frow">
+    <div class="flbl">${s.l}</div>
+    <div class="fbar-wrap"><div class="fbar" style="width:${Math.max(s.v/mx*100,2)}%;background:${s.c};color:#fff">${s.v}</div></div>
+    <div class="fpct">${a>0&&s.v>0?Math.round(s.v/a*100)+'%':'-'}</div>
+  </div>`).join('');
+}
+
+function renderAdTable() {
+  let rows=filteredAd();
+  const q=document.getElementById('adSearch').value.toLowerCase();
+  if(q)rows=rows.filter(r=>r.media.toLowerCase().includes(q));
+  if(adSortCol)rows=[...rows].sort((a,b)=>{
+    let av=a[adSortCol]??-Infinity,bv=b[adSortCol]??-Infinity;
+    if(typeof av==='string')av=av.toLowerCase();if(typeof bv==='string')bv=bv.toLowerCase();
+    return av<bv?-adSortDir:av>bv?adSortDir:0;
+  });
+  document.querySelectorAll('#pageAd th[data-col]').forEach(th=>{
+    th.classList.remove('asc','desc');
+    if(th.dataset.col===adSortCol)th.classList.add(adSortDir===1?'asc':'desc');
+  });
+  if (!rows.length) {
+    document.getElementById('adBody').innerHTML =
+      '<tr><td colspan="12" class="empty">データがありません</td></tr>';
+    return;
+  }
+
+  // 通常行
+  const normalRows = rows.map(r => {
+    const dispCost = taxVal(r.cost);
+    const dispCPR  = taxVal(r.cpr);
+    const dispCPO  = taxVal(r.cpo);
+    return `<tr>
+      <td><span class="badge b-blue">${r.quarter}</span></td>
+      <td><b>${esc(r.media)}</b></td>
+      <td class="mono" style="font-size:12px;color:var(--text2)">${r.debit_date||'-'}</td>
+      <td class="mono">${fY(dispCost)}</td>
+      <td class="mono">${r.apply_count}</td>
+      <td class="mono">${r.interview}</td>
+      <td class="mono">${r.offer_count}</td>
+      <td class="mono">${r.hire_count}</td>
+      <td class="mono">${dispCPR!=null?fY(dispCPR):'-'}</td>
+      <td class="mono">${dispCPO!=null?fY(dispCPO):'-'}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(r.hire_names||'-')}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-s btn-sm" onclick="editAd(${r.id})">編集</button>
+        <button class="btn btn-d btn-sm" onclick="deleteAd(${r.id})">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // 媒体ごとの年度合計（年度全体のデータを使う）
+  const allRows = curPeriod === 'all' ? rows : adEntries;
+  const mediaMap = {};
+  allRows.forEach(r => {
+    if (!mediaMap[r.media]) {
+      mediaMap[r.media] = {cost:0, apply:0, interview:0, offer:0, hire:0, names:[]};
+    }
+    mediaMap[r.media].cost      += r.cost      || 0;
+    mediaMap[r.media].apply     += r.apply_count|| 0;
+    mediaMap[r.media].interview += r.interview  || 0;
+    mediaMap[r.media].offer     += r.offer_count|| 0;
+    mediaMap[r.media].hire      += r.hire_count || 0;
+    if (r.hire_names) mediaMap[r.media].names.push(r.hire_names);
+  });
+
+  // 表示順：応募数の多い順
+  const mediaSummary = Object.entries(mediaMap)
+    .sort((a,b) => b[1].apply - a[1].apply)
+    .map(([media, d]) => {
+      const dispCost = taxVal(d.cost);
+      const dispCPR  = d.apply > 0 ? taxVal(Math.round(d.cost / d.apply)) : null;
+      const dispCPO  = d.hire  > 0 ? taxVal(Math.round(d.cost / d.hire))  : null;
+      return `<tr style="background:var(--surface2);font-weight:600;">
+        <td><span class="badge b-purple">年度計</span></td>
+        <td style="color:var(--accent5)"><b>${esc(media)}</b></td>
+        <td class="mono" style="color:var(--text3)">-</td>
+        <td class="mono" style="color:var(--accent5)">${fY(dispCost)}</td>
+        <td class="mono" style="color:var(--accent5)">${d.apply}</td>
+        <td class="mono" style="color:var(--accent5)">${d.interview}</td>
+        <td class="mono" style="color:var(--accent5)">${d.offer}</td>
+        <td class="mono" style="color:var(--accent5)">${d.hire}</td>
+        <td class="mono" style="color:var(--accent5)">${dispCPR!=null?fY(dispCPR):'-'}</td>
+        <td class="mono" style="color:var(--accent5)">${dispCPO!=null?fY(dispCPO):'-'}</td>
+        <td style="color:var(--text2);font-size:12px">${esc(d.names.join('、')||'-')}</td>
+        <td></td>
+      </tr>`;
+    }).join('');
+
+  // 区切り行
+  const divider = `<tr><td colspan="12" style="padding:0;background:var(--accent5);height:2px;"></td></tr>
+    <tr style="background:#f3eeff;"><td colspan="12" style="padding:6px 14px;font-size:11px;font-weight:700;color:var(--accent5);letter-spacing:.08em;">
+      📊 媒体別 年度合計（${curYear}）
+    </td></tr>`;
+
+  document.getElementById('adBody').innerHTML = normalRows + divider + mediaSummary;
+}
+
+document.querySelectorAll('#pageAd th[data-col]').forEach(th=>{
+  th.onclick=()=>{
+    const col=th.dataset.col;
+    if(adSortCol===col)adSortDir*=-1;else{adSortCol=col;adSortDir=-1;}
+    renderAdTable();
+  };
+});
+
+// ============================================================
+//  AD MODAL
+// ============================================================
+function openAdModal(entry=null) {
+  // 年度セレクトを生成（既存年度＋新しい年度を追加できるよう入力欄も）
+  const ySel=document.getElementById('adFiscalYear');
+  ySel.innerHTML=allYears.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(!allYears.includes('新規年度入力')) {
+    ySel.innerHTML+=`<option value="__new__">＋ 新しい年度を入力…</option>`;
+  }
+  ySel.value=curYear;
+  ySel.onchange=()=>{
+    if(ySel.value==='__new__'){
+      const v=prompt('年度を入力してください（例: 2026年度）');
+      if(v){ySel.innerHTML+=`<option value="${v}">${v}</option>`;ySel.value=v;}
+      else ySel.value=curYear;
+    }
+  };
+
+  document.getElementById('adId').value='';
+  ['adMedia','adPeriodStr','adHireNames'].forEach(id=>document.getElementById(id).value='');
+  ['adCost','adApply','adInterview','adOffer','adHire'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('adDebitDate').value='';
+  document.getElementById('adQuarter').value='4～7月';
+  previewCPR();
+
+  if(entry){
+    document.getElementById('adMTitle').textContent='求人媒体を編集';
+    document.getElementById('adId').value=entry.id;
+    // 年度セレクトに値をセット（存在しない場合は追加）
+    if(entry.fiscal_year && ![...ySel.options].map(o=>o.value).includes(entry.fiscal_year)){
+      ySel.innerHTML+=`<option value="${entry.fiscal_year}">${entry.fiscal_year}</option>`;
+    }
+    ySel.value=entry.fiscal_year||curYear;
+    document.getElementById('adQuarter').value=entry.quarter||'4～7月';
+    document.getElementById('adMedia').value=entry.media||'';
+    document.getElementById('adPeriodStr').value=entry.period_str||'';
+    document.getElementById('adDebitDate').value=entry.debit_date||'';
+    document.getElementById('adCost').value=entry.cost||'';
+    document.getElementById('adApply').value=entry.apply_count||'';
+    document.getElementById('adInterview').value=entry.interview||'';
+    document.getElementById('adOffer').value=entry.offer_count||'';
+    document.getElementById('adHire').value=entry.hire_count||'';
+    document.getElementById('adHireNames').value=entry.hire_names||'';
+    previewCPR();
+  } else {
+    document.getElementById('adMTitle').textContent='求人媒体を追加';
+    if(curPeriod!=='all') document.getElementById('adQuarter').value=curPeriod;
+  }
+  openModal('adOverlay');
+}
+
+function previewCPR(){
+  const cost=parseInt(document.getElementById('adCost').value)||0;
+  const apply=parseInt(document.getElementById('adApply').value)||0;
+  const hire=parseInt(document.getElementById('adHire').value)||0;
+  document.getElementById('cprPrev').textContent=apply>0?fY(Math.round(cost/apply)):'-';
+  document.getElementById('cpoPrev').textContent=hire>0?fY(Math.round(cost/hire)):'-';
+}
+
+async function saveAd(){
+  const media=document.getElementById('adMedia').value.trim();
+  if(!media){showToast('⚠ 媒体名を入力してください');return;}
+  const id=parseInt(document.getElementById('adId').value)||0;
+  const body={
+    action:id?'ad_update':'ad_add', id,
+    fiscal_year: document.getElementById('adFiscalYear').value,
+    quarter:     document.getElementById('adQuarter').value,
+    media,
+    period_str:  document.getElementById('adPeriodStr').value.trim(),
+    debit_date:  document.getElementById('adDebitDate').value,
+    cost:        parseInt(document.getElementById('adCost').value)||0,
+    apply_count: parseInt(document.getElementById('adApply').value)||0,
+    interview:   parseInt(document.getElementById('adInterview').value)||0,
+    offer_count: parseInt(document.getElementById('adOffer').value)||0,
+    hire_count:  parseInt(document.getElementById('adHire').value)||0,
+    hire_names:  document.getElementById('adHireNames').value.trim(),
+  };
+  try{
+    const d=await apiPost(body);
+    showToast('✓ '+d.message);
+    closeModal('adOverlay');
+    await loadAdPage();
+  }catch(e){showToast('⚠ '+e.message);}
+}
+
+function editAd(id){const e=adEntries.find(r=>r.id==id);if(e)openAdModal(e);}
+
+async function deleteAd(id){
+  if(!confirm('このデータを削除しますか？'))return;
+  try{const d=await apiPost({action:'ad_delete',id});showToast('🗑 '+d.message);await loadAdPage();}
+  catch(e){showToast('⚠ '+e.message);}
+}
+
+// ============================================================
+//  APPLICANT PAGE
+// ============================================================
+async function loadApplPage(){
+  document.getElementById('applBody').innerHTML=
+    '<tr><td colspan="13" class="loading"><span class="spin"></span>読み込み中…</td></tr>';
+  try{
+    const d=await api('applicants');
+    applicants=d.applicants;
+    renderApplAll();
+  }catch(e){
+    document.getElementById('applBody').innerHTML=
+      `<tr><td colspan="13" class="empty">エラー: ${e.message}</td></tr>`;
+  }
+}
+
+function renderApplAll(){renderApplKPI();renderApplCharts();updateRouteDL();renderApplTable();}
+
+function renderApplKPI(){
+  const n=applicants.length,dp=applicants.filter(a=>a.doc_result==='○').length,
+        iv=applicants.filter(a=>a.first_int||a.final_int).length,h=applicants.filter(a=>a.hire==='○').length,
+        rt=new Set(applicants.map(a=>a.route).filter(Boolean)).size;
+  document.getElementById('applKpi').innerHTML=`
+    <div class="kcard gr"><div class="klbl">応募者数</div><div class="kval">${n}</div><div class="ksub">登録済み</div></div>
+    <div class="kcard bl"><div class="klbl">書類通過</div><div class="kval">${dp}</div><div class="ksub">通過率 ${pct(dp,n)}</div></div>
+    <div class="kcard or"><div class="klbl">面接実施</div><div class="kval">${iv}</div><div class="ksub">面接率 ${pct(iv,n)}</div></div>
+    <div class="kcard rd"><div class="klbl">入社</div><div class="kval">${h}</div><div class="ksub">採用率 ${pct(h,n)}</div></div>
+    <div class="kcard pu"><div class="klbl">応募経路数</div><div class="kval">${rt}</div><div class="ksub">媒体種類</div></div>`;
+}
+
+function renderApplCharts(){
+  const map={};applicants.forEach(a=>{if(a.route)map[a.route]=(map[a.route]||0)+1;});
+  const s=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const cols=['#2563eb','#0ea47a','#d97706','#dc2626','#7c3aed','#db2777','#059669','#ca8a04'];
+  const ctx=document.getElementById('routeChart').getContext('2d');
+  if(rChartObj)rChartObj.destroy();
+  rChartObj=new Chart(ctx,{type:'doughnut',
+    data:{labels:s.map(([k])=>k),datasets:[{data:s.map(([,v])=>v),backgroundColor:cols,borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{color:'#4f6a8a',font:{family:'Noto Sans JP',size:12},padding:12,boxWidth:12}}}}});
+  const n=applicants.length||1;
+  const steps=[
+    {l:'書類通過',v:applicants.filter(a=>a.doc_result==='○').length,c:'#2563eb'},
+    {l:'一次面接',v:applicants.filter(a=>a.first_int==='○').length,c:'#0ea47a'},
+    {l:'最終面接',v:applicants.filter(a=>a.final_int==='○').length,c:'#7c3aed'},
+    {l:'内定',v:applicants.filter(a=>a.offer==='○').length,c:'#d97706'},
+    {l:'入社',v:applicants.filter(a=>a.hire==='○').length,c:'#dc2626'},
+  ];
+  document.getElementById('applFunnel').innerHTML=steps.map(s=>`<div class="frow">
+    <div class="flbl" style="font-size:11px">${s.l}</div>
+    <div class="fbar-wrap"><div class="fbar" style="width:${Math.max(s.v/n*100,2)}%;background:${s.c};color:#fff">${s.v}</div></div>
+    <div class="fpct">${n>0&&s.v>0?Math.round(s.v/n*100)+'%':'-'}</div>
+  </div>`).join('');
+}
+
+function updateRouteDL(){
+  const routes=[...new Set(applicants.map(a=>a.route).filter(Boolean))].sort();
+  const sel=document.getElementById('applRouteF'),cur=sel.value;
+  sel.innerHTML=`<option value="">すべての経路</option>`+routes.map(r=>`<option value="${r}"${r===cur?' selected':''}>${r}</option>`).join('');
+  document.getElementById('routeDL').innerHTML=routes.map(r=>`<option value="${r}">`).join('');
+}
+
+function applStatMatch(a,f){
+  if(!f)return true;
+  if(f==='hired')return a.hire==='○';
+  if(f==='offered')return a.offer==='○';
+  if(f==='interviewed')return !!(a.first_int||a.final_int);
+  if(f==='doc_pass')return a.doc_result==='○';
+  if(f==='doc_fail')return a.doc_result==='×';
+  return true;
+}
+
+function renderApplTable(){
+  const q=document.getElementById('applSearch').value.toLowerCase();
+  const rf=document.getElementById('applRouteF').value;
+  const sf=document.getElementById('applStatF').value;
+  let rows=applicants.filter(a=>
+    (!q||(a.name||'').toLowerCase().includes(q)||(a.route||'').toLowerCase().includes(q))&&
+    (!rf||a.route===rf)&&applStatMatch(a,sf));
+  if(applSortCol)rows=[...rows].sort((a,b)=>{
+    let av=a[applSortCol]??'',bv=b[applSortCol]??'';
+    if(typeof av==='string')av=av.toLowerCase();if(typeof bv==='string')bv=bv.toLowerCase();
+    return av<bv?-applSortDir:av>bv?applSortDir:0;
+  });
+  document.querySelectorAll('#pageAppl th[data-col]').forEach(th=>{
+    th.classList.remove('asc','desc');
+    if(th.dataset.col===applSortCol)th.classList.add(applSortDir===1?'asc':'desc');
+  });
+  document.getElementById('applCount').textContent=`${rows.length}件`;
+  document.getElementById('applBody').innerHTML=rows.length
+    ?rows.map(a=>`<tr>
+      <td class="mono" style="font-size:12px">${a.recv_date||'-'}</td>
+      <td><span class="badge b-blue">${esc(a.route||'-')}</span></td>
+      <td><b>${esc(a.name)}</b></td>
+      <td>${a.gender||'-'}</td>
+      <td class="mono">${a.age||'-'}</td>
+      <td style="color:var(--text2);font-size:12px">${esc(a.current_job||'-')}</td>
+      <td>${a.has_exp?`<span class="badge ${a.has_exp==='あり'?'b-green':'b-gray'}">${a.has_exp}</span>`:'-'}</td>
+      <td>${dot(a.doc_result)}</td><td>${dot(a.first_int)}</td><td>${dot(a.final_int)}</td>
+      <td>${dot(a.offer)}</td><td>${dot(a.hire)}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-s btn-sm" onclick="editAppl(${a.id})">編集</button>
+        <button class="btn btn-d btn-sm" onclick="deleteAppl(${a.id})">削除</button>
+      </td></tr>`).join('')
+    :'<tr><td colspan="13" class="empty">データがありません</td></tr>';
+}
+
+document.querySelectorAll('#pageAppl th[data-col]').forEach(th=>{
+  th.onclick=()=>{
+    const col=th.dataset.col;
+    if(applSortCol===col)applSortDir*=-1;else{applSortCol=col;applSortDir=-1;}
+    renderApplTable();
+  };
+});
+
+// ============================================================
+//  APPLICANT MODAL
+// ============================================================
+function openApplModal(entry=null){
+  ['applDate','applRoute','applName','applJob'].forEach(id=>document.getElementById(id).value='');
+  ['applGender','applExp','applDoc','applFirst','applFinal','applOffer','applHire'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('applAge').value='';
+  document.getElementById('applId').value='';
+  if(entry){
+    document.getElementById('applMTitle').textContent='応募者を編集';
+    document.getElementById('applId').value=entry.id;
+    document.getElementById('applDate').value=entry.recv_date||'';
+    document.getElementById('applRoute').value=entry.route||'';
+    document.getElementById('applName').value=entry.name||'';
+    document.getElementById('applGender').value=entry.gender||'';
+    document.getElementById('applAge').value=entry.age||'';
+    document.getElementById('applJob').value=entry.current_job||'';
+    document.getElementById('applExp').value=entry.has_exp||'';
+    document.getElementById('applDoc').value=entry.doc_result||'';
+    document.getElementById('applFirst').value=entry.first_int||'';
+    document.getElementById('applFinal').value=entry.final_int||'';
+    document.getElementById('applOffer').value=entry.offer||'';
+    document.getElementById('applHire').value=entry.hire||'';
+  }else{
+    document.getElementById('applMTitle').textContent='応募者を追加';
+  }
+  openModal('applOverlay');
+}
+function editAppl(id){const a=applicants.find(x=>x.id==id);if(a)openApplModal(a);}
+
+async function saveAppl(){
+  const name=document.getElementById('applName').value.trim();
+  if(!name){showToast('⚠ 氏名を入力してください');return;}
+  const id=parseInt(document.getElementById('applId').value)||0;
+  const body={
+    action:id?'appl_update':'appl_add',id,
+    recv_date:document.getElementById('applDate').value,
+    route:document.getElementById('applRoute').value.trim(),
+    name,gender:document.getElementById('applGender').value,
+    age:document.getElementById('applAge').value,
+    current_job:document.getElementById('applJob').value.trim(),
+    has_exp:document.getElementById('applExp').value,
+    doc_result:document.getElementById('applDoc').value,
+    first_int:document.getElementById('applFirst').value,
+    final_int:document.getElementById('applFinal').value,
+    offer:document.getElementById('applOffer').value,
+    hire:document.getElementById('applHire').value,
+  };
+  try{
+    const d=await apiPost(body);showToast('✓ '+d.message);
+    closeModal('applOverlay');await loadApplPage();
+  }catch(e){showToast('⚠ '+e.message);}
+}
+
+async function deleteAppl(id){
+  if(!confirm('この応募者を削除しますか？'))return;
+  try{const d=await apiPost({action:'appl_delete',id});showToast('🗑 '+d.message);await loadApplPage();}
+  catch(e){showToast('⚠ '+e.message);}
+}
+
+// ============================================================
+//  Page Switch / Modal
+// ============================================================
+async function switchPage(p){
+  document.getElementById('pageAd').classList.toggle('active',p==='ad');
+  document.getElementById('pageAppl').classList.toggle('active',p==='appl');
+  document.getElementById('navAd').classList.toggle('active',p==='ad');
+  document.getElementById('navAppl').classList.toggle('active',p==='appl');
+  if(p==='appl')await loadApplPage();
+}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function overlayClose(e,id){if(e.target===document.getElementById(id))closeModal(id);}
+
+// ============================================================
+//  Utilities
+// ============================================================
+function fY(v){return v==null?'-':'¥'+Number(v).toLocaleString('ja-JP');}
+function pct(a,b){return b>0?Math.round(a/b*100)+'%':'-';}
+function sum(arr,key){return arr.reduce((s,r)=>s+(Number(r[key])||0),0);}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function dot(v){
+  if(v==='○')return`<span class="sdot pass">○</span>`;
+  if(v==='×')return`<span class="sdot fail">×</span>`;
+  if(v==='辞退')return`<span class="sdot waive" title="辞退">辞</span>`;
+  return`<span class="sdot pend">-</span>`;
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2400);
+}
+</script>
+</body>
+</html>

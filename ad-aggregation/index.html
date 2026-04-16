@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リスティング広告 集計ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0b0f19;--bg2:#111827;--bg3:#1a1f2e;--bg4:#0d111b;--bdr:#1f2937;--bdr2:#2d3548;--t1:#f0f2f5;--t2:#c9d1e0;--t3:#8896ab;--t4:#5a6578;--t5:#3d4656;--blue:#3b82f6;--purple:#7c3aed;--red:#dc2626;--green:#16a34a;--amber:#f59e0b}
+body{min-height:100vh;background:var(--bg);color:var(--t2);font-family:'Noto Sans JP','Hiragino Sans',system-ui,sans-serif;font-size:13px}
+button{cursor:pointer;font-family:inherit}
+input{font-family:inherit}
+
+/* Header */
+.header{background:linear-gradient(135deg,#111827,#1a1535);border-bottom:1px solid var(--bdr);padding:16px 20px}
+.header-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff}
+.header h1{font-size:18px;font-weight:800;color:var(--t1)}
+.header p{font-size:11px;color:var(--t4)}
+
+/* Main */
+.main{max-width:1440px;margin:0 auto;padding:12px 20px}
+
+/* Controls */
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.month-tabs{display:flex;gap:2px;background:var(--bg3);border-radius:10px;padding:3px;flex-wrap:wrap}
+.month-btn{padding:5px 12px;border-radius:7px;border:none;font-size:11px;background:transparent;color:var(--t5);font-weight:400;transition:.15s}
+.month-btn.has-data{color:var(--t3);font-weight:500}
+.month-btn.active{background:linear-gradient(135deg,var(--blue),#6366f1);color:#fff;font-weight:700}
+.search-input{background:var(--bg3);border:1px solid var(--bdr2);border-radius:7px;padding:6px 12px;color:var(--t2);font-size:11px;width:140px;outline:none}
+.view-tabs{display:flex;gap:2px;background:var(--bg3);border-radius:8px;padding:3px}
+.view-btn{padding:5px 10px;border-radius:6px;border:none;font-size:11px;font-weight:500;background:transparent;color:var(--t3);transition:.15s}
+.view-btn.active{background:var(--bdr2);color:var(--t1);font-weight:700}
+
+/* Drop zone */
+.import-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.drop-zone{flex:1;min-width:300px;background:#111c2e;border:2px dashed var(--bdr2);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.2s}
+.drop-zone.dragover{background:#1e3a5f;border-color:var(--blue)}
+.drop-zone .icon{font-size:26px}
+.drop-zone .label{font-size:13px;font-weight:700;color:var(--t1)}
+.drop-zone .sub{font-size:10px;color:var(--t4);margin-top:2px}
+.rules-toggle{padding:12px 18px;border-radius:10px;border:1px solid var(--bdr2);background:var(--bg3);color:var(--t3);font-size:12px;font-weight:700;white-space:nowrap;transition:.15s}
+.rules-toggle.open{border-color:var(--amber);background:#1a1500;color:var(--amber)}
+.import-msg{border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;margin-left:auto}
+.import-msg.ok{background:#052e16;border:1px solid var(--green);color:#4ade80}
+.import-msg.err{background:#450a0a;border:1px solid var(--red);color:#fca5a5}
+
+/* Summary Cards */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.card{background:var(--bg3);border-radius:10px;padding:12px 14px;border:1px solid var(--bdr2)}
+.card-head{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.card-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
+.card-label{font-size:10px;color:var(--t4);font-weight:600}
+.card-val{font-size:16px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums}
+
+/* Table */
+.table-wrap{background:var(--bg2);border-radius:10px;border:1px solid var(--bdr);overflow:auto;max-height:calc(100vh - 380px)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+th{position:sticky;top:0;background:var(--bg2);padding:8px;text-align:right;font-size:11px;font-weight:700;color:var(--t3);border-bottom:2px solid var(--bdr);white-space:nowrap;user-select:none;z-index:3}
+th.name-col{text-align:left;position:sticky;left:0;z-index:4;background:var(--bg2);min-width:100px}
+td{padding:4px 6px;text-align:right;font-size:12px;border-bottom:1px solid var(--bdr);color:var(--t2);font-variant-numeric:tabular-nums}
+td.name-col{padding:4px 8px;text-align:left;font-weight:600;color:var(--t1);position:sticky;left:0;background:var(--bg2);z-index:1;white-space:nowrap}
+tr:nth-child(even){background:var(--bg4)}
+tfoot tr{background:var(--bg3) !important}
+tfoot td.name-col{background:var(--bg3);font-weight:800;color:var(--amber)}
+.google-col{color:#60a5fa !important;font-weight:700;border-left:2px solid #1e3a5f}
+.yahoo-col{color:#f87171 !important;font-weight:600}
+.total-col{color:#a78bfa !important;font-weight:800;font-size:13px;border-left:2px solid #2d1f5e}
+
+/* Editable cells */
+.cell-val{padding:2px 4px;border-radius:3px;min-height:20px;cursor:pointer;transition:.1s}
+.cell-val:hover{background:#1e293b}
+.cell-val.zero{color:var(--t5)}
+.cell-val.yahoo-val{color:#f87171}
+.cell-edit{width:100%;background:#1e293b;border:2px solid var(--blue);border-radius:4px;padding:3px 6px;color:var(--t1);font-size:12px;text-align:right;outline:none}
+
+/* Rules Panel */
+.rules-panel{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-bottom:12px;display:none}
+.rules-panel.show{display:block}
+.rules-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rules-header h3{font-size:14px;font-weight:700;color:var(--t1)}
+.rules-close{background:none;border:none;color:var(--t4);font-size:16px}
+.rule-card{background:var(--bg4);border-radius:8px;padding:10px 14px;border:1px solid var(--bdr);margin-bottom:8px}
+.rule-label{font-size:12px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.rule-label span{font-size:10px;color:var(--t4);margin-left:8px}
+.rule-btns{display:flex;gap:6px;flex-wrap:wrap}
+.rule-btn{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;transition:.15s}
+.rule-btn.on{border:2px solid var(--blue);background:#1e3a5f;color:#60a5fa}
+.rule-btn.off{border:1px solid var(--bdr2);background:var(--bg3);color:var(--t4)}
+
+/* Import log */
+.log-section{margin-bottom:16px}
+.log-title{font-size:11px;color:var(--t3);font-weight:600;margin-bottom:8px}
+.log-card{background:var(--bg4);border-radius:8px;padding:10px 14px;border:1px solid var(--bdr);margin-bottom:6px}
+.log-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.log-name{font-size:12px;font-weight:700;color:var(--t1)}
+.log-total{font-size:13px;font-weight:800;color:var(--amber)}
+.log-targets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.log-targets .arrow{font-size:10px;color:var(--t4)}
+.log-tag{font-size:10px;background:#1e293b;padding:2px 8px;border-radius:4px;color:var(--t2)}
+.log-tag strong{font-weight:700}
+.log-tag strong.g{color:#60a5fa}
+.log-tag strong.y{color:#f87171}
+
+/* Chart containers */
+.chart-grid{display:grid;grid-template-columns:1fr 280px;gap:14px}
+.chart-box{background:var(--bg3);border-radius:10px;padding:18px;border:1px solid var(--bdr2)}
+.chart-box h3{margin:0 0 14px;font-size:13px;font-weight:700;color:var(--t1)}
+.top5-item{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.top5-rank{width:17px;height:17px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff}
+.top5-name{flex:1;font-size:11px;color:var(--t2)}
+.top5-val{font-size:11px;font-weight:700;color:var(--t1)}
+
+/* Trend */
+.trend-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;margin-top:14px}
+.trend-card{background:var(--bg2);border-radius:7px;padding:8px 10px;border:1px solid var(--bdr2);cursor:pointer;transition:.15s}
+.trend-card.active{border:2px solid #6366f1}
+.trend-card .mo{font-size:10px;font-weight:700;color:var(--t3);margin-bottom:3px}
+.trend-card.active .mo{color:#a5b4fc}
+.trend-card .val{font-size:13px;font-weight:800;color:var(--t1)}
+.trend-card .unit{font-size:9px;color:var(--t4)}
+
+/* Help */
+.edit-hint{font-size:10px;color:var(--t4);margin-bottom:6px;background:var(--bg3);display:inline-block;padding:3px 10px;border-radius:20px}
+
+/* Pie legend */
+.pie-legend{display:flex;justify-content:center;gap:14px;margin-top:4px}
+.pie-leg{display:flex;align-items:center;gap:5px;font-size:10px}
+.pie-dot{width:9px;height:9px;border-radius:2px}
+.pie-name{color:var(--t3)}
+.pie-pct{font-weight:700;color:var(--t1)}
+
+@media(max-width:900px){.chart-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="logo">広</div>
+    <div>
+      <h1>リスティング広告 集計ダッシュボード</h1>
+      <p>2025年度 ─ Google / Yahoo CSV自動インポート ─ 按分ルール可視化</p>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Controls -->
+  <div class="controls">
+    <div class="month-tabs" id="monthTabs"></div>
+    <div style="flex:1"></div>
+    <input class="search-input" id="searchInput" placeholder="教室を検索..." oninput="render()">
+    <div class="view-tabs">
+      <button class="view-btn active" data-vw="edit" onclick="setView('edit')">✏️ 入力</button>
+      <button class="view-btn" data-vw="table" onclick="setView('table')">📊 一覧</button>
+      <button class="view-btn" data-vw="chart" onclick="setView('chart')">📈 グラフ</button>
+      <button class="view-btn" data-vw="trend" onclick="setView('trend')">📉 推移</button>
+    </div>
+  </div>
+
+  <!-- Import -->
+  <div class="import-row">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".csv,.tsv,.txt" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div class="icon">📄</div>
+      <div style="flex:1">
+        <div class="label">Google / Yahoo CSVをドロップ or クリック</div>
+        <div class="sub"><span style="color:var(--blue)">●</span> Google → 費用・上位表示・リマーケ・その他　<span style="color:var(--red)">●</span> Yahoo → Yahoo広告</div>
+      </div>
+      <div id="importMsg" style="display:none"></div>
+    </div>
+    <button class="rules-toggle" id="rulesToggle" onclick="toggleRules()">🔀 按分ルール ▼</button>
+  </div>
+
+  <!-- Rules Panel -->
+  <div class="rules-panel" id="rulesPanel">
+    <div class="rules-header">
+      <h3>🔀 按分ルール設定</h3>
+      <button class="rules-close" onclick="toggleRules()">✕</button>
+    </div>
+    <div id="importLog"></div>
+    <div style="font-size:11px;color:var(--t3);font-weight:600;margin-bottom:8px">按分先の変更（クリックで ON/OFF → 次回インポートから反映）</div>
+    <div id="rulesBody"></div>
+    <div style="margin-top:10px;font-size:10px;color:var(--t5)">💡 リマーケティングは常に19教室均等按分です。変更は次回CSVインポート時に適用されます。</div>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary" id="summaryCards"></div>
+
+  <!-- Content -->
+  <div id="content"></div>
+</div>
+
+<script>
+// ════════════ CONFIG ════════════
+const API = 'api/index.php';
+const ALL_M = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+const DEF_CLS = ['新長田','湊川','兵庫駅前','東垂水','月見山','舞子坂','西明石','大久保','垂水星陵台','西鈴蘭台','大石','二見','六甲篠原','加古川','西新町','山の街','東加古川','住吉駅前','垂水駅前','たつの','FC板宿','広畑','英賀保駅前','姫路中地','正社員募集'];
+
+// ════════════ STATE ════════════
+let curMonth = '1月';
+let curView = 'edit';
+let monthData = {};   // { '1月': [{account, cost, ...}, ...] }
+let allSummary = {};  // { '1月': {google, yahoo, total} }
+let rules = [];
+let importLogs = [];
+let sortKey = 'total';
+let sortAsc = false;
+let editCell = null;
+let chartInstances = {};
+
+// ════════════ API HELPERS ════════════
+function ts() { return '_t=' + Date.now(); }
+async function apiGet(action, params = {}) {
+  const qs = new URLSearchParams({ action, ...params, _t: Date.now() });
+  const r = await fetch(API + '?' + qs);
+  return r.json();
+}
+async function apiPost(body) {
+  const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+// ════════════ DATA LOADING ════════════
+async function loadMonthData(month) {
+  const res = await apiGet('get_data', { month });
+  if (res.ok) monthData[month] = res.data;
+}
+async function loadSummary() {
+  const res = await apiGet('get_all_summary');
+  if (res.ok) allSummary = res.data;
+}
+async function loadRules() {
+  const res = await apiGet('get_rules');
+  if (res.ok) rules = res.data;
+}
+async function loadMonths() {
+  const res = await apiGet('get_months');
+  if (res.ok) return res.data;
+  return [];
+}
+
+// ════════════ INIT ════════════
+async function init() {
+  await Promise.all([loadSummary(), loadRules()]);
+  await loadMonthData(curMonth);
+  renderMonthTabs();
+  render();
+}
+
+// ════════════ MAPPING LOGIC (client-side) ════════════
+const GMAP = {"01_新長田教室":"新長田","02_湊川教室":"湊川","03_兵庫駅前教室":"兵庫駅前","05_東垂水教室":"東垂水","07_月見山教室":"月見山","08_舞子坂教室":"舞子坂","09_西明石教室":"西明石","10_大久保教室":"大久保","11_垂水星陵台教室":"垂水星陵台","12_西鈴蘭台教室":"西鈴蘭台","13_大石教室":"大石","14_二見教室":"二見","15_六甲篠原教室":"六甲篠原","16_加古川教室":"加古川","17_西新町教室":"西新町","18_山の街教室":"山の街","19_東加古川教室":"東加古川","20_住吉駅前教室":"住吉駅前","21_垂水駅前教室":"垂水駅前"};
+const SPECIAL = {"23_プラスたつの":"たつの","24_atama+板宿校_狭域":"FC板宿","25_プラス広畑":"広畑","26_プラス英賀保駅前":"英賀保駅前","27_プラス中地":"姫路中地"};
+const YMAP = {"01_新長田教室":"新長田","03_須磨":"月見山","04_兵庫区":"兵庫駅前","05_西明石":"西明石","06_大久保":"大久保","07_垂水星陵台":"垂水星陵台","08_西鈴蘭台":"西鈴蘭台","09_大石教室":"大石","10_二見教室":"二見","11_六甲篠原教室":"六甲篠原","12_加古川教室":"加古川","13_西新町教室":"西新町","14_山の街教室":"山の街","15_東加古川教室":"東加古川","16_住吉駅前教室":"住吉駅前","17_垂水駅前教室":"垂水駅前","18_プラスたつの":"たつの","18_プラス広畑":"広畑","19_プラス中地":"姫路中地"};
+
+function detectSource(text) {
+  if (text.includes('キャンペーン レポート') && text.includes('\t')) return 'google';
+  if (text.includes('キャンペーン名') && text.includes('コスト')) return 'yahoo';
+  if (text.includes('\t') && text.includes('費用')) return 'google';
+  return null;
+}
+function detectMonth(text, fn) {
+  const m = text.match(/(\d{4})年(\d{1,2})月/);
+  if (m) return parseInt(m[2]) + '月';
+  const fm = (fn||'').match(/_(\d{4})(\d{2})\d{2}_/);
+  if (fm) return parseInt(fm[2]) + '月';
+  return null;
+}
+function splitLine(line, sep) {
+  const cols = []; let inQ = false, cur = '';
+  for (const ch of line + sep) { if (ch === '"') { inQ = !inQ; continue; } if (ch === sep && !inQ) { cols.push(cur.trim()); cur = ''; continue; } cur += ch; }
+  return cols;
+}
+function parseCamps(text, src) {
+  const lines = text.replace(/^\ufeff/, '').trim().split(/\r?\n/);
+  const camps = {};
+  if (src === 'google') {
+    if (lines.length < 3) return camps;
+    const hdr = lines[2].split('\t'), ci = hdr.indexOf('キャンペーン'), xi = hdr.indexOf('費用');
+    if (ci < 0 || xi < 0) return camps;
+    for (let i = 3; i < lines.length; i++) { const c = splitLine(lines[i], '\t'); const n = (c[ci]||'').trim(), v = parseInt((c[xi]||'0').replace(/,/g,''))||0; if (n && !n.startsWith('合計') && n !== '--') camps[n] = (camps[n]||0)+v; }
+  } else {
+    const hdr = lines[0].split(','), ni = hdr.indexOf('キャンペーン名'), xi = hdr.indexOf('コスト');
+    if (ni < 0 || xi < 0) return camps;
+    for (let i = 1; i < lines.length; i++) { const c = splitLine(lines[i], ','); const n = (c[ni]||'').trim(), v = parseInt((c[xi]||'0').replace(/,/g,''))||0; if (n && !n.startsWith('合計')) camps[n] = (camps[n]||0)+v; }
+  }
+  return camps;
+}
+function mapGoogle(camps) {
+  const r = {}; DEF_CLS.forEach(n => { r[n] = {cost:0,top_display:0,remarketing:0,other_cost:0}; });
+  const logs = [];
+  // Shared rules
+  for (const rule of rules) {
+    if (rule.column_name === 'yahoo') continue;
+    let total = 0;
+    for (const [cn, cv] of Object.entries(camps)) {
+      if (rule.match_keywords.some(m => cn === m || cn.includes(m))) {
+        let isDirect = false;
+        for (const pf of [...Object.keys(GMAP),...Object.keys(SPECIAL)]) { if (cn === pf || cn === pf+'_上位表示') { isDirect = true; break; } }
+        if (cn.includes('板宿') && cn.includes('広域')) isDirect = true;
+        if (cn === '正社員募集_セルフアチーブ') isDirect = true;
+        if (!isDirect) total += cv;
+      }
+    }
+    if (total > 0 && rule.targets.length > 0) {
+      const per = Math.round(total / rule.targets.length);
+      rule.targets.forEach(t => { if (r[t]) r[t][rule.column_name] += per; });
+      logs.push({rule:rule.label,total,targets:[...rule.targets],per,column:rule.column_name});
+    }
+  }
+  // Direct
+  for (const [cn, cv] of Object.entries(camps)) {
+    if (cn === 'リマーケティング' || cn.startsWith('合計') || cn === '--') continue;
+    if (cn === '正社員募集_セルフアチーブ') { r['正社員募集'].cost += cv; continue; }
+    let ok = false;
+    for (const [pf, ac] of Object.entries(GMAP)) { if (cn === pf) { r[ac].cost += cv; ok = true; break; } if (cn === pf+'_上位表示') { r[ac].top_display += cv; ok = true; break; } }
+    if (ok) continue;
+    for (const [pf, ac] of Object.entries(SPECIAL)) { if (cn === pf) { r[ac].cost += cv; ok = true; break; } if (cn === pf+'_上位表示') { r[ac].top_display += cv; ok = true; break; } }
+    if (ok) continue;
+    if (cn.includes('板宿') && cn.includes('広域')) { r['FC板宿'].top_display += cv; }
+  }
+  return {mapped:r, logs};
+}
+function mapYahoo(camps) {
+  const r = {}; DEF_CLS.forEach(n => { r[n] = {yahoo:0}; });
+  const logs = [];
+  for (const rule of rules) {
+    if (rule.column_name !== 'yahoo') continue;
+    let total = 0;
+    for (const [cn, cv] of Object.entries(camps)) {
+      if (cn.startsWith('合計') || cn === '競合名指名検索') continue;
+      let isDirect = false;
+      for (const pf of Object.keys(YMAP)) { if (cn === pf) { isDirect = true; break; } }
+      if (!isDirect && rule.match_keywords.some(m => cn === m || cn.includes(m))) total += cv;
+    }
+    if (total > 0 && rule.targets.length > 0) {
+      const per = Math.round(total / rule.targets.length);
+      rule.targets.forEach(t => { if (r[t]) r[t].yahoo += per; });
+      logs.push({rule:rule.label,total,targets:[...rule.targets],per,column:'yahoo'});
+    }
+  }
+  for (const [cn, cv] of Object.entries(camps)) {
+    if (cn.startsWith('合計') || cn === '競合名指名検索') continue;
+    for (const [pf, ac] of Object.entries(YMAP)) { if (cn === pf) { r[ac].yahoo += cv; break; } }
+  }
+  return {mapped:r, logs};
+}
+
+// ════════════ FILE HANDLING ════════════
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+
+async function handleFiles(files) {
+  for (const file of files) await processFile(file);
+}
+async function processFile(file) {
+  const buf = await file.arrayBuffer();
+  let text = '';
+  try { text = new TextDecoder('utf-16le').decode(buf); } catch {}
+  if (!text.includes('\t') && !text.includes('コスト')) { try { text = new TextDecoder('utf-8').decode(buf); } catch {} }
+  if (!text || text.length < 10) { try { text = new TextDecoder('utf-8').decode(buf); } catch { showImportMsg('ファイル読取エラー', false); return; } }
+  const src = detectSource(text);
+  if (!src) { showImportMsg('CSV形式を認識できませんでした', false); return; }
+  const tgtM = detectMonth(text, file.name) || curMonth;
+  const camps = parseCamps(text, src);
+  let rows = [], logs = [];
+  if (src === 'google') {
+    const { mapped, logs: l } = mapGoogle(camps);
+    logs = l;
+    rows = Object.entries(mapped).map(([account, vals]) => ({ account, ...vals }));
+  } else {
+    const { mapped, logs: l } = mapYahoo(camps);
+    logs = l;
+    rows = Object.entries(mapped).map(([account, vals]) => ({ account, ...vals }));
+  }
+  // Save to server
+  const res = await apiPost({ action: 'save_month', month: tgtM, rows, source: src });
+  if (res.ok) {
+    await loadMonthData(tgtM);
+    await loadSummary();
+    curMonth = tgtM;
+    importLogs = logs;
+    renderMonthTabs();
+    render();
+    document.getElementById('rulesPanel').classList.add('show');
+    document.getElementById('rulesToggle').classList.add('open');
+    document.getElementById('rulesToggle').textContent = '🔀 按分ルール ▲';
+    renderRules();
+    showImportMsg(`${src === 'google' ? 'Google' : 'Yahoo'}広告 → ${tgtM}に反映（按分${logs.length}件）`, true);
+  } else {
+    showImportMsg('保存エラー', false);
+  }
+}
+function showImportMsg(msg, ok) {
+  const el = document.getElementById('importMsg');
+  el.style.display = 'block';
+  el.className = 'import-msg ' + (ok ? 'ok' : 'err');
+  el.textContent = (ok ? '✅ ' : '❌ ') + msg;
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+
+// ════════════ RENDERING ════════════
+function renderMonthTabs() {
+  const el = document.getElementById('monthTabs');
+  el.innerHTML = ALL_M.map(m => {
+    const has = allSummary[m] || monthData[m];
+    const cls = []; if (m === curMonth) cls.push('active'); if (has) cls.push('has-data');
+    return `<button class="month-btn ${cls.join(' ')}" onclick="selectMonth('${m}')">${m}</button>`;
+  }).join('');
+}
+
+async function selectMonth(m) {
+  curMonth = m;
+  if (!monthData[m]) {
+    await loadMonthData(m);
+    if (!monthData[m] || monthData[m].length === 0) {
+      await apiPost({ action: 'init_month', month: m, accounts: DEF_CLS });
+      await loadMonthData(m);
+    }
+  }
+  renderMonthTabs();
+  render();
+}
+
+function setView(v) {
+  curView = v;
+  document.querySelectorAll('.view-btn').forEach(b => b.classList.toggle('active', b.dataset.vw === v));
+  render();
+}
+
+function getCalcData() {
+  const rows = monthData[curMonth] || [];
+  return rows.map(r => {
+    const cost = r.cost||0, td = r.top_display||0, rmk = r.remarketing||0, oc = r.other_cost||0, yh = r.yahoo||0;
+    return { ...r, other_cost: oc, google_total: cost+td+rmk+oc, total: cost+td+rmk+oc+yh };
+  });
+}
+
+function getFilteredData() {
+  let data = getCalcData();
+  const s = document.getElementById('searchInput').value.toLowerCase();
+  if (s) data = data.filter(r => r.account.toLowerCase().includes(s));
+  if (curView === 'table') data.sort((a, b) => sortAsc ? a[sortKey] - b[sortKey] : b[sortKey] - a[sortKey]);
+  return data;
+}
+
+function f$(n) { return Math.round(n).toLocaleString('ja-JP'); }
+
+function render() {
+  const data = getFilteredData();
+  const tot = { cost:0, top_display:0, remarketing:0, other_cost:0, google_total:0, yahoo:0, total:0 };
+  data.forEach(r => { for (const k of Object.keys(tot)) tot[k] += (r[k]||0); });
+
+  // Summary
+  document.getElementById('summaryCards').innerHTML = [
+    {l:'Google広告',v:tot.google_total,c:'var(--blue)',i:'G'},
+    {l:'Yahoo広告',v:tot.yahoo,c:'var(--red)',i:'Y'},
+    {l:'広告費合計',v:tot.total,c:'var(--purple)',i:'¥'},
+    {l:'教室数',v:data.length,c:'var(--green)',i:'#',cn:true},
+    {l:'教室平均',v:data.length?tot.total/data.length:0,c:'var(--amber)',i:'μ'},
+  ].map(x => `<div class="card"><div class="card-head"><div class="card-icon" style="background:${x.c}20;color:${x.c}">${x.i}</div><span class="card-label">${x.l}</span></div><div class="card-val">${x.cn?x.v:'¥'+f$(x.v)}</div></div>`).join('');
+
+  // Content
+  const ct = document.getElementById('content');
+  if (curView === 'edit') ct.innerHTML = renderEditView(data, tot);
+  else if (curView === 'table') ct.innerHTML = renderTableView(data, tot);
+  else if (curView === 'chart') { ct.innerHTML = renderChartView(data, tot); drawCharts(data, tot); }
+  else if (curView === 'trend') { ct.innerHTML = renderTrendView(); drawTrendChart(); }
+}
+
+function renderEditView(data, tot) {
+  const fields = [{k:'cost',l:'費用'},{k:'top_display',l:'上位表示'},{k:'remarketing',l:'リマーケ'},{k:'other_cost',l:'その他'},{k:'yahoo',l:'Yahoo広告'}];
+  let html = `<div class="edit-hint">📝 ${curMonth} ─ セルクリック→編集 / Enter→確定 / Google合計・合計は自動計算</div>`;
+  html += '<div class="table-wrap"><table><thead><tr><th class="name-col">計上先</th>';
+  fields.forEach(f => html += `<th>${f.l}</th>`);
+  html += '<th class="google-col">Google合計</th><th class="total-col">合計</th></tr></thead><tbody>';
+  data.forEach((r, i) => {
+    html += `<tr><td class="name-col">${r.account}</td>`;
+    fields.forEach(f => {
+      const v = r[f.k]||0;
+      const cls = v > 0 ? (f.k === 'yahoo' ? 'yahoo-val' : '') : 'zero';
+      html += `<td><div class="cell-val ${cls}" onclick="startEdit(${i},'${f.k}',${v},this)">${v > 0 ? '¥'+f$(v) : '—'}</div></td>`;
+    });
+    html += `<td class="google-col">¥${f$(r.google_total)}</td><td class="total-col">¥${f$(r.total)}</td></tr>`;
+  });
+  html += '</tbody><tfoot><tr><td class="name-col">合計</td>';
+  fields.forEach(f => html += `<td style="text-align:right;font-weight:700;color:var(--t1)">¥${f$(tot[f.k])}</td>`);
+  html += `<td class="google-col">¥${f$(tot.google_total)}</td><td class="total-col" style="font-size:14px">¥${f$(tot.total)}</td></tr></tfoot></table></div>`;
+  return html;
+}
+
+function startEdit(idx, field, val, el) {
+  if (editCell) return;
+  editCell = { idx, field };
+  const data = getFilteredData();
+  const acc = data[idx].account;
+  el.innerHTML = `<input class="cell-edit" value="${val}" onblur="commitEdit('${acc}','${field}',this)" onkeydown="editKey(event,'${acc}','${field}',this)" autofocus>`;
+  el.querySelector('input').focus();
+  el.querySelector('input').select();
+}
+
+async function commitEdit(account, field, inputEl) {
+  if (!editCell) return;
+  const val = parseInt(inputEl.value) || 0;
+  editCell = null;
+  // DB field name mapping
+  const dbField = field;
+  await apiPost({ action: 'save_cell', month: curMonth, account, field: dbField, value: val });
+  await loadMonthData(curMonth);
+  await loadSummary();
+  render();
+}
+
+function editKey(e, account, field, inputEl) {
+  if (e.key === 'Enter') { inputEl.blur(); }
+  else if (e.key === 'Escape') { editCell = null; render(); }
+}
+
+function renderTableView(data, tot) {
+  const cols = [{k:'account',l:'計上先'},{k:'cost',l:'費用'},{k:'top_display',l:'上位表示'},{k:'remarketing',l:'リマーケ'},{k:'other_cost',l:'その他'},{k:'google_total',l:'Google合計'},{k:'yahoo',l:'Yahoo広告'},{k:'total',l:'合計'}];
+  let html = '<div class="table-wrap" style="max-height:calc(100vh - 290px)"><table><thead><tr>';
+  cols.forEach(c => {
+    const cls = c.k==='account'?'name-col':c.k==='google_total'?'google-col':c.k==='yahoo'?'yahoo-col':c.k==='total'?'total-col':'';
+    const arrow = sortKey === c.k ? (sortAsc ? ' ↑' : ' ↓') : '';
+    html += `<th class="${cls}" style="cursor:pointer" onclick="tableSort('${c.k}')">${c.l}${arrow}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  const mx = Math.max(...data.map(r => r.total), 1);
+  data.forEach(r => {
+    html += `<tr><td class="name-col"><div style="position:relative"><div style="position:absolute;left:0;top:-2px;bottom:-2px;width:${(r.total/mx*100)}%;background:var(--blue);opacity:.06;border-radius:3px"></div><span style="position:relative">${r.account}</span></div></td>`;
+    ['cost','top_display','remarketing','other_cost'].forEach(k => {
+      html += `<td>${r[k]>0?'¥'+f$(r[k]):'<span style="color:var(--t5)">—</span>'}</td>`;
+    });
+    html += `<td class="google-col">¥${f$(r.google_total)}</td>`;
+    html += `<td class="yahoo-col">${r.yahoo>0?'¥'+f$(r.yahoo):'<span style="color:var(--t5)">—</span>'}</td>`;
+    html += `<td class="total-col">¥${f$(r.total)}</td></tr>`;
+  });
+  html += '</tbody><tfoot><tr><td class="name-col">合計</td>';
+  ['cost','top_display','remarketing','other_cost'].forEach(k => html += `<td style="text-align:right;font-weight:700;color:var(--t1)">¥${f$(tot[k])}</td>`);
+  html += `<td class="google-col">¥${f$(tot.google_total)}</td><td class="yahoo-col" style="font-weight:700">¥${f$(tot.yahoo)}</td><td class="total-col" style="font-size:14px">¥${f$(tot.total)}</td></tr></tfoot></table></div>`;
+  return html;
+}
+
+function tableSort(k) {
+  if (sortKey === k) sortAsc = !sortAsc; else { sortKey = k; sortAsc = false; }
+  render();
+}
+
+function renderChartView(data, tot) {
+  const top5 = [...data].sort((a,b) => b.total-a.total).slice(0,5);
+  const colors = ['var(--amber)','#94a3b8','#b45309','var(--t4)','var(--t5)'];
+  let html = '<div class="chart-grid"><div class="chart-box"><h3>教室別広告費（' + curMonth + '）</h3><canvas id="barChart"></canvas></div>';
+  html += '<div style="display:flex;flex-direction:column;gap:14px"><div class="chart-box"><h3>Google / Yahoo構成比</h3><canvas id="pieChart" style="max-height:180px"></canvas>';
+  const gPct = tot.total > 0 ? ((tot.google_total/tot.total)*100).toFixed(1) : '0';
+  const yPct = tot.total > 0 ? ((tot.yahoo/tot.total)*100).toFixed(1) : '0';
+  html += `<div class="pie-legend"><div class="pie-leg"><div class="pie-dot" style="background:var(--blue)"></div><span class="pie-name">Google</span><span class="pie-pct">${gPct}%</span></div><div class="pie-leg"><div class="pie-dot" style="background:var(--red)"></div><span class="pie-name">Yahoo</span><span class="pie-pct">${yPct}%</span></div></div></div>`;
+  html += '<div class="chart-box" style="flex:1"><h3>上位5教室</h3>';
+  top5.forEach((c, i) => {
+    html += `<div class="top5-item"><span class="top5-rank" style="background:${colors[i]}">${i+1}</span><span class="top5-name">${c.account}</span><span class="top5-val">¥${f$(c.total)}</span></div>`;
+  });
+  html += '</div></div></div>';
+  return html;
+}
+
+function drawCharts(data, tot) {
+  destroyCharts();
+  // Bar
+  const barCtx = document.getElementById('barChart');
+  if (barCtx) {
+    chartInstances.bar = new Chart(barCtx, {
+      type: 'bar', data: {
+        labels: data.map(r => r.account),
+        datasets: [
+          { label: 'Google', data: data.map(r => r.google_total), backgroundColor: '#3b82f6' },
+          { label: 'Yahoo', data: data.map(r => r.yahoo), backgroundColor: '#dc2626' }
+        ]
+      }, options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#8896ab', font: { size: 11 } } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ¥' + f$(c.raw) } } },
+        scales: { x: { ticks: { color: '#5a6578', callback: v => '¥'+(v/1000).toFixed(0)+'k' }, grid: { color: '#1f2937' } }, y: { ticks: { color: '#c9d1e0', font: { size: 10 } }, grid: { display: false } } }
+      }
+    });
+    barCtx.parentElement.style.height = Math.max(380, data.length * 26) + 'px';
+  }
+  // Pie
+  const pieCtx = document.getElementById('pieChart');
+  if (pieCtx) {
+    chartInstances.pie = new Chart(pieCtx, {
+      type: 'doughnut', data: {
+        labels: ['Google', 'Yahoo'],
+        datasets: [{ data: [tot.google_total, tot.yahoo], backgroundColor: ['#3b82f6', '#dc2626'], borderWidth: 0 }]
+      }, options: { responsive: true, plugins: { legend: { display: false } } }
+    });
+  }
+}
+
+function renderTrendView() {
+  let html = '<div class="chart-box"><h3>月別広告費推移</h3><canvas id="trendChart" height="340"></canvas>';
+  html += '<div class="trend-cards">';
+  ALL_M.forEach(m => {
+    const s = allSummary[m];
+    const total = s ? s.total : 0;
+    const active = m === curMonth ? 'active' : '';
+    html += `<div class="trend-card ${active}" onclick="selectMonth('${m}')"><div class="mo">${m}</div><div class="val">¥${(total/10000).toFixed(0)}<span class="unit">万</span></div></div>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function drawTrendChart() {
+  destroyCharts();
+  const months = ALL_M.filter(m => allSummary[m]);
+  const ctx = document.getElementById('trendChart');
+  if (!ctx) return;
+  chartInstances.trend = new Chart(ctx, {
+    type: 'line', data: {
+      labels: months,
+      datasets: [
+        { label: 'Google', data: months.map(m => allSummary[m].google), borderColor: '#3b82f6', backgroundColor: '#3b82f620', tension: .3, pointRadius: 4, fill: false },
+        { label: 'Yahoo', data: months.map(m => allSummary[m].yahoo), borderColor: '#dc2626', backgroundColor: '#dc262620', tension: .3, pointRadius: 4, fill: false },
+        { label: '合計', data: months.map(m => allSummary[m].total), borderColor: '#7c3aed', backgroundColor: '#7c3aed20', tension: .3, pointRadius: 5, borderDash: [5,3], fill: false },
+      ]
+    }, options: {
+      responsive: true, plugins: { legend: { labels: { color: '#8896ab' } }, tooltip: { callbacks: { label: c => c.dataset.label + ': ¥' + f$(c.raw) } } },
+      scales: { x: { ticks: { color: '#8896ab' }, grid: { color: '#1f2937' } }, y: { ticks: { color: '#5a6578', callback: v => '¥'+(v/10000).toFixed(0)+'万' }, grid: { color: '#1f293780' } } }
+    }
+  });
+}
+
+function destroyCharts() {
+  Object.values(chartInstances).forEach(c => c.destroy());
+  chartInstances = {};
+}
+
+// ════════════ RULES ════════════
+function toggleRules() {
+  const p = document.getElementById('rulesPanel');
+  const b = document.getElementById('rulesToggle');
+  const open = p.classList.toggle('show');
+  b.classList.toggle('open', open);
+  b.textContent = open ? '🔀 按分ルール ▲' : '🔀 按分ルール ▼';
+  if (open) renderRules();
+}
+
+function renderRules() {
+  // Import log
+  const logEl = document.getElementById('importLog');
+  if (importLogs.length > 0) {
+    const colLabels = {cost:'費用',top_display:'上位表示',remarketing:'リマーケ',other_cost:'その他',yahoo:'Yahoo広告'};
+    let html = '<div class="log-section"><div class="log-title">直近インポートの按分結果</div>';
+    importLogs.forEach(log => {
+      html += `<div class="log-card"><div class="log-head"><span class="log-name">${log.rule}</span><span class="log-total">¥${f$(log.total)}</span></div>`;
+      html += '<div class="log-targets"><span class="arrow">→ ' + log.targets.length + '等分 →</span>';
+      const cls = log.column === 'yahoo' ? 'y' : 'g';
+      log.targets.forEach(t => { html += `<span class="log-tag">${t}: <strong class="${cls}">¥${f$(log.per)}</strong></span>`; });
+      html += `<span style="font-size:9px;color:var(--t5);margin-left:4px">(${colLabels[log.column]||log.column}列)</span></div></div>`;
+    });
+    html += '</div>';
+    logEl.innerHTML = html;
+  } else {
+    logEl.innerHTML = '';
+  }
+  // Rules editor
+  const body = document.getElementById('rulesBody');
+  let html = '';
+  rules.filter(r => r.rule_id !== 'rmk').forEach(rule => {
+    html += `<div class="rule-card"><div class="rule-label">${rule.label}<span>→ ${rule.targets.length}等分</span></div><div class="rule-btns">`;
+    rule.all_options.forEach(opt => {
+      const on = rule.targets.includes(opt);
+      html += `<button class="rule-btn ${on?'on':'off'}" onclick="toggleTarget('${rule.rule_id}','${opt}')">${on?'✓ ':''}${opt}</button>`;
+    });
+    html += '</div></div>';
+  });
+  body.innerHTML = html;
+}
+
+async function toggleTarget(ruleId, target) {
+  const rule = rules.find(r => r.rule_id === ruleId);
+  if (!rule) return;
+  const has = rule.targets.includes(target);
+  rule.targets = has ? rule.targets.filter(t => t !== target) : [...rule.targets, target];
+  await apiPost({ action: 'save_rules', rules: [{ rule_id: ruleId, targets: rule.targets }] });
+  renderRules();
+}
+
+// ════════════ START ════════════
+init();
+</script>
+</body>
+</html>

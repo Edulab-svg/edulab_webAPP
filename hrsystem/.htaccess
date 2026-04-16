@@ -1,0 +1,16 @@
+# 文字コード
+AddDefaultCharset UTF-8
+
+# index.html をデフォルトに
+DirectoryIndex index.html
+
+# api/ ディレクトリ直打ちアクセス拒否（index.php 経由のみ許可）
+<Files "config.php">
+  Require all denied
+</Files>
+
+# キャッシュ無効（HTML・JS）
+<FilesMatch "\.(html|js)$">
+  Header set Cache-Control "no-store, no-cache, must-revalidate"
+  Header set Pragma "no-cache"
+</FilesMatch>

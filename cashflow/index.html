@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>資金繰り・預金残高管理</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f0f2f5;--sidebar:#1e2a3a;--sidebar-hover:#2d3f55;
+  --primary:#2563eb;--primary-h:#1d4ed8;
+  --success:#16a34a;--danger:#dc2626;--warning:#d97706;
+  --card:#fff;--border:#e2e8f0;--text:#1e293b;--text-sub:#64748b;
+  --header-h:52px;--sidebar-w:210px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Meiryo,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.45}
+
+/* Layout */
+header{position:fixed;top:0;left:0;right:0;height:var(--header-h);
+  background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;z-index:100;gap:12px}
+header .logo{font-weight:700;font-size:15px;color:var(--primary)}
+aside{position:fixed;top:var(--header-h);left:0;bottom:0;width:var(--sidebar-w);
+  background:var(--sidebar);overflow-y:auto;z-index:99;padding:10px 0}
+aside .nav-item{display:flex;align-items:center;gap:10px;padding:11px 18px;
+  color:#cbd5e1;font-size:13px;cursor:pointer;transition:background .15s}
+aside .nav-item:hover,aside .nav-item.active{background:var(--sidebar-hover);color:#fff}
+aside .nav-sep{padding:10px 18px 4px;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.08em}
+main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-height:calc(100vh - var(--header-h))}
+
+/* Card */
+.card{background:var(--card);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:18px 20px;margin-bottom:18px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:14px}
+.page-title{font-size:19px;font-weight:700;margin-bottom:18px;color:var(--text)}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:18px}
+.kpi{background:var(--card);border-radius:10px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.kpi .label{font-size:11px;color:var(--text-sub);margin-bottom:5px}
+.kpi .value{font-size:22px;font-weight:700}
+.kpi .sub{font-size:11px;color:var(--text-sub);margin-top:3px}
+.kpi.income .value{color:var(--success)}
+.kpi.expense .value{color:var(--danger)}
+.kpi.net-plus .value{color:var(--primary)}
+.kpi.net-minus .value{color:var(--danger)}
+
+/* Alert */
+.alert-item{padding:9px 13px;border-radius:7px;margin-bottom:7px;font-size:13px;display:flex;align-items:center;gap:7px}
+.alert-item.danger{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.alert-item.warning{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.no-alert{color:var(--text-sub);font-size:13px}
+
+/* Grid table */
+.grid-wrap{overflow-x:auto}
+/* Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.year-nav{display:flex;align-items:center;gap:5px}
+.year-nav button{padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:13px}
+.year-nav button:hover{background:var(--bg)}
+.year-nav span{font-weight:700;min-width:55px;text-align:center}
+.tab-group{display:flex;gap:2px;background:var(--bg);border-radius:7px;padding:3px}
+.tab-btn{padding:5px 16px;border:none;border-radius:5px;background:transparent;font-size:13px;font-weight:500;color:var(--text-sub)}
+.tab-btn.active{background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+/* Forms */
+.form-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:3px}
+.form-group label{font-size:11px;color:var(--text-sub);font-weight:500}
+.form-group input,.form-group select{padding:7px 10px;border:1px solid var(--border);
+  border-radius:6px;font-size:13px;background:#fff}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--primary)}
+
+/* Buttons */
+.btn{padding:7px 16px;border-radius:6px;border:none;font-size:13px;font-weight:500}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-h)}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--text)}.btn-ghost:hover{background:var(--bg)}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* Master table */
+.master-table{width:100%;border-collapse:collapse;font-size:13px}
+.master-table th,.master-table td{border:1px solid var(--border);padding:8px 12px}
+.master-table th{background:#f8fafc;font-weight:600}
+.master-table tr:hover td{background:#fafafa}
+.master-table .cell-reorder{white-space:nowrap;text-align:center;vertical-align:middle}
+.master-table .cell-reorder .btn-sm{min-width:34px;padding:4px 6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-income{background:#dcfce7;color:#15803d}
+.badge-expense{background:#fee2e2;color:#b91c1c}
+.badge-op{background:#dbeafe;color:#1d4ed8}
+.badge-inv{background:#fef9c3;color:#854d0e}
+.badge-fin{background:#f3e8ff;color:#7e22ce}
+
+/* Balance */
+.balance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:16px}
+.balance-card{background:var(--card);border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:15px 17px}
+.balance-card h3{font-size:13px;font-weight:600;color:var(--primary);margin-bottom:4px}
+.balance-card .bank{font-size:11px;color:var(--text-sub);margin-bottom:10px}
+.balance-amount{font-size:21px;font-weight:700;text-align:right}
+.balance-date{font-size:11px;color:var(--text-sub);text-align:right;margin-top:2px}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);
+  z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:26px;width:440px;max-width:96vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:15px;font-weight:700;margin-bottom:18px}
+.modal .form-group{margin-bottom:11px}
+.modal-footer{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}
+
+/* Toast */
+#toast{position:fixed;bottom:22px;right:22px;padding:9px 16px;border-radius:8px;
+  background:#1e293b;color:#fff;font-size:13px;z-index:9999;
+  opacity:0;pointer-events:none;transition:opacity .25s}
+#toast.show{opacity:1}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--text-sub);gap:10px}
+.spinner{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--primary);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Daily CF grid */
+.daily-grid{border-collapse:collapse;font-size:12px;min-width:max-content;width:100%}
+.daily-grid th,.daily-grid td{border:1px solid var(--border);padding:3px 5px;white-space:nowrap}
+.daily-grid th{background:#f8fafc;font-weight:600;text-align:center;font-size:11px;line-height:1.4}
+.daily-grid th.sticky-col,.daily-grid td.sticky-col{
+  position:sticky;left:0;z-index:2;background:inherit}
+.daily-grid th.sticky-col{background:#f8fafc;z-index:3}
+.daily-grid .income-row td{background:#f0fdf4}
+.daily-grid .expense-row td{background:#fff5f5}
+.daily-grid .total-row td{font-weight:700;background:#f1f5f9}
+.daily-grid .net-row td{font-weight:800;background:#eff6ff;font-size:13px}
+.daily-grid .bal-row td{background:#fafafa;font-size:11px;color:var(--text-sub)}
+.daily-grid td.sticky-col{font-weight:500}
+.daily-grid .income-row td.sticky-col{background:#f0fdf4}
+.daily-grid .expense-row td.sticky-col{background:#fff5f5}
+.daily-grid .total-row td.sticky-col{background:#f1f5f9}
+.daily-grid .net-row td.sticky-col{background:#eff6ff}
+.daily-grid .bal-row td.sticky-col{background:#fafafa}
+.daily-grid input[type=number]{border:none;background:transparent;width:72px;
+  text-align:right;font-size:12px;outline:none;padding:2px 3px;
+  -moz-appearance:textfield;appearance:textfield}
+.daily-grid input[type=number]::-webkit-outer-spin-button,
+.daily-grid input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.daily-grid input[type=number]:focus{background:#dbeafe;border-radius:3px}
+.daily-grid .num{text-align:right}
+.daily-grid .sat{color:var(--primary)}
+.daily-grid .sun{color:var(--danger)}
+.daily-grid .today-col th,.daily-grid .today-col td{background:#fef9c3 !important}
+.daily-grid tr.income-row.daily-cf-row-active td{background:#bbf7d1 !important}
+.daily-grid tr.expense-row.daily-cf-row-active td{background:#fecaca !important}
+.daily-grid tr.income-row.daily-cf-row-active td.sticky-col{background:#86efac !important}
+.daily-grid tr.expense-row.daily-cf-row-active td.sticky-col{background:#f87171 !important;color:#1e293b !important}
+.daily-grid .daily-cf-bal-td{text-align:right;vertical-align:middle;white-space:nowrap}
+.daily-grid .daily-bal-cell-amt{display:inline}
+.daily-grid .daily-bal-to-input{padding:2px 8px;font-size:10px;margin-left:4px;vertical-align:middle;line-height:1.2}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">💰 資金繰り・預金残高管理</span>
+</header>
+
+<aside>
+  <div class="nav-sep">メイン</div>
+  <div class="nav-item active" onclick="nav('dashboard')" data-p="dashboard">📈 予定残高グラフ</div>
+  <div class="nav-item" onclick="nav('daily')" data-p="daily">📅 日次CF</div>
+  <div class="nav-item" onclick="nav('balance')" data-p="balance">🏦 預金残高</div>
+  <div class="nav-sep">設定</div>
+  <div class="nav-item" onclick="nav('categories')" data-p="categories">🗂 科目マスタ</div>
+  <div class="nav-item" onclick="nav('accounts')" data-p="accounts">💳 口座マスタ</div>
+  <div class="nav-item" onclick="nav('alerts')" data-p="alerts">🔔 アラート設定</div>
+</aside>
+
+<main id="mc"></main>
+
+<!-- Category Modal -->
+<div class="modal-overlay" id="cat-modal">
+  <div class="modal">
+    <h2 id="cat-modal-ttl">科目</h2>
+    <input type="hidden" id="cat-id">
+    <div class="form-group"><label>種別</label>
+      <select id="cat-type"><option value="income">収入</option><option value="expense">支出</option></select>
+    </div>
+    <div class="form-group"><label>CF区分</label>
+      <select id="cat-cf">
+        <option value="operating">営業活動</option>
+        <option value="investing">投資活動</option>
+        <option value="financing">財務活動</option>
+      </select>
+    </div>
+    <div class="form-group"><label>科目名</label><input type="text" id="cat-name"></div>
+    <div class="form-group"><label>並び順</label><input type="number" id="cat-sort" value="0"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('cat-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveCat()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 日次CFテンプレート Modal -->
+<div class="modal-overlay" id="cdt-modal">
+  <div class="modal">
+    <h2 id="cdt-modal-ttl">日次テンプレート</h2>
+    <input type="hidden" id="cdt-id" value="">
+    <div class="form-group"><label>科目</label>
+      <select id="cdt-cat"></select>
+    </div>
+    <div class="form-group"><label>日（1〜31・31は短い月は月末）</label>
+      <input type="number" id="cdt-dom" min="1" max="31" value="1">
+    </div>
+    <div class="form-group"><label>金額（円・予定）</label>
+      <input type="number" id="cdt-amt" min="0" value="" placeholder="0">
+    </div>
+    <div class="form-group"><label>メモ（任意・空なら反映時「テンプレート反映」）</label>
+      <input type="text" id="cdt-memo" maxlength="255">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('cdt-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveCdt()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Account Modal -->
+<div class="modal-overlay" id="acc-modal">
+  <div class="modal">
+    <h2 id="acc-modal-ttl">口座</h2>
+    <input type="hidden" id="acc-id">
+    <div class="form-group"><label>口座名</label><input type="text" id="acc-name"></div>
+    <div class="form-group"><label>金融機関名</label><input type="text" id="acc-bank"></div>
+    <div class="form-group"><label>並び順</label><input type="number" id="acc-sort" value="0"></div>
+    <div class="form-group"><label>状態</label>
+      <select id="acc-active"><option value="1">有効</option><option value="0">無効</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('acc-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveAcc()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ============================================================
+//  API helper
+// ============================================================
+const API = 'api/index.php';
+
+async function apiGet(action, params={}) {
+  const qs = new URLSearchParams({action, ...params, _t: Date.now()});
+  const r  = await fetch(`${API}?${qs}`, {headers:{'Cache-Control':'no-cache'}});
+  const j  = await r.json();
+  if (!j.success) throw new Error(j.error||'API error');
+  return j;
+}
+async function apiPost(action, data={}) {
+  const r = await fetch(API, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action, ...data})
+  });
+  const j = await r.json();
+  if (!j.success) throw new Error(j.error||'API error');
+  return j;
+}
+
+// ============================================================
+//  UI helpers
+// ============================================================
+const mc = () => document.getElementById('mc');
+let planBalDashChart = null;
+let planBalDashYear = new Date().getFullYear(), planBalDashMonth = new Date().getMonth() + 1;
+function loading() {
+  if (planBalDashChart) { planBalDashChart.destroy(); planBalDashChart = null; }
+  mc().innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中…</div>';
+}
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = (type==='ok'?'✅ ':'❌ ') + msg;
+  el.style.background = type==='ok' ? '#16a34a' : '#dc2626';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2600);
+}
+function openM(id)  { document.getElementById(id).classList.add('open') }
+function closeM(id) { document.getElementById(id).classList.remove('open') }
+const fmt = n => (n==null ? '' : Number(n).toLocaleString('ja-JP'));
+const cfL = {operating:'営業',investing:'投資',financing:'財務'};
+
+// ============================================================
+//  Navigation
+// ============================================================
+const pages = {};
+function nav(p) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.p===p));
+  loading();
+  pages[p] && pages[p]();
+}
+window.addEventListener('DOMContentLoaded', () => nav('dashboard'));
+
+// ============================================================
+//  予定残高グラフ（日次CFの「予定残高」行と同一計算）
+// ============================================================
+pages.dashboard = () => renderPlanBalDashboard();
+
+async function renderPlanBalDashboard() {
+  loading();
+  try {
+    const carryIn = await planCarryInFromPreviousMonthEnd(planBalDashYear, planBalDashMonth);
+    const d = await apiGet('daily_grid', { year: planBalDashYear, month: planBalDashMonth });
+    const { days, planBalMap, balMap, hasPlanBal } = deriveDailyPlanBalanceFromApi(d, carryIn);
+    const ymLabel = `${planBalDashYear}年${planBalDashMonth}月`;
+
+    if (planBalDashChart) {
+      planBalDashChart.destroy();
+      planBalDashChart = null;
+    }
+
+    const labels = days.map(dt => `${parseInt(dt.slice(8), 10)}日`);
+    const planData = days.map(dt => (planBalMap[dt] != null ? planBalMap[dt] : null));
+    const actData = days.map(dt => (balMap[dt] != null ? balMap[dt] : null));
+
+    const noPlan = !hasPlanBal;
+    mc().innerHTML = `
+      <div class="page-title">📈 予定残高グラフ</div>
+      <div class="toolbar">
+        <div class="year-nav">
+          <button type="button" data-mc-nav="planbal-month" data-dir="prev">◀</button>
+          <span>${ymLabel}</span>
+          <button type="button" data-mc-nav="planbal-month" data-dir="next">▶</button>
+        </div>
+        <span style="font-size:12px;color:var(--text-sub)">日次CFの「予定残高」と同じ計算です。<strong>前月末の予定残高</strong>を翌月1日目に引き継ぎ、その月は日次の予定収支差を積み上げます。前月もデータがない場合のみ、当月で最初に実残高がある日を起点にします。</span>
+      </div>
+      ${noPlan ? `<div class="card"><p style="color:var(--text-sub);line-height:1.6">${ymLabel}では予定残高を表示できません。前月までに予定の積み上げが始まっているか、または当月に<strong>預金残高</strong>の実残高（起点）を1日以上入力してください。</p></div>` : ''}
+      <div class="card" style="${noPlan ? 'opacity:.45' : ''}">
+        <div class="card-title">予定残高の推移（${ymLabel}）</div>
+        <div style="position:relative;height:min(420px,55vh);min-height:260px">
+          <canvas id="planbal-chart"></canvas>
+        </div>
+      </div>`;
+
+    if (noPlan) return;
+
+    const ctx = document.getElementById('planbal-chart');
+    planBalDashChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '予定残高',
+            data: planData,
+            borderColor: '#2563eb',
+            backgroundColor: 'rgba(37,99,235,.12)',
+            fill: true,
+            tension: 0.25,
+            borderWidth: 2,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            spanGaps: false
+          },
+          {
+            label: '実残高（入力がある日のみ）',
+            data: actData,
+            borderColor: '#64748b',
+            backgroundColor: 'transparent',
+            fill: false,
+            tension: 0.2,
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            spanGaps: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, position: 'bottom', labels: { boxWidth: 12, padding: 16 } },
+          tooltip: {
+            callbacks: {
+              label(ctx) {
+                const v = ctx.raw;
+                if (v == null) return `${ctx.dataset.label}: —`;
+                return `${ctx.dataset.label}: ¥${fmt(v)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            ticks: { callback: v => fmt(v) + '円' },
+            grid: { color: '#f1f5f9' }
+          },
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 16 } }
+        }
+      }
+    });
+  } catch (e) {
+    mc().innerHTML = `<div class="loading" style="color:var(--danger)">${e.message}</div>`;
+  }
+}
+
+// ============================================================
+//  BALANCE
+// ============================================================
+let balY = new Date().getFullYear(), balM = new Date().getMonth()+1;
+/** 日次CFなどから遷移したとき、残高フォームにセットする日付（YYYY-MM-DD） */
+let balJumpDate = null;
+pages.balance = () => renderBal();
+
+function goDailyToBalance(isoDate) {
+  if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return;
+  const [y, m] = isoDate.split('-');
+  balY = parseInt(y, 10);
+  balM = parseInt(m, 10);
+  balJumpDate = isoDate;
+  nav('balance');
+}
+
+async function renderBal() {
+  loading();
+  const d = await apiGet('balance_list', {year:balY, month:balM});
+  const accMap = {};
+  d.accounts.forEach(a => accMap[a.id] = {...a, rows:[]});
+  d.balances.forEach(b => { if(accMap[b.account_id]) accMap[b.account_id].rows.push(b); });
+
+  let grandTotal = 0;
+  const balCards = Object.values(accMap).map(a => {
+    const latest = [...a.rows].sort((x,y)=>y.balance_date.localeCompare(x.balance_date))[0];
+    if(latest) grandTotal += parseInt(latest.balance);
+    const hist = a.rows.length > 1
+      ? `<details style="margin-top:9px"><summary style="font-size:11px;color:var(--text-sub);cursor:pointer">履歴 (${a.rows.length}件)</summary>
+          <table style="width:100%;font-size:11px;margin-top:5px;border-collapse:collapse">
+          ${[...a.rows].sort((x,y)=>y.balance_date.localeCompare(x.balance_date)).slice(0,15).map(b=>
+            `<tr style="border-bottom:1px solid var(--border)">
+               <td style="padding:3px 0">${b.balance_date}</td>
+               <td style="text-align:right">¥${fmt(b.balance)}</td>
+               <td style="text-align:right;padding-left:6px">
+                 <button class="btn btn-danger btn-sm" onclick="delBal(${b.id})">削除</button>
+               </td>
+             </tr>`).join('')}
+          </table></details>` : '';
+    return `
+      <div class="balance-card">
+        <h3>🏧 ${a.name}</h3>
+        <div class="bank">${a.bank_name||'&nbsp;'}</div>
+        ${latest
+          ? `<div class="balance-amount">¥${fmt(latest.balance)}</div>
+             <div class="balance-date">${latest.balance_date}</div>`
+          : `<div style="color:var(--text-sub);font-size:12px">未登録</div>`}
+        ${hist}
+      </div>`;
+  }).join('');
+
+  const nowD = new Date();
+  const defaultBalDate = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, '0')}-${String(nowD.getDate()).padStart(2, '0')}`;
+
+  mc().innerHTML = `
+    <div class="page-title">🏦 預金残高</div>
+    <div class="toolbar">
+      <div class="year-nav">
+        <button type="button" data-mc-nav="bal-month" data-dir="prev">◀</button>
+        <span>${balY}年${balM}月</span>
+        <button type="button" data-mc-nav="bal-month" data-dir="next">▶</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">残高入力</div>
+      <div class="form-row">
+        <div class="form-group"><label>口座</label>
+          <select id="bal-acc">${d.accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select>
+        </div>
+        <div class="form-group"><label>日付</label>
+          <input type="date" id="bal-date" value="${defaultBalDate}">
+        </div>
+        <div class="form-group"><label>残高（円）</label>
+          <input type="number" id="bal-amt" placeholder="0" style="width:130px">
+        </div>
+        <div class="form-group"><label>メモ</label>
+          <input type="text" id="bal-memo" style="width:160px">
+        </div>
+        <button class="btn btn-primary" onclick="saveBal()">登録</button>
+      </div>
+    </div>
+    <div class="balance-grid">${balCards}</div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:600">全口座 合計残高</span>
+      <span style="font-size:21px;font-weight:800;color:var(--primary)">¥${fmt(grandTotal)}</span>
+    </div>`;
+  if (balJumpDate) {
+    const dEl = document.getElementById('bal-date');
+    if (dEl) {
+      dEl.value = balJumpDate;
+      dEl.focus({ preventScroll: true });
+      dEl.closest('.card')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    balJumpDate = null;
+  }
+}
+
+async function saveBal() {
+  const acc  = document.getElementById('bal-acc').value;
+  const date = document.getElementById('bal-date').value;
+  const amt  = document.getElementById('bal-amt').value;
+  const memo = document.getElementById('bal-memo').value;
+  if (!acc||!date||amt==='') return toast('口座・日付・残高を入力してください','err');
+  try {
+    await apiPost('balance_save', {account_id:acc, balance_date:date, balance:amt, memo});
+    toast('登録しました'); renderBal();
+  } catch(e) { toast(e.message,'err'); }
+}
+
+async function delBal(id) {
+  if (!confirm('この残高データを削除しますか？')) return;
+  await apiPost('balance_delete', {id});
+  toast('削除しました'); renderBal();
+}
+
+// ============================================================
+//  CATEGORIES
+// ============================================================
+pages.categories = () => renderCats();
+
+async function renderCats() {
+  loading();
+  const [d, td] = await Promise.all([
+    apiGet('categories_list'),
+    apiGet('category_templates_list')
+  ]);
+  const byType = {};
+  for (const c of d.categories) {
+    if (!byType[c.type]) byType[c.type] = [];
+    byType[c.type].push(c);
+  }
+
+  const tbl = d.categories.map(c=>{
+    const arr = byType[c.type];
+    const idx = arr.findIndex(x => x.id === c.id);
+    const canUp = idx > 0;
+    const canDown = idx < arr.length - 1;
+    return `
+    <tr>
+      <td>${c.name}</td>
+      <td><span class="badge badge-${c.type==='income'?'income':'expense'}">${c.type==='income'?'収入':'支出'}</span></td>
+      <td><span class="badge badge-${c.cf_section.slice(0,2)==='op'?'op':c.cf_section.slice(0,2)==='in'?'inv':'fin'}">${cfL[c.cf_section]}</span></td>
+      <td>${c.sort_order}</td>
+      <td class="cell-reorder">
+        <button type="button" class="btn btn-ghost btn-sm" title="上へ" ${canUp?'':'disabled'} onclick="moveCat(${c.id},'up')">↑</button>
+        <button type="button" class="btn btn-ghost btn-sm" title="下へ" ${canDown?'':'disabled'} onclick="moveCat(${c.id},'down')">↓</button>
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openCatM(${c.id},'${c.type}','${c.cf_section}',\`${c.name.replace(/`/g,'\\`')}\`,${c.sort_order})">編集</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="delCat(${c.id})">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const tmpl = (td.templates || []).map(t => `
+    <tr>
+      <td>${t.category_name}</td>
+      <td><span class="badge badge-${t.category_type==='income'?'income':'expense'}">${t.category_type==='income'?'収入':'支出'}</span></td>
+      <td class="num">${t.day_of_month}</td>
+      <td class="num">${fmt(t.amount)}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${(t.memo||'').replace(/"/g,'&quot;')}">${(t.memo||'').replace(/</g,'')||'—'}</td>
+      <td>
+        <button type="button" class="btn btn-ghost btn-sm" onclick='openCdtM(${t.id},${t.category_id},${t.day_of_month},${t.amount},${JSON.stringify(t.memo||'')})'>編集</button>
+        <button type="button" class="btn btn-danger btn-sm" style="margin-left:4px" onclick="delCdt(${t.id})">削除</button>
+      </td>
+    </tr>`).join('');
+
+  mc().innerHTML = `
+    <div class="page-title">🗂 科目マスタ</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openCatM(0)">＋ 科目追加</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="master-table">
+        <thead><tr><th>科目名</th><th>種別</th><th>CF区分</th><th>順</th><th style="width:88px">移動</th><th>操作</th></tr></thead>
+        <tbody>${tbl||'<tr><td colspan="6" style="color:var(--text-sub);text-align:center;padding:20px">科目がありません</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div class="card" id="daily-template-section">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>📅 日次CFテンプレート</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="openCdtM(0)">＋ テンプレート追加</button>
+      </div>
+      <p style="font-size:12px;color:var(--text-sub);margin:10px 0 14px;line-height:1.5">
+        科目ごとに「毎月<strong>○日</strong>に入る<strong>予定金額</strong>」を1本ずつ登録します（同一科目・同じ日は1件）。<strong>日次CF</strong>の「テンプレート反映」で、<strong>今日の日付以降</strong>かつ<strong>当月内</strong>について、テンプレに合う日だけ<strong>予定がまだ0円のセル</strong>へ一括入力します。日付<strong>31</strong>は、2月などは<strong>月末日</strong>に適用されます。
+      </p>
+      <div style="padding:0;overflow-x:auto">
+        <table class="master-table">
+          <thead><tr><th>科目</th><th>種別</th><th>日</th><th>金額</th><th>メモ</th><th>操作</th></tr></thead>
+          <tbody>${tmpl || '<tr><td colspan="6" style="color:var(--text-sub);text-align:center;padding:16px">テンプレートがありません</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function openCatM(id, type='income', cf='operating', name='', sort=0) {
+  document.getElementById('cat-id').value = id;
+  document.getElementById('cat-type').value = type;
+  document.getElementById('cat-cf').value = cf;
+  document.getElementById('cat-name').value = name;
+  document.getElementById('cat-sort').value = sort;
+  document.getElementById('cat-modal-ttl').textContent = id ? '科目 編集' : '科目 追加';
+  openM('cat-modal');
+}
+async function saveCat() {
+  const id   = parseInt(document.getElementById('cat-id').value)||0;
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) return toast('科目名を入力してください','err');
+  try {
+    await apiPost('category_save', {
+      id, name,
+      type:       document.getElementById('cat-type').value,
+      cf_section: document.getElementById('cat-cf').value,
+      sort_order: parseInt(document.getElementById('cat-sort').value)||0
+    });
+    closeM('cat-modal'); toast('保存しました'); renderCats();
+  } catch(e) { toast(e.message,'err'); }
+}
+async function moveCat(id, dir) {
+  try {
+    await apiPost('category_move', {id, dir});
+    toast('並び順を更新しました');
+    renderCats();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function delCat(id) {
+  if (!confirm('削除すると関連する資金繰りデータも全て削除されます。よろしいですか？')) return;
+  await apiPost('category_delete', {id});
+  toast('削除しました'); renderCats();
+}
+
+async function openCdtM(id, catId, dom, amt, memo) {
+  const cats = (await apiGet('categories_list')).categories;
+  if (!cats.length) return toast('先に科目を登録してください', 'err');
+  const sel = document.getElementById('cdt-cat');
+  sel.innerHTML = cats.map(c => `<option value="${c.id}">${String(c.name).replace(/</g,'')}（${c.type==='income'?'収入':'支出'}）</option>`).join('');
+  document.getElementById('cdt-id').value = id ? String(id) : '';
+  if (catId) sel.value = String(catId);
+  else sel.value = String(cats[0].id);
+  const d = dom != null && dom !== '' ? parseInt(dom, 10) : 1;
+  document.getElementById('cdt-dom').value = (d >= 1 && d <= 31) ? d : 1;
+  document.getElementById('cdt-amt').value = amt != null && amt !== '' ? amt : '';
+  document.getElementById('cdt-memo').value = memo != null ? memo : '';
+  document.getElementById('cdt-modal-ttl').textContent = id ? '日次テンプレート 編集' : '日次テンプレート 追加';
+  openM('cdt-modal');
+}
+async function saveCdt() {
+  const id = parseInt(document.getElementById('cdt-id').value, 10) || 0;
+  const dom = parseInt(document.getElementById('cdt-dom').value, 10) || 0;
+  const amt = parseInt(document.getElementById('cdt-amt').value, 10) || 0;
+  if (dom < 1 || dom > 31) return toast('日は1〜31で指定してください', 'err');
+  try {
+    const payload = {
+      category_id: document.getElementById('cdt-cat').value,
+      day_of_month: dom,
+      amount: amt,
+      memo: document.getElementById('cdt-memo').value.trim()
+    };
+    if (id) payload.id = id;
+    await apiPost('category_template_save', payload);
+    closeM('cdt-modal');
+    toast('保存しました');
+    renderCats();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function delCdt(id) {
+  if (!confirm('このテンプレートを削除しますか？')) return;
+  await apiPost('category_template_delete', {id});
+  toast('削除しました');
+  renderCats();
+}
+
+// ============================================================
+//  ACCOUNTS
+// ============================================================
+pages.accounts = () => renderAccs();
+
+async function renderAccs() {
+  loading();
+  const d = await apiGet('accounts_list');
+  const list = d.accounts;
+  const tbl = list.map((a, idx) => {
+    const canUp = idx > 0;
+    const canDown = idx < list.length - 1;
+    return `
+    <tr>
+      <td>${a.name}</td>
+      <td>${a.bank_name||'-'}</td>
+      <td>${a.sort_order}</td>
+      <td><span class="badge ${a.is_active?'badge-income':'badge-expense'}">${a.is_active?'有効':'無効'}</span></td>
+      <td class="cell-reorder">
+        <button type="button" class="btn btn-ghost btn-sm" title="上へ" ${canUp?'':'disabled'} onclick="moveAcc(${a.id},'up')">↑</button>
+        <button type="button" class="btn btn-ghost btn-sm" title="下へ" ${canDown?'':'disabled'} onclick="moveAcc(${a.id},'down')">↓</button>
+      </td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openAccM(${a.id},\`${a.name.replace(/`/g,'\\`')}\`,\`${(a.bank_name||'').replace(/`/g,'\\`')}\`,${a.sort_order},${a.is_active})">編集</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="delAcc(${a.id})">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  mc().innerHTML = `
+    <div class="page-title">💳 口座マスタ</div>
+    <div class="toolbar">
+      <button class="btn btn-primary" onclick="openAccM(0)">＋ 口座追加</button>
+    </div>
+    <div class="card" style="padding:0">
+      <table class="master-table">
+        <thead><tr><th>口座名</th><th>金融機関</th><th>順</th><th>状態</th><th style="width:88px">移動</th><th>操作</th></tr></thead>
+        <tbody>${tbl||'<tr><td colspan="6" style="color:var(--text-sub);text-align:center;padding:20px">口座がありません</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function openAccM(id, name='', bank='', sort=0, active=1) {
+  document.getElementById('acc-id').value = id;
+  document.getElementById('acc-name').value = name;
+  document.getElementById('acc-bank').value = bank;
+  document.getElementById('acc-sort').value = sort;
+  document.getElementById('acc-active').value = active;
+  document.getElementById('acc-modal-ttl').textContent = id ? '口座 編集' : '口座 追加';
+  openM('acc-modal');
+}
+async function saveAcc() {
+  const id   = parseInt(document.getElementById('acc-id').value)||0;
+  const name = document.getElementById('acc-name').value.trim();
+  if (!name) return toast('口座名を入力してください','err');
+  try {
+    await apiPost('account_save', {
+      id, name,
+      bank_name:  document.getElementById('acc-bank').value,
+      sort_order: parseInt(document.getElementById('acc-sort').value)||0,
+      is_active:  parseInt(document.getElementById('acc-active').value)
+    });
+    closeM('acc-modal'); toast('保存しました'); renderAccs();
+  } catch(e) { toast(e.message,'err'); }
+}
+async function moveAcc(id, dir) {
+  try {
+    await apiPost('account_move', {id, dir});
+    toast('並び順を更新しました');
+    renderAccs();
+  } catch (e) { toast(e.message, 'err'); }
+}
+async function delAcc(id) {
+  if (!confirm('削除すると残高データも全て削除されます。よろしいですか？')) return;
+  await apiPost('account_delete', {id});
+  toast('削除しました'); renderAccs();
+}
+
+// ============================================================
+//  DAILY CF
+// ============================================================
+let dailyYear = new Date().getFullYear(), dailyMonth = new Date().getMonth() + 1;
+/** 日次グリッドの行表示: all | income | expense */
+let dailyCfSectionFilter = 'all';
+pages.daily = () => renderDailyCF();
+
+function dailyCfFocusIn(ev) {
+  const inp = ev.target;
+  if (!inp || inp.tagName !== 'INPUT' || inp.type !== 'number') return;
+  const tr = inp.closest('tr');
+  if (!tr || (!tr.classList.contains('income-row') && !tr.classList.contains('expense-row'))) return;
+  tr.classList.add('daily-cf-row-active');
+}
+function dailyCfFocusOut(ev) {
+  const inp = ev.target;
+  if (!inp || inp.tagName !== 'INPUT') return;
+  const tr = inp.closest('tr');
+  if (!tr || !tr.classList.contains('daily-cf-row-active')) return;
+  const rel = ev.relatedTarget;
+  if (rel && tr.contains(rel)) return;
+  tr.classList.remove('daily-cf-row-active');
+}
+
+/** 列順はそのままに、横スクロールで当日列が科目列のすぐ右付近に来るようにする */
+function scrollDailyGridToTodayIfApplicable() {
+  const wrap = document.querySelector('#mc .grid-wrap');
+  const table = wrap?.querySelector('table.daily-grid');
+  if (!wrap || !table) return;
+  const todayTh = table.querySelector('thead th.today-col');
+  const stickyTh = table.querySelector('thead th.sticky-col');
+  if (!todayTh || !stickyTh) return;
+  const pad = 10;
+  wrap.scrollLeft = Math.max(0, todayTh.offsetLeft - stickyTh.offsetWidth - pad);
+}
+
+function setDailyCfSectionFilter(mode) {
+  if (mode !== 'income' && mode !== 'expense') mode = 'all';
+  dailyCfSectionFilter = mode;
+  applyDailyCfSectionFilter();
+}
+
+function applyDailyCfSectionFilter() {
+  const table = document.querySelector('#mc .daily-grid');
+  const bar = document.querySelector('#daily-cf-filter');
+  if (!table) return;
+  const showInc = dailyCfSectionFilter === 'all' || dailyCfSectionFilter === 'income';
+  const showExp = dailyCfSectionFilter === 'all' || dailyCfSectionFilter === 'expense';
+  table.querySelectorAll('.daily-cf-block-inc').forEach(tr => { tr.style.display = showInc ? '' : 'none'; });
+  table.querySelectorAll('.daily-cf-block-exp').forEach(tr => { tr.style.display = showExp ? '' : 'none'; });
+  if (bar) {
+    bar.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.filter === dailyCfSectionFilter);
+    });
+  }
+}
+
+function dailyCfVisibleDataRows() {
+  return [...document.querySelectorAll('#mc .daily-grid tbody tr.income-row, #mc .daily-grid tbody tr.expense-row')]
+    .filter(tr => tr.style.display !== 'none');
+}
+
+function dailyCfMoveFromInput(inp, dir) {
+  const tr = inp.closest('tr');
+  if (!tr) return;
+  const rowInputs = [...tr.querySelectorAll('input[type=number][data-date][data-cid]')];
+  const idxInRow = rowInputs.indexOf(inp);
+  if (dir === 'left' && idxInRow > 0) {
+    rowInputs[idxInRow - 1].focus();
+    return;
+  }
+  if (dir === 'right' && idxInRow >= 0 && idxInRow < rowInputs.length - 1) {
+    rowInputs[idxInRow + 1].focus();
+    return;
+  }
+  const date = inp.dataset.date;
+  if (!date) return;
+  const dataRows = dailyCfVisibleDataRows();
+  const ri = dataRows.indexOf(tr);
+  if (dir === 'up' && ri > 0) {
+    const prev = dataRows[ri - 1].querySelector(`input[type=number][data-date="${date}"][data-cid]`);
+    if (prev) prev.focus();
+    return;
+  }
+  if (dir === 'down' && ri >= 0 && ri < dataRows.length - 1) {
+    const next = dataRows[ri + 1].querySelector(`input[type=number][data-date="${date}"][data-cid]`);
+    if (next) next.focus();
+  }
+}
+
+function dailyCfKeydown(ev) {
+  const inp = ev.target;
+  if (!inp || inp.tagName !== 'INPUT' || inp.type !== 'number' || !inp.closest('.daily-grid')) return;
+  const k = ev.key;
+  if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'ArrowUp' && k !== 'ArrowDown') return;
+  ev.preventDefault();
+  const dir = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' }[k];
+  dailyCfMoveFromInput(inp, dir);
+}
+
+/** 口座ごとに「その日以前の最新残高」を足し合わせた日別合計（入力が無い日は前回までの合計を表示） */
+function buildDailyBalanceCarryForwardMap(days, balances) {
+  const byAcc = {};
+  (balances || []).forEach(b => {
+    const aid = String(b.account_id);
+    if (!byAcc[aid]) byAcc[aid] = [];
+    byAcc[aid].push({ date: b.balance_date, bal: parseInt(b.balance, 10) || 0 });
+  });
+  Object.keys(byAcc).forEach(aid => {
+    byAcc[aid].sort((x, y) => x.date.localeCompare(y.date));
+  });
+  const accIds = Object.keys(byAcc);
+  const balMap = {};
+  if (!accIds.length) return balMap;
+
+  for (const dt of days) {
+    let sum = 0;
+    let any = false;
+    for (const aid of accIds) {
+      const rows = byAcc[aid];
+      let best = null;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].date <= dt) best = rows[i];
+        else break;
+      }
+      if (best !== null) {
+        sum += best.bal;
+        any = true;
+      }
+    }
+    if (any) balMap[dt] = sum;
+  }
+  return balMap;
+}
+
+/** 前月末の予定残高をメモ化（再計算削減。日次セル保存・テンプレ反映後は clear する） */
+const monthEndPlanMemo = new Map();
+
+function invalidateMonthEndPlanMemo() {
+  monthEndPlanMemo.clear();
+}
+
+function prevCalendarYearMonth(y, m) {
+  if (m <= 1) return { y: y - 1, m: 12 };
+  return { y, m: m - 1 };
+}
+
+/**
+ * 指定月末日時点の予定残高（前月からの引き継ぎ込みで算出）
+ * @param {number} depthRemain さかのぼる最大月数（API負荷防止）
+ */
+async function monthEndPlanBalance(year, month, depthRemain = 36) {
+  const key = `${year}-${month}`;
+  if (monthEndPlanMemo.has(key)) return monthEndPlanMemo.get(key);
+
+  let carryIn = null;
+  if (depthRemain > 0) {
+    const p = prevCalendarYearMonth(year, month);
+    carryIn = await monthEndPlanBalance(p.y, p.m, depthRemain - 1);
+  }
+
+  const d = await apiGet('daily_grid', { year, month });
+  const der = deriveDailyPlanBalanceFromApi(d, carryIn);
+  const lastDt = der.days.length ? der.days[der.days.length - 1] : null;
+  const endVal = lastDt != null && der.planBalMap[lastDt] != null ? der.planBalMap[lastDt] : null;
+  monthEndPlanMemo.set(key, endVal);
+  return endVal;
+}
+
+/** 当月1日目に引き継ぐ値＝前月末の予定残高 */
+async function planCarryInFromPreviousMonthEnd(year, month) {
+  const p = prevCalendarYearMonth(year, month);
+  return monthEndPlanBalance(p.y, p.m);
+}
+
+/**
+ * 日次グリッドAPIレスポンスから予定の日次合計・実残高・予定残高を算出
+ * @param {number|null|undefined} carryInFromPrevMonthEnd 前月末の予定残高（あれば1日目から日次差引を積み上げ）
+ */
+function deriveDailyPlanBalanceFromApi(d, carryInFromPrevMonthEnd = null) {
+  const days = d.days;
+  const eMap = {};
+  d.entries.forEach(e => {
+    if (!eMap[e.category_id]) eMap[e.category_id] = {};
+    if (!eMap[e.category_id][e.entry_date]) eMap[e.category_id][e.entry_date] = { plan: 0, actual: 0 };
+    eMap[e.category_id][e.entry_date][e.entry_type] =
+      (eMap[e.category_id][e.entry_date][e.entry_type] || 0) + (parseInt(e.amount, 10) || 0);
+  });
+  const balMap = buildDailyBalanceCarryForwardMap(days, d.balances);
+  const income = d.categories.filter(c => c.type === 'income');
+  const expense = d.categories.filter(c => c.type === 'expense');
+  const dayIncTot = {}, dayExpTot = {};
+  days.forEach(dt => { dayIncTot[dt] = 0; dayExpTot[dt] = 0; });
+  income.forEach(cat => {
+    days.forEach(dt => { dayIncTot[dt] += (eMap[cat.id]?.[dt]?.plan) || 0; });
+  });
+  expense.forEach(cat => {
+    days.forEach(dt => { dayExpTot[dt] += (eMap[cat.id]?.[dt]?.plan) || 0; });
+  });
+
+  const planBalMap = {};
+  let running =
+    carryInFromPrevMonthEnd != null && Number.isFinite(carryInFromPrevMonthEnd)
+      ? carryInFromPrevMonthEnd
+      : null;
+
+  for (const dt of days) {
+    if (running === null) {
+      if (balMap[dt] != null) {
+        running = balMap[dt];
+        planBalMap[dt] = running;
+      }
+    } else {
+      running += (dayIncTot[dt] - dayExpTot[dt]);
+      planBalMap[dt] = running;
+    }
+  }
+
+  const baseDate = days.find(dt => balMap[dt] != null);
+  const hasPlanBal = days.some(dt => planBalMap[dt] != null);
+  const carryInUsed =
+    carryInFromPrevMonthEnd != null && Number.isFinite(Number(carryInFromPrevMonthEnd))
+      ? Number(carryInFromPrevMonthEnd)
+      : null;
+
+  return { days, eMap, dayIncTot, dayExpTot, balMap, planBalMap, baseDate, hasPlanBal, carryInUsed };
+}
+
+async function renderDailyCF() {
+  loading();
+  try {
+    const carryIn = await planCarryInFromPreviousMonthEnd(dailyYear, dailyMonth);
+    const d = await apiGet('daily_grid', {year: dailyYear, month: dailyMonth});
+    const today = new Date().toISOString().slice(0, 10);
+    const { days, eMap, dayIncTot, dayExpTot, balMap, planBalMap, baseDate, carryInUsed } =
+      deriveDailyPlanBalanceFromApi(d, carryIn);
+
+    const income  = d.categories.filter(c => c.type === 'income');
+    const expense = d.categories.filter(c => c.type === 'expense');
+    const dow     = ['日','月','火','水','木','金','土'];
+
+    const dayHeaders = days.map(dt => {
+      const dObj = new Date(dt + 'T00:00:00');
+      const w = dObj.getDay();
+      const d = parseInt(dt.slice(8));
+      const cls = w === 0 ? 'sun' : w === 6 ? 'sat' : '';
+      const todayCls = dt === today ? ' today-col' : '';
+      return `<th class="${cls}${todayCls}">${d}<br><span style="font-size:9px">${dow[w]}</span></th>`;
+    });
+
+    function buildRows(cats, catType) {
+      return cats.map(cat => {
+        let rowSum = 0;
+        const cells = days.map(dt => {
+          const v = (eMap[cat.id]?.[dt]?.['plan']) || 0;
+          rowSum += v;
+          const todayCls = dt === today ? ' today-col' : '';
+          return `<td class="num${todayCls}"><input type="number" value="${v||''}"
+            data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}"
+            oninput="refreshDailyDerivedRows()"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            onblur="saveDailyCell(this)"></td>`;
+        });
+        return `<tr class="${catType}-row daily-cf-block-${catType === 'income' ? 'inc' : 'exp'}">
+          <td class="sticky-col">${cat.name}</td>
+          ${cells.join('')}
+          <td class="num">${rowSum ? fmt(rowSum) : '-'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    const incRows = buildRows(income, 'income');
+    const expRows = buildRows(expense, 'expense');
+    const nc = days.length + 2;
+
+    const incSum = Object.values(dayIncTot).reduce((a,b)=>a+b,0);
+    const expSum = Object.values(dayExpTot).reduce((a,b)=>a+b,0);
+
+    const incTotRow = `<tr class="total-row daily-cf-block-inc" data-daily-summary="inc">
+      <td class="sticky-col">収入 合計</td>
+      ${days.map(dt=>`<td class="num${dt===today?' today-col':''}" style="color:var(--success)">${dayIncTot[dt]?fmt(dayIncTot[dt]):'-'}</td>`).join('')}
+      <td class="num" style="color:var(--success)">${fmt(incSum)}</td>
+    </tr>`;
+
+    const expTotRow = `<tr class="total-row daily-cf-block-exp" data-daily-summary="exp">
+      <td class="sticky-col">支出 合計</td>
+      ${days.map(dt=>`<td class="num${dt===today?' today-col':''}" style="color:var(--danger)">${dayExpTot[dt]?fmt(dayExpTot[dt]):'-'}</td>`).join('')}
+      <td class="num" style="color:var(--danger)">${fmt(expSum)}</td>
+    </tr>`;
+
+    const netRow = `<tr class="net-row" data-daily-summary="net">
+      <td class="sticky-col">差引</td>
+      ${days.map(dt=>{
+        const net = dayIncTot[dt] - dayExpTot[dt];
+        return `<td class="num${dt===today?' today-col':''}" style="color:${net>0?'var(--primary)':net<0?'var(--danger)':'inherit'}">${net?fmt(net):'-'}</td>`;
+      }).join('')}
+      <td></td>
+    </tr>`;
+
+    const balRow = `<tr class="bal-row" data-daily-summary="bal">
+      <td class="sticky-col">実残高</td>
+      ${days.map(dt=>{
+        const b = balMap[dt];
+        return `<td class="num daily-cf-bal-td${dt===today?' today-col':''}">
+          <span class="daily-bal-cell-amt">${b != null ? '¥'+fmt(b) : ''}</span>
+          <button type="button" class="btn btn-ghost daily-bal-to-input" onclick="event.stopPropagation();goDailyToBalance('${dt}')" title="預金残高画面でこの日付を入力">入力</button>
+        </td>`;
+      }).join('')}
+      <td></td>
+    </tr>`;
+
+    const planBalRow = `<tr class="bal-row" data-daily-summary="plan-bal">
+      <td class="sticky-col">予定残高</td>
+      ${days.map(dt=>{
+        const p = planBalMap[dt];
+        return `<td class="num${dt===today?' today-col':''}">${p != null ? '¥'+fmt(p) : ''}</td>`;
+      }).join('')}
+      <td></td>
+    </tr>`;
+
+    const balDiffRow = `<tr class="bal-row" data-daily-summary="bal-diff">
+      <td class="sticky-col">残高差額</td>
+      ${days.map(dt=>{
+        const a = balMap[dt];
+        const p = planBalMap[dt];
+        if (a == null || p == null) return `<td class="num${dt===today?' today-col':''}"></td>`;
+        const diff = a - p;
+        const color = diff > 0 ? 'var(--primary)' : diff < 0 ? 'var(--danger)' : 'inherit';
+        const sign = diff > 0 ? '+' : '';
+        return `<td class="num${dt===today?' today-col':''}" style="color:${color}">${sign}${fmt(diff)}</td>`;
+      }).join('')}
+      <td></td>
+    </tr>`;
+
+    mc().innerHTML = `
+      <div class="page-title">📅 日次キャッシュフロー</div>
+      <div class="toolbar">
+        <div class="year-nav">
+          <button type="button" data-mc-nav="daily-month" data-dir="prev">◀</button>
+          <span>${dailyYear}年${dailyMonth}月</span>
+          <button type="button" data-mc-nav="daily-month" data-dir="next">▶</button>
+        </div>
+        <div class="tab-group" id="daily-cf-filter" title="表示するブロック">
+          <button type="button" class="tab-btn" data-filter="all" onclick="setDailyCfSectionFilter('all')">すべて</button>
+          <button type="button" class="tab-btn" data-filter="income" onclick="setDailyCfSectionFilter('income')">収入のみ</button>
+          <button type="button" class="tab-btn" data-filter="expense" onclick="setDailyCfSectionFilter('expense')">支出のみ</button>
+        </div>
+        <span class="form-group" style="margin:0;flex-direction:row;align-items:center;gap:6px">
+          <label style="margin:0;white-space:nowrap">反映範囲</label>
+          <input type="month" id="dapply-ym-from" value="${String(dailyYear).padStart(4,'0')}-${String(dailyMonth).padStart(2,'0')}"
+            style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
+          <span style="color:var(--text-sub)">～</span>
+          <input type="month" id="dapply-ym-to" value="${String(dailyYear).padStart(4,'0')}-${String(dailyMonth).padStart(2,'0')}"
+            style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:#fff">
+        </span>
+        <button type="button" class="btn btn-primary" onclick="applyDailyTemplates()">テンプレート反映</button>
+        <span style="font-size:12px;color:var(--text-sub)">日次CFは予定のみ入力です。実残高は口座ごとに「その日以前の最新残高」を合計し、入力がない日も前回までの合計を表示します。<a href="#" onclick="event.preventDefault();nav('categories');setTimeout(()=>document.getElementById('daily-template-section')?.scrollIntoView({behavior:'smooth'}),500)" style="color:var(--primary)">テンプレート編集</a>は科目マスタ。反映は「今日以降・指定した月の範囲内・予定0円のセルのみ」。矢印キーでセル移動。実残高の「入力」で預金残高へ。</span>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="grid-wrap">
+          <table class="daily-grid" data-days="${days.join('|')}" data-plan-carry-in="${carryInUsed != null ? carryInUsed : ''}">
+            <thead><tr>
+              <th class="sticky-col" style="min-width:130px;text-align:left;padding-left:10px">科目</th>
+              ${dayHeaders.join('')}
+              <th>合計</th>
+            </tr></thead>
+            <tbody>
+              <tr class="daily-cf-block-inc"><td colspan="${nc}" style="background:#f0fdf4;color:var(--success);font-weight:700;padding:5px 10px;font-size:12px">▼ 収 入</td></tr>
+              ${incRows}
+              ${incTotRow}
+              <tr class="daily-cf-block-exp"><td colspan="${nc}" style="background:#fef2f2;color:var(--danger);font-weight:700;padding:5px 10px;font-size:12px">▼ 支 出</td></tr>
+              ${expRows}
+              ${expTotRow}
+              ${netRow}
+              ${balRow}
+              ${planBalRow}
+              ${balDiffRow}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    const dailyTbl = mc().querySelector('.daily-grid');
+    if (dailyTbl) {
+      dailyTbl.addEventListener('focusin', dailyCfFocusIn);
+      dailyTbl.addEventListener('focusout', dailyCfFocusOut);
+      dailyTbl.addEventListener('keydown', dailyCfKeydown, true);
+    }
+    applyDailyCfSectionFilter();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollDailyGridToTodayIfApplicable());
+    });
+  } catch(e) {
+    mc().innerHTML = `<div class="loading" style="color:var(--danger)">${e.message}</div>`;
+  }
+}
+
+function dailyParseInputAmt(inp) {
+  const s = String(inp.value ?? '').trim();
+  if (s === '') return 0;
+  return parseInt(s, 10) || 0;
+}
+
+function dailyParseBalCellText(txt) {
+  const t = String(txt ?? '').trim();
+  if (!t) return null;
+  const n = parseInt(t.replace(/[^\d-]/g, ''), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** 日次グリッドの入力値から、合計行・差引・予定残高・残高差額を再計算してDOM更新 */
+function refreshDailyDerivedRows() {
+  const table = document.querySelector('.daily-grid');
+  if (!table || !table.dataset.days) return;
+  const days = table.dataset.days.split('|');
+  const dayIncTot = {}, dayExpTot = {};
+  days.forEach(dt => { dayIncTot[dt] = 0; dayExpTot[dt] = 0; });
+
+  table.querySelectorAll('tr.income-row input[data-date]').forEach(inp => {
+    dayIncTot[inp.dataset.date] += dailyParseInputAmt(inp);
+  });
+  table.querySelectorAll('tr.expense-row input[data-date]').forEach(inp => {
+    dayExpTot[inp.dataset.date] += dailyParseInputAmt(inp);
+  });
+
+  table.querySelectorAll('tr.income-row, tr.expense-row').forEach(tr => {
+    let rowSum = 0;
+    tr.querySelectorAll('input[data-date]').forEach(inp => { rowSum += dailyParseInputAmt(inp); });
+    const cells = tr.querySelectorAll('td');
+    const last = cells[cells.length - 1];
+    if (last) last.textContent = rowSum ? fmt(rowSum) : '-';
+  });
+
+  const trInc = table.querySelector('tr[data-daily-summary="inc"]');
+  if (trInc) {
+    let sum = 0;
+    const tds = trInc.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const v = dayIncTot[dt];
+      sum += v;
+      const td = tds[i + 1];
+      if (td) {
+        td.textContent = v ? fmt(v) : '-';
+        td.style.color = 'var(--success)';
+      }
+    });
+    const lastTd = tds[days.length + 1];
+    if (lastTd) {
+      lastTd.textContent = fmt(sum);
+      lastTd.style.color = 'var(--success)';
+    }
+  }
+
+  const trExp = table.querySelector('tr[data-daily-summary="exp"]');
+  if (trExp) {
+    let sum = 0;
+    const tds = trExp.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const v = dayExpTot[dt];
+      sum += v;
+      const td = tds[i + 1];
+      if (td) {
+        td.textContent = v ? fmt(v) : '-';
+        td.style.color = 'var(--danger)';
+      }
+    });
+    const lastTd = tds[days.length + 1];
+    if (lastTd) {
+      lastTd.textContent = fmt(sum);
+      lastTd.style.color = 'var(--danger)';
+    }
+  }
+
+  const trNet = table.querySelector('tr[data-daily-summary="net"]');
+  if (trNet) {
+    const tds = trNet.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const net = dayIncTot[dt] - dayExpTot[dt];
+      const td = tds[i + 1];
+      if (td) {
+        td.textContent = net ? fmt(net) : '-';
+        td.style.color = net > 0 ? 'var(--primary)' : net < 0 ? 'var(--danger)' : 'inherit';
+      }
+    });
+  }
+
+  const trBal = table.querySelector('tr[data-daily-summary="bal"]');
+  const balMap = {};
+  if (trBal) {
+    const tds = trBal.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const td = tds[i + 1];
+      if (!td) return;
+      const amtEl = td.querySelector('.daily-bal-cell-amt');
+      const raw = amtEl ? amtEl.textContent : td.textContent;
+      const v = dailyParseBalCellText(raw);
+      if (v != null) balMap[dt] = v;
+    });
+  }
+
+  const carryRaw = table.dataset.planCarryIn;
+  let carryIn = null;
+  if (carryRaw !== undefined && carryRaw !== '') {
+    const n = parseInt(carryRaw, 10);
+    if (!Number.isNaN(n)) carryIn = n;
+  }
+
+  const planBalMap = {};
+  let running = carryIn;
+  for (const dt of days) {
+    if (running === null) {
+      if (balMap[dt] != null) {
+        running = balMap[dt];
+        planBalMap[dt] = running;
+      }
+    } else {
+      running += (dayIncTot[dt] - dayExpTot[dt]);
+      planBalMap[dt] = running;
+    }
+  }
+
+  const trPlan = table.querySelector('tr[data-daily-summary="plan-bal"]');
+  if (trPlan) {
+    const tds = trPlan.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const td = tds[i + 1];
+      if (!td) return;
+      const p = planBalMap[dt];
+      td.textContent = p != null ? '¥' + fmt(p) : '';
+    });
+  }
+
+  const trDiff = table.querySelector('tr[data-daily-summary="bal-diff"]');
+  if (trDiff) {
+    const tds = trDiff.querySelectorAll('td');
+    days.forEach((dt, i) => {
+      const td = tds[i + 1];
+      if (!td) return;
+      const a = balMap[dt];
+      const p = planBalMap[dt];
+      if (a == null || p == null) {
+        td.textContent = '';
+        td.style.color = '';
+        return;
+      }
+      const diff = a - p;
+      const color = diff > 0 ? 'var(--primary)' : diff < 0 ? 'var(--danger)' : 'inherit';
+      const sign = diff > 0 ? '+' : '';
+      td.textContent = sign + fmt(diff);
+      td.style.color = color;
+    });
+  }
+}
+
+function parseYearMonthInput(v) {
+  const m = /^(\d{4})-(\d{2})$/.exec(String(v || '').trim());
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  if (mo < 1 || mo > 12) return null;
+  return { y, m: mo };
+}
+
+async function applyDailyTemplates() {
+  const from = new Date().toISOString().slice(0, 10);
+  const elF = document.getElementById('dapply-ym-from');
+  const elT = document.getElementById('dapply-ym-to');
+  const start = parseYearMonthInput(elF?.value);
+  const end = parseYearMonthInput(elT?.value);
+  if (!start || !end) {
+    toast('反映範囲の開始月・終了月を選んでください', 'err');
+    return;
+  }
+  if (start.y * 12 + start.m > end.y * 12 + end.m) {
+    toast('開始月は終了月以前にしてください', 'err');
+    return;
+  }
+  const rangeLabel =
+    start.y === end.y && start.m === end.m
+      ? `${start.y}年${start.m}月`
+      : `${start.y}年${start.m}月 ～ ${end.y}年${end.m}月`;
+  if (!confirm(
+    `${rangeLabel} の範囲で、${from} 以降の日について、テンプレートに合う「予定がまだ0円のセル」だけに金額を入れます。既に予定があるセルはスキップします。よろしいですか？`
+  )) return;
+  try {
+    const r = await apiPost('daily_apply_templates', {
+      year: start.y,
+      month: start.m,
+      to_year: end.y,
+      to_month: end.m,
+      from_date: from,
+      only_empty: true
+    });
+    invalidateMonthEndPlanMemo();
+    toast(`テンプレート反映: 適用 ${r.applied} 件／スキップ ${r.skipped} 件`);
+    renderDailyCF();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+async function saveDailyCell(inp) {
+  try {
+    const raw = String(inp.value ?? '').trim();
+    const amt = raw === '' ? 0 : (parseInt(raw, 10) || 0);
+    const last = parseInt(inp.dataset.lastSaved || '0', 10) || 0;
+    if (amt === last) return;
+
+    await apiPost('daily_cell_save', {
+      category_id: inp.dataset.cid,
+      entry_date:  inp.dataset.date,
+      entry_type:  inp.dataset.dtype,
+      amount:      amt
+    });
+    invalidateMonthEndPlanMemo();
+    inp.dataset.lastSaved = String(amt);
+    inp.value = amt > 0 ? String(amt) : '';
+    refreshDailyDerivedRows();
+    inp.style.background = '#bbf7d0';
+    setTimeout(() => inp.style.background = '', 700);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ============================================================
+//  ALERTS
+// ============================================================
+pages.alerts = () => renderAlerts();
+
+async function renderAlerts() {
+  loading();
+  const d = await apiGet('alerts_list');
+  const typeLabel = {balance_low:'💰 預金残高下限アラート', cashflow_negative:'📉 日次CF（予定）収支マイナス'};
+
+  mc().innerHTML = `
+    <div class="page-title">🔔 アラート設定</div>
+    ${d.alerts.map(a=>`
+      <div class="card">
+        <div class="card-title">${typeLabel[a.alert_type]||a.alert_type}</div>
+        <div class="form-row">
+          <div class="form-group"><label>ラベル</label>
+            <input type="text" id="al-lbl-${a.id}" value="${a.label||''}" style="width:200px">
+          </div>
+          <div class="form-group"><label>閾値（円）</label>
+            <input type="number" id="al-thr-${a.id}" value="${a.threshold}" style="width:140px">
+          </div>
+          <div class="form-group"><label>有効</label>
+            <select id="al-act-${a.id}">
+              <option value="1" ${a.is_active?'selected':''}>有効</option>
+              <option value="0" ${!a.is_active?'selected':''}>無効</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="saveAlert(${a.id})">保存</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-sub)">
+          ${a.alert_type==='balance_low'?'預金残高の合計がこの金額を下回るとアラートとして扱います。':
+            '当月の日次CF（予定のみ）について、収入合計−支出合計がこの金額を下回るとアラートとして扱います。'}
+        </div>
+      </div>`).join('')}`;
+}
+
+async function saveAlert(id) {
+  try {
+    await apiPost('alert_save', {
+      id,
+      label:     document.getElementById(`al-lbl-${id}`).value,
+      threshold: document.getElementById(`al-thr-${id}`).value,
+      is_active: document.getElementById(`al-act-${id}`).value
+    });
+    toast('保存しました');
+  } catch(e) { toast(e.message,'err'); }
+}
+
+// 年月ナビは innerHTML の onclick だと let 変数と解決できない環境があるため、#mc へ委譲する
+(function initMcNavDelegation() {
+  const root = document.getElementById('mc');
+  if (!root) return;
+  root.addEventListener('click', (e) => {
+    // ボタン内のテキスト（◀▶）直クリックだと target が Text ノードで closest が無い
+    const el = e.target instanceof Element ? e.target : e.target.parentElement;
+    const t = el && el.closest('[data-mc-nav]');
+    if (!t) return;
+    const kind = t.dataset.mcNav;
+    if (kind === 'bal-month') {
+      if (t.dataset.dir === 'prev') {
+        balM--;
+        if (balM < 1) { balM = 12; balY--; }
+      } else if (t.dataset.dir === 'next') {
+        balM++;
+        if (balM > 12) { balM = 1; balY++; }
+      } else return;
+      renderBal();
+      return;
+    }
+    if (kind === 'daily-month') {
+      if (t.dataset.dir === 'prev') {
+        dailyMonth--;
+        if (dailyMonth < 1) { dailyMonth = 12; dailyYear--; }
+      } else if (t.dataset.dir === 'next') {
+        dailyMonth++;
+        if (dailyMonth > 12) { dailyMonth = 1; dailyYear++; }
+      } else return;
+      renderDailyCF();
+      return;
+    }
+    if (kind === 'planbal-month') {
+      if (t.dataset.dir === 'prev') {
+        planBalDashMonth--;
+        if (planBalDashMonth < 1) { planBalDashMonth = 12; planBalDashYear--; }
+      } else if (t.dataset.dir === 'next') {
+        planBalDashMonth++;
+        if (planBalDashMonth > 12) { planBalDashMonth = 1; planBalDashYear++; }
+      } else return;
+      renderPlanBalDashboard();
+    }
+  });
+})();
+</script>
+</body>
+</html>

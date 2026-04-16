@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>まんてん個別プラス ビジネスモデル</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans JP',sans-serif;background:#f1f5f9;}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+.ic-input{width:100%;border:none;background:rgba(59,130,246,0.08);padding:4px 6px;text-align:right;font-size:12px;border-radius:4px;outline:none;box-sizing:border-box;color:#1e40af;font-weight:600;}
+.pi-disp{width:120px;border:1px solid #cbd5e1;border-radius:4px;padding:4px 8px;font-size:12px;text-align:right;background:#fff;color:#1e40af;font-weight:600;cursor:text;min-height:22px;line-height:22px;}
+.pi-input{width:120px;border:2px solid #3b82f6;border-radius:4px;padding:4px 8px;font-size:13px;text-align:right;background:#eff6ff;color:#1e40af;font-weight:600;outline:none;}
+select option{color:#0f172a;background:white;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {createElement:h,useState,useMemo,useEffect}=React;
+
+const MO=["４月","５月","６月","７月","８月","９月","１０月","１１月","１２月","１月","２月","３月"];
+const MO_S=["4月","5月","6月","7月","8月","9月","10月","11月","12月","1月","2月","3月"];
+const GL=["小4","小5","小6","中1","中2","中3","高1","高2","高3"];
+const TUI0=[13640,13640,13640,32450,32450,32450,41250,42350,44550];
+const LJ=21450,SJ=32450,AS=2000,ALT=3000,ASTD=6600,AH=[3000,3700,4600];
+const J3F=5500,J3S=3,J3E=10,H3F=5500,H3S=3,H3E=10;
+const AD_D=[81,59,75,148,35,63,48,55,65,59,91,120];
+const AT=AD_D.reduce((a,b)=>a+b,0);
+const EC=[5,4,3,2,5,4,3,1,5,4,3,0];
+const WC=[4,3,5,4,3,5,2,7,4,3,5,4,3,5,1,6,4,3,5,4,3,5,0];
+const AD0=[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000];
+const WDA=[24,15,16,31,22,21,28,17,30,23,37,37];
+const WDAT=WDA.reduce((a,b)=>a+b,0);
+
+const mxTui=(gi,mi)=>{if(gi===3)return LJ;if(gi===4)return mi>=8?SJ:LJ;return null;};
+const effA=(gi,mi)=>{if(gi<=2)return AS;if(gi===3)return ALT;if(gi===4)return mi>=8?ASTD:ALT;if(gi===5)return ASTD;if(gi>=6&&gi<=8)return AH[gi-6];return 0;};
+const effT=(tui,gi,mi)=>{const mx=mxTui(gi,mi);if(mx!==null)return mx;if(gi===5&&mi>=J3S&&mi<=J3E)return tui[gi]+J3F;if(gi===8&&mi>=H3S&&mi<=H3E)return tui[gi]+H3F;return tui[gi];};
+const fm=n=>{if(n==null||isNaN(n))return"0";const ng=n<0,ab=Math.round(Math.abs(n));return ng?"▲"+ab.toLocaleString("ja-JP"):ab.toLocaleString("ja-JP");};
+
+function dR(t){const r=AD_D.map(d=>(d/AT)*t),f=r.map(Math.floor);let m=t-f.reduce((a,b)=>a+b,0);const x=r.map((v,i)=>({i,f:v-f[i]})).sort((a,b)=>b.f-a.f);for(let k=0;k<m;k++)f[x[k].i]++;return f;}
+function dW(t){if(t<=0)return Array(12).fill(0);const r=WDA.map(w=>(w/WDAT)*t),f=r.map(Math.floor);let m=t-f.reduce((a,b)=>a+b,0);const x=r.map((v,i)=>({i,f:v-f[i]})).sort((a,b)=>b.f-a.f);for(let k=0;k<m;k++)f[x[k].i]++;return f;}
+function prog(mc){return[0,mc[0],mc[1],mc[2],mc[3],mc[4],mc[5],mc[6],mc[7]];}
+function applyMask(arr,om,yr){if(yr!==0||om===0)return arr;return arr.map((v,i)=>i<om?0:v);}
+
+function cY(en,wd,st,cr,cap){
+  const gs=Array.from({length:9},()=>[]);const ae=[];
+  let c=[...st],ep=0,wp=0,pw=Array(9).fill(0);
+  for(let mi=0;mi<12;mi++){
+    for(let g=0;g<9;g++)c[g]=Math.max(0,c[g]-pw[g]);
+    pw=Array(9).fill(0);
+    const cur=c.reduce((a,b)=>a+b,0);
+    const room=cap>0?Math.max(0,cap-cur):en[mi];
+    const actual=Math.min(en[mi],room);
+    for(let e=0;e<actual;e++){c[EC[ep%12]]++;ep++;}
+    ae.push(actual);
+    for(let g=0;g<9;g++)gs[g].push(Math.max(0,c[g]));
+    let w=wd[mi];
+    if(mi===10){const h3x=c[8];pw[8]+=h3x;let tc=[...c];tc[8]=0;let sf=0;while(w>0&&sf<w+23){const gi=WC[wp%23];if(tc[gi]>0){pw[gi]++;tc[gi]--;w--;wp++;}else{wp++;sf++;}}}
+    else if(mi===11){const cx=c[5],ex=Math.min(Math.round(cx*cr),cx);pw[5]+=ex;let tc=[...c];tc[5]-=ex;let sf=0;while(w>0&&sf<w+23){const gi=WC[wp%23];if(tc[gi]>0){pw[gi]++;tc[gi]--;w--;wp++;}else{wp++;sf++;}}}
+    else{let tc=[...c],sf=0;while(w>0&&sf<w+23){const gi=WC[wp%23];if(tc[gi]>0){pw[gi]++;tc[gi]--;w--;wp++;}else{wp++;sf++;}}}
+  }
+  return{gs,pw,ae};
+}
+
+function aWA(ea,r1,r2,cr,cap){
+  const res=[];let s=Array(9).fill(0);
+  for(let y=0;y<5;y++){
+    const rate=y===0?r1:r2;let wd=Array(12).fill(0);
+    for(let iter=0;iter<5;iter++){
+      const{gs,pw}=cY(ea[y],wd,s,cr,cap);
+      const c3a=pw[5]||0;
+      const nH3=gs.slice(0,8).reduce((s,g)=>s+g.reduce((a,b)=>a+b,0),0);
+      const tgt=Math.round(nH3*rate/100);
+      const nwd=dW(Math.max(0,tgt-c3a));
+      if(nwd.every((v,i)=>v===wd[i]))break;
+      wd=nwd;
+    }
+    res.push(wd);
+    const{gs,pw}=cY(ea[y],wd,s,cr,cap);
+    s=prog(gs.map((g,i)=>Math.max(0,g[11]-(pw[i]||0))));
+  }
+  return res;
+}
+
+function mkDef(name){
+  const e=dR(30),w=aWA([e,e,e,e,e],4.5,3.5,2/3,0);
+  return{id:Date.now()+Math.random(),schoolName:name||"",openDate:"",staffName:"",openMonth:0,
+    iC:3000000,rc:800000,rn:200000,ae:30,mf:11000,wt:2000,el:30000,ph:10000,er:500,sr:500,oc:10000,
+    tp:90000,sp:350000,wr:0.15,tr:0.07,
+    bm1:5,br1:1.0,bm2:9,br2:1.0,br1_2:1.0,br2_2:1.0,ignoreBonus:false,
+    tui:[...TUI0],c3r:2/3,wR1:4.5,wR2:3.5,cap:0,
+    e1:[...e],e2:[...e],e3:[...e],e4:[...e],e5:[...e],
+    w1:[...w[0]],w2:[...w[1]],w3:[...w[2]],w4:[...w[3]],w5:[...w[4]],
+    a1:[...AD0],a2:[...AD0],a3:[...AD0],a4:[...AD0],a5:[...AD0]};
+}
+
+function calcBonus(mi,yi,s){
+  if(s.ignoreBonus)return 0;
+  const bm1=s.bm1!=null?s.bm1:5;
+  const bm2=s.bm2!=null?s.bm2:9;
+  const r1=yi===0?(s.br1||0):(s.br1_2||0);
+  const r2=yi===0?(s.br2||0):(s.br2_2||0);
+  let b=0;
+  if(mi===bm1)b+=Math.round((s.sp||0)*r1);
+  if(mi===bm2)b+=Math.round((s.sp||0)*r2);
+  return b;
+}
+function calcExtra(mi,yi,s){
+  let extra=0;
+  if(yi===0&&mi===0)extra+=(s.rc||0);
+  extra+=calcBonus(mi,yi,s);
+  return extra;
+}
+function yearBonus(yi,s){
+  if(s.ignoreBonus)return 0;
+  const r1=yi===0?(s.br1||0):(s.br1_2||0);
+  const r2=yi===0?(s.br2||0):(s.br2_2||0);
+  return Math.round((s.sp||0)*r1)+Math.round((s.sp||0)*r2);
+}
+
+// ── 小コンポーネント ──
+function IC({value,onChange}){
+  return h('input',{type:'number',value,onChange:e=>onChange(Number(e.target.value)),className:'ic-input'});
+}
+function PI({label,value,onChange,prefix,suffix,min,wide}){
+  const[ed,setEd]=useState(false);const[dr,setDr]=useState('');
+  const open=()=>{setDr(String(value));setEd(true);};
+  const save=()=>{setEd(false);const v=Number(dr);if(!isNaN(v)&&(min===undefined||v>=min))onChange(v);};
+  const disp=prefix==='¥'?Number(value).toLocaleString('ja-JP'):String(value);
+  return h('div',{style:{display:'flex',alignItems:'center',gap:6,marginBottom:6}},
+    h('label',{style:{fontSize:11,color:'#64748b',minWidth:wide?150:100,whiteSpace:'nowrap'}},label),
+    h('div',{style:{display:'flex',alignItems:'center',gap:2}},
+      prefix&&h('span',{style:{fontSize:11,color:'#94a3b8'}},prefix),
+      ed
+        ?h('input',{type:'text',inputMode:'numeric',value:dr,onChange:e=>setDr(e.target.value),
+            onBlur:save,onKeyDown:e=>{if(e.key==='Enter')save();if(e.key==='Escape')setEd(false);},className:'pi-input'})
+        :h('div',{onClick:open,className:'pi-disp'},disp),
+      suffix&&h('span',{style:{fontSize:11,color:'#94a3b8'}},suffix)
+    )
+  );
+}
+
+// ── YSTab ──
+function YSTab({yearIdx,params,gs,wds,setWds,ads,setAds,enr,setEnr,tui,c3r,actEnr,openMonth,school}){
+  const{mf,rn,wt,el,ph,er,sr,oc,tp,sp,wr,tr}=params;
+  const om=yearIdx===0?(openMonth||0):0;
+  const act=gs.map((g,i)=>g.some(v=>v>0)?i:-1).filter(i=>i>=0);
+  const mt=MO.map((_,mi)=>gs.reduce((s,g)=>s+(g[mi]||0),0));
+  const c3grad=MO.map((_,mi)=>mi===11?Math.min(Math.round((gs[5][11]||0)*c3r),gs[5][11]||0):0);
+  const c3gT=c3grad.reduce((a,b)=>a+b,0);
+  const h3grad=MO.map((_,mi)=>mi===10?(gs[8][10]||0):0);
+  const h3gT=h3grad.reduce((a,b)=>a+b,0);
+
+  const comp=useMemo(()=>{
+    const ms=MO.map((_,mi)=>{
+      const st=mt[mi];
+      const tu=gs.reduce((s,g,gi)=>s+(g[mi]||0)*effT(tui,gi,mi),0);
+      const ned=actEnr[mi]>0?Math.round(actEnr[mi]*effT(tui,EC[mi%12],mi)/2):0;
+      const ma=actEnr[mi]*mf,sl=tu-ned+ma;
+      const at2=gs.reduce((s,g,gi)=>s+(g[mi]||0)*effA(gi,mi),0);
+      const sg=rn+wt+el+ph+at2+st*er+ads[mi]+st*sr+oc;
+      const tA=st>=60?tp:0,wf=sp*wr,lb=tA+sp+wf,tx=sl*tr;
+      const bonus=calcBonus(mi,yearIdx,school);
+      const recruitFee=yearIdx===0&&mi===0?(school.rc||0):0;
+      const extra=calcExtra(mi,yearIdx,school);
+      return{enrollment:actEnr[mi],schedEnr:enr[mi],withdrawal:wds[mi],students:st,
+        tuition:tu,avgTuition:st>0?Math.round(tu/st):0,matIncome:ma,newEnrDiscount:ned,salesTotal:sl,
+        rent:rn,water:wt,electric:el,phone:ph,atamaFee:at2,equipFee:st*er,
+        adCost:ads[mi],systemFee:st*sr,otherCost:oc,sgaTotal:sg,
+        tutorPay:tA,staffPay:sp,welfare:wf,laborTotal:lb,
+        bonus,recruitFee,tax:tx,
+        expenseTotal:sg+lb+tx+extra,profit:sl-(sg+lb+tx+extra)};
+    });
+    const sf=(a,f)=>a.reduce((s,m)=>s+m[f],0);
+    const fs=["enrollment","schedEnr","withdrawal","students","tuition","avgTuition","matIncome","newEnrDiscount","salesTotal","rent","water","electric","phone","atamaFee","equipFee","adCost","systemFee","otherCost","sgaTotal","tutorPay","staffPay","welfare","laborTotal","bonus","recruitFee","tax","expenseTotal","profit"];
+    const h1={},h2={},yt={};
+    fs.forEach(f=>{h1[f]=sf(ms.slice(0,6),f);h2[f]=sf(ms.slice(6),f);yt[f]=sf(ms,f);});
+    const hasCap=ms.some(m=>m.enrollment!==m.schedEnr);
+    const nH3m=MO.map((_,mi)=>gs.reduce((s,g,gi)=>s+(gi<8?(g[mi]||0):0),0));
+    const nH3T=nH3m.reduce((a,b)=>a+b,0);
+    const wdR2=nH3T>0?((yt.withdrawal+c3gT)/nH3T*100):0;
+    return{ms,h1,h2,yt,hasCap,wdR2};
+  },[enr,wds,ads,gs,params,tui,mt,actEnr,school]);
+
+  const rows=[
+    {l:"入会予定",f:"schedEnr",ed:"e",s:"t",capOnly:1},{l:"入会数",f:"enrollment",s:"t"},
+    {l:"退会数",f:"withdrawal",ed:"w",s:"t"},{l:"中3卒業",f:"c3grad",s:"g"},{l:"高3卒塾",f:"h3grad",s:"g"},
+    {l:"生徒数",f:"students",s:"t",h:1},
+    {l:"授業料（税込）",f:"tuition",s:"r",c:1},{l:"月謝平均単価",f:"avgTuition",s:"r",c:1,avg:1},
+    {l:"入会時教材費",f:"matIncome",s:"r",c:1},{l:"初月半額割引",f:"newEnrDiscount",s:"r",c:1,neg:1},
+    {l:"売上合計",f:"salesTotal",s:"r",c:1,h:1},
+    {l:"家賃",f:"rent",s:"x",c:1},{l:"水道代",f:"water",s:"x",c:1},{l:"電気代",f:"electric",s:"x",c:1},
+    {l:"電話・ネット",f:"phone",s:"x",c:1},{l:"atama+利用料",f:"atamaFee",s:"x",c:1},
+    {l:"備品費",f:"equipFee",s:"x",c:1},{l:"広告宣伝費",f:"adCost",ed:"a",s:"x",c:1},
+    {l:"システム使用料",f:"systemFee",s:"x",c:1},{l:"その他",f:"otherCost",s:"x",c:1},
+    {l:"販売管理費合計",f:"sgaTotal",s:"x",c:1,h:1},
+    {l:"講師人件費",f:"tutorPay",s:"l",c:1},{l:"社員人件費",f:"staffPay",s:"l",c:1},
+    {l:"法定福利費",f:"welfare",s:"l",c:1},{l:"人件費合計",f:"laborTotal",s:"l",c:1,h:1},
+    {l:"賞与",f:"bonus",s:"b",c:1,skipIf:"ignoreBonus"},
+    {l:"社員求人費",f:"recruitFee",s:"q",c:1,yr1only:1},
+    {l:"消費税",f:"tax",s:"k",c:1},
+    {l:"経費合計",f:"expenseTotal",s:"o",c:1,h:1},{l:"営業利益",f:"profit",s:"p",c:1,h:1},
+  ];
+  const sC={t:"#f0f9ff",r:"#f0fdf4",x:"#fffbeb",l:"#fef2f2",b:"#fdf4ff",q:"#fefce8",k:"#faf5ff",o:"#f8fafc",p:"#ecfdf5",g:"#fdf2f8"};
+  const sB={t:"#bae6fd",r:"#bbf7d0",x:"#fde68a",l:"#fecaca",b:"#e9d5ff",q:"#fde68a",k:"#e9d5ff",o:"#cbd5e1",p:"#6ee7b7",g:"#f9a8d4"};
+  const gg=[{l:"小学生",ix:[0,1,2],co:"#059669",bg:"#ecfdf5"},{l:"中学生",ix:[3,4,5],co:"#2563eb",bg:"#eff6ff"},{l:"高校生",ix:[6,7,8],co:"#9333ea",bg:"#faf5ff"}];
+
+  return h('div',{style:{background:'#fff',borderRadius:10,overflow:'hidden',border:'1px solid #e2e8f0'}},
+    h('div',{style:{padding:'10px 14px',background:'#f8fafc',borderBottom:'1px solid #e2e8f0',display:'flex',justifyContent:'space-between',alignItems:'center'}},
+      h('span',{style:{fontWeight:700,fontSize:14,color:'#334155'}},yearIdx+1+'年目 月別詳細'),
+      h('span',{style:{fontSize:11,color:'#94a3b8'}},'入会数・退会数・広告費は編集可能')
+    ),
+    h('div',{style:{padding:14,overflowX:'auto'}},
+      h('div',{style:{marginBottom:8,padding:'6px 12px',background:'#fef3c7',borderRadius:6,border:'1px solid #fde68a',fontSize:11,color:'#92400e'}},
+        '📌 受験対策費：中3・高3ともに７月〜２月に ¥5,500/月 加算　／　入会初月は月謝半額'
+      ),
+      h('table',{style:{borderCollapse:'collapse',width:'100%',fontSize:12}},
+        h('thead',null,
+          h('tr',{style:{background:'#1e293b',color:'white'}},
+            h('th',{style:{padding:'8px 12px',position:'sticky',left:0,background:'#1e293b',zIndex:2,minWidth:140,textAlign:'left'}},'項目'),
+            ...MO.map((m,i)=>h('th',{key:i,style:{padding:'8px 6px',minWidth:82,textAlign:'right',
+              background:i<om?'#111827':(i>=J3S&&i<=J3E)?'#1e3a5f':'#1e293b',opacity:i<om?0.4:1}},
+              m,
+              i<om&&h('span',{style:{fontSize:8,color:'#ef4444',display:'block'}},'未開校'),
+              i>=om&&(i>=J3S&&i<=J3E)&&h('span',{style:{fontSize:8,color:'#fbbf24',display:'block'}},'+¥5.5k')
+            )),
+            h('th',{style:{padding:'8px 6px',minWidth:88,textAlign:'right',background:'#334155'}},'上期'),
+            h('th',{style:{padding:'8px 6px',minWidth:88,textAlign:'right',background:'#334155'}},'下期'),
+            h('th',{style:{padding:'8px 6px',minWidth:110,textAlign:'right',background:'#0f172a'}},'年間合計')
+          )
+        ),
+        h('tbody',null,
+          ...rows.filter(r=>{
+            if(r.capOnly&&!comp.hasCap)return false;
+            if(r.yr1only&&yearIdx!==0)return false;
+            if(r.skipIf==='ignoreBonus'&&school.ignoreBonus)return false;
+            return true;
+          }).map((r,ri)=>{
+            const bg=sC[r.s]||'#fff';
+            const isP=r.f==='profit',isW=r.f==='withdrawal';
+            const isG=r.f==='c3grad'||r.f==='h3grad';
+            const isEnrNC=r.f==='enrollment'&&!comp.hasCap;
+            const gTotal=r.f==='c3grad'?c3gT:h3gT;
+            const gArr=r.f==='c3grad'?c3grad:h3grad;
+            const gCol=r.f==='c3grad'?'#be185d':'#9333ea';
+            return h('tr',{key:ri,style:{background:r.h?(isP?'#ecfdf5':'#f8fafc'):bg,borderBottom:'1px solid '+(sB[r.s]||'#e5e7eb'),fontWeight:r.h?700:400}},
+              h('td',{style:{padding:'6px 10px',position:'sticky',left:0,zIndex:1,background:r.h?(isP?'#d1fae5':'#e2e8f0'):bg,borderRight:'2px solid #cbd5e1',whiteSpace:'nowrap',fontSize:r.h?12:11,color:isG?gCol:isP?'#065f46':'#334155'}},
+                isEnrNC?'入会数':r.l),
+              ...MO.map((_,mi)=>{
+                const isClosed=mi<om;
+                if(isG){const v=gArr[mi];return h('td',{key:mi,style:{padding:'6px 8px',textAlign:'right',color:v>0?gCol:'#e2e8f0',fontWeight:v>0?700:400,background:isClosed?'#f8fafc':''}},isClosed?'—':v);}
+                if(isClosed)return h('td',{key:mi,style:{padding:'6px 8px',textAlign:'right',color:'#cbd5e1',background:'#f8fafc'}},'—');
+                const v=comp.ms[mi][r.f];
+                if(r.ed==='e'||isEnrNC)return h('td',{key:mi,style:{padding:'3px 4px'}},h(IC,{value:enr[mi],onChange:x=>{const n=[...enr];n[mi]=x;setEnr(n);}}));
+                if(r.ed==='w')return h('td',{key:mi,style:{padding:'3px 4px'}},h(IC,{value:wds[mi],onChange:x=>{const n=[...wds];n[mi]=x;setWds(n);}}));
+                if(r.ed==='a')return h('td',{key:mi,style:{padding:'3px 4px'}},h(IC,{value:ads[mi],onChange:x=>{const n=[...ads];n[mi]=x;setAds(n);}}));
+                if(r.f==='enrollment'&&comp.hasCap){const sv=comp.ms[mi].schedEnr;return h('td',{key:mi,style:{padding:'6px 8px',textAlign:'right',color:v<sv?'#dc2626':'#334155',fontWeight:v<sv?700:400}},v,v<sv&&h('div',{style:{fontSize:9,color:'#94a3b8'}},'予定'+sv));}
+                return h('td',{key:mi,style:{padding:'6px 8px',textAlign:'right',color:v<0?'#dc2626':(isP&&v>0?'#059669':r.neg?'#dc2626':'#334155')}},r.c?(r.neg&&v>0?'▲'+fm(v):fm(v)):v);
+              }),
+              ...(isG
+                ?[0,1].map(ti=>{const v=ti===0?0:gTotal;return h('td',{key:ti,style:{padding:'6px 8px',textAlign:'right',background:'rgba(51,65,85,0.05)',fontWeight:600,color:v>0?gCol:'#e2e8f0'}},v);})
+                :r.avg
+                  ?[{t:comp.h1.tuition,s:comp.h1.students},{t:comp.h2.tuition,s:comp.h2.students}].map((p,ti)=>h('td',{key:ti,style:{padding:'6px 8px',textAlign:'right',background:'rgba(51,65,85,0.05)',fontWeight:600}},fm(p.s>0?Math.round(p.t/p.s):0)))
+                  :[comp.h1,comp.h2].map((t,ti)=>h('td',{key:ti,style:{padding:'6px 8px',textAlign:'right',background:'rgba(51,65,85,0.05)',fontWeight:600,color:t[r.f]<0?'#dc2626':r.neg?'#dc2626':'#334155'}},r.c?(r.neg&&t[r.f]>0?'▲'+fm(t[r.f]):fm(t[r.f])):t[r.f]))
+              ),
+              h('td',{style:{padding:'6px 8px',textAlign:'right',background:'rgba(15,23,42,0.08)',fontWeight:700,color:isG?(gTotal>0?gCol:'#e2e8f0'):comp.yt[r.f]<0?'#dc2626':(isP&&comp.yt[r.f]>0?'#059669':'#0f172a')}},
+                isG?gTotal:r.avg?(comp.yt.students>0?fm(Math.round((comp.yt.tuition-comp.yt.newEnrDiscount)/comp.yt.students)):0):r.c?fm(comp.yt[r.f]):comp.yt[r.f],
+                isW&&h('div',{style:{fontSize:10,fontWeight:700,color:'#dc2626',marginTop:2,background:'#fef2f2',borderRadius:3,padding:'1px 4px',display:'inline-block',marginLeft:4}},comp.wdR2.toFixed(2)+'%②')
+              )
+            );
+          })
+        )
+      ),
+      h('div',{style:{marginTop:8,fontSize:10,color:'#64748b',background:'#f5f3ff',padding:'6px 10px',borderRadius:6,border:'1px solid #ddd6fe'}},
+        '② 高2以下退会率 ＝（高2以下の退会 ＋ 中3卒塾）÷ 高2以下の延べ在籍数 × 100'
+      ),
+      h('div',{style:{marginTop:16,padding:'12px 16px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}},
+        h('h4',{style:{margin:'0 0 8px',color:'#475569',fontSize:13}},'学年別生徒数内訳・構成比'),
+        h('div',{style:{overflowX:'auto'}},
+          h('table',{style:{borderCollapse:'collapse',width:'100%',fontSize:11}},
+            h('thead',null,
+              h('tr',{style:{background:'#e2e8f0'}},
+                h('th',{style:{padding:'6px 10px',textAlign:'left',minWidth:60}},'学年'),
+                h('th',{style:{padding:'6px 8px',textAlign:'right',minWidth:100}},'授業料/atama+'),
+                ...MO.map((m,i)=>h('th',{key:i,style:{padding:'6px 4px',textAlign:'center',minWidth:55}},m))
+              )
+            ),
+            h('tbody',null,
+              ...gg.flatMap(g=>{
+                const ga=g.ix.filter(gi=>act.includes(gi));
+                if(!ga.length)return[];
+                return[
+                  h('tr',{key:'h'+g.l,style:{background:g.bg}},h('td',{colSpan:14,style:{padding:'4px 10px',fontSize:10,fontWeight:700,color:g.co,letterSpacing:1}},'▸ '+g.l)),
+                  ...ga.map(gi=>h('tr',{key:'g'+gi,style:{borderBottom:'1px solid #e5e7eb'}},
+                    h('td',{style:{padding:'4px 10px',fontWeight:600,color:'#475569'}},GL[gi]),
+                    h('td',{style:{padding:'4px 6px',textAlign:'right',color:'#6b7280',fontSize:10,lineHeight:1.6}},
+                      (gi===3||gi===4)?h('div',null,
+                        h('div',{style:{color:'#0891b2'}},'LT ¥'+LJ.toLocaleString()+' / ¥'+ALT.toLocaleString()),
+                        gi===4&&h('div',null,'STD ¥'+SJ.toLocaleString()+' / ¥'+ASTD.toLocaleString())
+                      ):h('div',null,'¥'+effT(tui,gi,0).toLocaleString()+' / ¥'+effA(gi,0).toLocaleString())
+                    ),
+                    ...gs[gi].map((v,mi)=>{const t=mt[mi],p=t>0?(v/t*100):0;return h('td',{key:mi,style:{padding:'3px 4px',textAlign:'center',verticalAlign:'middle'}},
+                      h('div',{style:{color:v>0?'#1e40af':'#cbd5e1',fontWeight:v>0?600:400,lineHeight:1.2}},v),
+                      v>0&&h('div',{style:{fontSize:9,color:g.co,fontWeight:500,lineHeight:1}},p.toFixed(1)+'%')
+                    );})
+                  )),
+                  h('tr',{key:'s'+g.l,style:{background:g.bg,borderBottom:'2px solid '+g.co+'33'}},
+                    h('td',{colSpan:2,style:{padding:'3px 10px',fontSize:10,fontWeight:700,color:g.co}},g.l+'計'),
+                    ...MO.map((_,mi)=>{const sub=ga.reduce((s,gi)=>s+(gs[gi][mi]||0),0),t=mt[mi],p=t>0?(sub/t*100):0;return h('td',{key:mi,style:{padding:'3px 4px',textAlign:'center'}},
+                      h('div',{style:{fontWeight:700,color:g.co,lineHeight:1.2}},sub),
+                      h('div',{style:{fontSize:9,color:g.co,opacity:0.7,fontWeight:600,lineHeight:1}},p.toFixed(1)+'%')
+                    );})
+                  )
+                ];
+              }),
+              h('tr',{style:{background:'#1e293b'}},
+                h('td',{colSpan:2,style:{padding:'6px 10px',fontWeight:700,color:'white',fontSize:11}},'合計'),
+                ...MO.map((_,mi)=>h('td',{key:mi,style:{padding:'6px 4px',textAlign:'center',fontWeight:700,color:'white',fontSize:12}},mt[mi]))
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── SchoolSim ──
+function SchoolSim({school,onChange,onBack}){
+  const s=school;
+  const set=(k,v)=>onChange({...s,[k]:v});
+  const om=s.openMonth||0;
+
+  const applyAnn=v=>{const d=dR(v);const w=aWA([d,d,d,d,d],s.wR1,s.wR2,s.c3r,s.cap);onChange({...s,ae:v,e1:d,e2:d,e3:d,e4:d,e5:d,w1:w[0],w2:w[1],w3:w[2],w4:w[3],w5:w[4]});};
+  const hR1=v=>{const w=aWA([s.e1,s.e2,s.e3,s.e4,s.e5],v,s.wR2,s.c3r,s.cap);onChange({...s,wR1:v,w1:w[0],w2:w[1],w3:w[2],w4:w[3],w5:w[4]});};
+  const hR2=v=>{const w=aWA([s.e1,s.e2,s.e3,s.e4,s.e5],s.wR1,v,s.c3r,s.cap);onChange({...s,wR2:v,w1:w[0],w2:w[1],w3:w[2],w4:w[3],w5:w[4]});};
+  const hC3=v=>{const w=aWA([s.e1,s.e2,s.e3,s.e4,s.e5],s.wR1,s.wR2,v,s.cap);onChange({...s,c3r:v,w1:w[0],w2:w[1],w3:w[2],w4:w[3],w5:w[4]});};
+  const hCap=v=>{const w=aWA([s.e1,s.e2,s.e3,s.e4,s.e5],s.wR1,s.wR2,s.c3r,v);onChange({...s,cap:v,w1:w[0],w2:w[1],w3:w[2],w4:w[3],w5:w[4]});};
+
+  const[tab,setTab]=useState('summary');
+  const tui=s.tui,c3r=s.c3r,cap=s.cap,c3p=Math.round(c3r*100);
+
+  const allData=useMemo(()=>{
+    const gAll=[],aeAll=[];let st=Array(9).fill(0);
+    const enrs=[s.e1,s.e2,s.e3,s.e4,s.e5],wds=[s.w1,s.w2,s.w3,s.w4,s.w5];
+    for(let y=0;y<5;y++){
+      const me=applyMask(enrs[y],om,y),mw=applyMask(wds[y],om,y);
+      const{gs,pw,ae}=cY(me,mw,st,c3r,cap);
+      gAll.push(gs);aeAll.push(ae);
+      st=prog(gs.map((g,i)=>Math.max(0,g[11]-(pw[i]||0))));
+    }
+    return{gAll,aeAll};
+  },[s.e1,s.e2,s.e3,s.e4,s.e5,s.w1,s.w2,s.w3,s.w4,s.w5,c3r,cap,om]);
+
+  const allG=allData.gAll,allAE=allData.aeAll;
+  const mkP=()=>({mf:s.mf,rn:s.rn,wt:s.wt,el:s.el,ph:s.ph,er:s.er,sr:s.sr,oc:s.oc,tp:s.tp,sp:s.sp,wr:s.wr,tr:s.tr});
+  const wdsA=[s.w1,s.w2,s.w3,s.w4,s.w5],aa=[s.a1,s.a2,s.a3,s.a4,s.a5];
+
+  const sumD=useMemo(()=>allG.map((gs,yi)=>{
+    let sl=0,ex=0,ts=0,tw=0;
+    for(let mi=0;mi<12;mi++){
+      const st=gs.reduce((a,g)=>a+(g[mi]||0),0);ts+=st;tw+=wdsA[yi][mi];
+      const tu=gs.reduce((a,g,gi)=>a+(g[mi]||0)*effT(tui,gi,mi),0);
+      const ned=allAE[yi][mi]>0?Math.round(allAE[yi][mi]*effT(tui,EC[mi%12],mi)/2):0;
+      const ma=allAE[yi][mi]*s.mf,sa=tu-ned+ma;
+      const at2=gs.reduce((a,g,gi)=>a+(g[mi]||0)*effA(gi,mi),0);
+      const sg=s.rn+s.wt+s.el+s.ph+at2+st*s.er+aa[yi][mi]+st*s.sr+s.oc;
+      const tA=st>=60?s.tp:0,wf=s.sp*s.wr,lb=tA+s.sp+wf,tx=sa*s.tr;
+      const extra=calcExtra(mi,yi,s);
+      sl+=sa;ex+=sg+lb+tx+extra;
+    }
+    if(yi===0)ex+=s.iC;
+    const bonus=yearBonus(yi,s);
+    const rc=yi===0?(s.rc||0):0;
+    const c3g=Math.min(Math.round((gs[5][11]||0)*c3r),gs[5][11]||0);
+    const h3g=gs[8][10]||0;
+    const tWd=tw+c3g,tWdA=tw+c3g+h3g;
+    const nH3=allG[yi].slice(0,8).reduce((a,g)=>a+g.reduce((x,y)=>x+y,0),0);
+    return{sales:sl,expenses:ex,profit:sl-ex,ic:yi===0?s.iC:0,rc,bonus,
+      ts,tw,c3g,h3g,totalWd:tWd,totalWdAll:tWdA,nonH3:nH3,
+      wdR1:ts>0?(tWdA/ts*100):0,wdR2:nH3>0?(tWd/nH3*100):0};
+  }),[allG,allAE,tui,s]);
+
+  const cum=useMemo(()=>{let r=0,x=0;return sumD.map(y=>{r+=y.sales;x+=y.expenses;return{r,x,p:r-x};});},[sumD]);
+  const mx=Math.max(...sumD.map(y=>Math.max(Math.abs(y.sales),Math.abs(y.expenses))),1);
+  const tabs=[{id:'summary',l:'サマリー'},{id:'y1',l:'1年目'},{id:'y2',l:'2年目'},{id:'y3',l:'3年目'},{id:'y4',l:'4年目'},{id:'y5',l:'5年目'}];
+  const yc=[
+    {e:s.e1,se:v=>set('e1',v),w:s.w1,sw:v=>set('w1',v),a:s.a1,sa:v=>set('a1',v)},
+    {e:s.e2,se:v=>set('e2',v),w:s.w2,sw:v=>set('w2',v),a:s.a2,sa:v=>set('a2',v)},
+    {e:s.e3,se:v=>set('e3',v),w:s.w3,sw:v=>set('w3',v),a:s.a3,sa:v=>set('a3',v)},
+    {e:s.e4,se:v=>set('e4',v),w:s.w4,sw:v=>set('w4',v),a:s.a4,sa:v=>set('a4',v)},
+    {e:s.e5,se:v=>set('e5',v),w:s.w5,sw:v=>set('w5',v),a:s.a5,sa:v=>set('a5',v)},
+  ];
+
+  function BonusCard(){
+    return h('div',{style:{marginTop:8,padding:'8px 10px',background:s.ignoreBonus?'#f8fafc':'#fdf4ff',borderRadius:6,border:'1px solid '+(s.ignoreBonus?'#e2e8f0':'#e9d5ff')}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:8,marginBottom:s.ignoreBonus?0:8}},
+        h('div',{style:{fontSize:11,fontWeight:700,color:s.ignoreBonus?'#94a3b8':'#6b21a8'}},'賞与設定'),
+        h('label',{style:{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:10,color:'#64748b',userSelect:'none'}},
+          h('input',{type:'checkbox',checked:!!s.ignoreBonus,onChange:e=>set('ignoreBonus',e.target.checked),style:{width:12,height:12,cursor:'pointer'}}),
+          '加味しない'
+        )
+      ),
+      !s.ignoreBonus&&h('div',{style:{display:'flex',flexDirection:'column',gap:6}},
+        // 1回目
+        h('div',{style:{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
+          h('span',{style:{fontSize:10,color:'#64748b',minWidth:28}},'1回目'),
+          h('select',{value:s.bm1!=null?s.bm1:5,onChange:e=>set('bm1',Number(e.target.value)),
+            style:{padding:'2px 4px',borderRadius:4,border:'1px solid #cbd5e1',fontSize:11,color:'#334155',cursor:'pointer'}},
+            ...MO_S.map((m,i)=>h('option',{key:i,value:i},m))
+          ),
+          h('span',{style:{fontSize:10,color:'#64748b'}},'×'),
+          h('div',{style:{display:'flex',alignItems:'center',gap:2}},
+            h('span',{style:{fontSize:9,color:'#7c3aed'}},'1年目'),
+            h('input',{type:'number',value:s.br1||0,step:0.1,min:0,onChange:e=>set('br1',Math.max(0,Number(e.target.value))),
+              style:{width:46,border:'1px solid #c4b5fd',borderRadius:4,padding:'2px 4px',fontSize:11,textAlign:'right',outline:'none',background:'#f5f3ff'}})
+          ),
+          h('span',{style:{fontSize:10,color:'#94a3b8'}},'／'),
+          h('div',{style:{display:'flex',alignItems:'center',gap:2}},
+            h('span',{style:{fontSize:9,color:'#0891b2'}},'2年目〜'),
+            h('input',{type:'number',value:s.br1_2||0,step:0.1,min:0,onChange:e=>set('br1_2',Math.max(0,Number(e.target.value))),
+              style:{width:46,border:'1px solid #a5f3fc',borderRadius:4,padding:'2px 4px',fontSize:11,textAlign:'right',outline:'none',background:'#ecfeff'}})
+          ),
+          h('span',{style:{fontSize:10,color:'#64748b'}},'ヶ月')
+        ),
+        // 2回目
+        h('div',{style:{display:'flex',alignItems:'center',gap:4,flexWrap:'wrap'}},
+          h('span',{style:{fontSize:10,color:'#64748b',minWidth:28}},'2回目'),
+          h('select',{value:s.bm2!=null?s.bm2:9,onChange:e=>set('bm2',Number(e.target.value)),
+            style:{padding:'2px 4px',borderRadius:4,border:'1px solid #cbd5e1',fontSize:11,color:'#334155',cursor:'pointer'}},
+            ...MO_S.map((m,i)=>h('option',{key:i,value:i},m))
+          ),
+          h('span',{style:{fontSize:10,color:'#64748b'}},'×'),
+          h('div',{style:{display:'flex',alignItems:'center',gap:2}},
+            h('span',{style:{fontSize:9,color:'#7c3aed'}},'1年目'),
+            h('input',{type:'number',value:s.br2||0,step:0.1,min:0,onChange:e=>set('br2',Math.max(0,Number(e.target.value))),
+              style:{width:46,border:'1px solid #c4b5fd',borderRadius:4,padding:'2px 4px',fontSize:11,textAlign:'right',outline:'none',background:'#f5f3ff'}})
+          ),
+          h('span',{style:{fontSize:10,color:'#94a3b8'}},'／'),
+          h('div',{style:{display:'flex',alignItems:'center',gap:2}},
+            h('span',{style:{fontSize:9,color:'#0891b2'}},'2年目〜'),
+            h('input',{type:'number',value:s.br2_2||0,step:0.1,min:0,onChange:e=>set('br2_2',Math.max(0,Number(e.target.value))),
+              style:{width:46,border:'1px solid #a5f3fc',borderRadius:4,padding:'2px 4px',fontSize:11,textAlign:'right',outline:'none',background:'#ecfeff'}})
+          ),
+          h('span',{style:{fontSize:10,color:'#64748b'}},'ヶ月')
+        ),
+        h('div',{style:{fontSize:10,color:'#7c3aed',marginTop:2}},
+          '1年目: ¥'+(Math.round(s.sp*(s.br1||0))+Math.round(s.sp*(s.br2||0))).toLocaleString('ja-JP')+
+          '　2年目〜: ¥'+(Math.round(s.sp*(s.br1_2||0))+Math.round(s.sp*(s.br2_2||0))).toLocaleString('ja-JP')
+        )
+      )
+    );
+  }
+
+  return h('div',{style:{fontFamily:"'Noto Sans JP',sans-serif",background:'#f1f5f9',minHeight:'100vh',fontSize:13}},
+    h('div',{style:{background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0c4a6e 100%)',padding:'16px 20px 0',color:'white'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:10,marginBottom:4,flexWrap:'wrap'}},
+        onBack&&h('button',{onClick:onBack,style:{padding:'5px 12px',border:'none',cursor:'pointer',borderRadius:6,fontSize:12,fontWeight:700,background:'rgba(255,255,255,0.15)',color:'white'}},'← 一覧へ'),
+        h('div',{style:{width:32,height:32,borderRadius:8,background:'linear-gradient(135deg,#38bdf8,#818cf8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:900}},'M'),
+        h('div',null,h('div',{style:{fontSize:16,fontWeight:700}},'まんてん個別プラス'),h('div',{style:{fontSize:10,opacity:0.7}},'ビジネスモデル シミュレーター')),
+        h('div',{style:{display:'flex',alignItems:'center',gap:6,marginLeft:16,flexWrap:'wrap'}},
+          h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+            h('input',{value:s.schoolName,onChange:e=>set('schoolName',e.target.value),placeholder:'教室名',
+              style:{padding:'4px 8px',borderRadius:6,border:'none',fontSize:13,fontWeight:700,background:'rgba(255,255,255,0.15)',color:'white',width:140,outline:'none'}}),
+            h('span',{style:{fontSize:13,fontWeight:700,opacity:0.9}},'教室')
+          ),
+          h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+            h('input',{value:s.openDate,onChange:e=>set('openDate',e.target.value),placeholder:'例：2025年4月',
+              style:{padding:'4px 8px',borderRadius:6,border:'none',fontSize:11,background:'rgba(255,255,255,0.15)',color:'white',width:110,outline:'none'}}),
+            h('span',{style:{fontSize:11,opacity:0.8}},'開校予定')
+          ),
+          h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+            h('span',{style:{fontSize:11,opacity:0.8,whiteSpace:'nowrap'}},'担当：'),
+            h('input',{value:s.staffName,onChange:e=>set('staffName',e.target.value),placeholder:'担当社員名',
+              style:{padding:'4px 8px',borderRadius:6,border:'none',fontSize:11,background:'rgba(255,255,255,0.15)',color:'white',width:100,outline:'none'}})
+          ),
+          h('div',{style:{display:'flex',alignItems:'center',gap:4}},
+            h('span',{style:{fontSize:11,opacity:0.8,whiteSpace:'nowrap'}},'開校月：'),
+            h('select',{value:om,onChange:e=>set('openMonth',Number(e.target.value)),
+              style:{padding:'4px 6px',borderRadius:6,border:'none',fontSize:11,fontWeight:700,background:'rgba(255,255,255,0.2)',color:'white',outline:'none',cursor:'pointer'}},
+              ...MO_S.map((m,i)=>h('option',{key:i,value:i},m))
+            )
+          )
+        )
+      ),
+      h('div',{style:{display:'flex',gap:2,marginTop:10,overflowX:'auto'}},
+        ...tabs.map(t=>h('button',{key:t.id,onClick:()=>setTab(t.id),
+          style:{padding:'7px 14px',border:'none',cursor:'pointer',borderRadius:'6px 6px 0 0',fontSize:12,fontWeight:600,
+            background:tab===t.id?'#f1f5f9':'rgba(255,255,255,0.1)',color:tab===t.id?'#0f172a':'rgba(255,255,255,0.7)'}},t.l))
+      )
+    ),
+    h('div',{style:{padding:'14px 16px',maxWidth:1400,margin:'0 auto'}},
+      // ルール
+      h('div',{style:{background:'#fff',borderRadius:10,marginBottom:12,border:'1px solid #e2e8f0',padding:'12px 16px'}},
+        h('div',{style:{fontSize:13,fontWeight:700,color:'#334155',marginBottom:8}},'🔄 入会・退会ルール'),
+        h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+          ...[
+            {bg:'#fef2f2',bd:'#fecaca',hc:'#991b1b',tc:'#7f1d1d',title:'３月卒業ルール（中3）',body:'中3の'+c3p+'%が卒業退会 / 残り'+(100-c3p)+'%が高1に進級'},
+            {bg:'#fef3c7',bd:'#fde68a',hc:'#92400e',tc:'#78350f',title:'退会タイミング',body:'申告月は在籍（月謝発生）。翌月から減少。'},
+            {bg:'#eff6ff',bd:'#bfdbfe',hc:'#1e40af',tc:'#1e3a5f',title:'目標退会率 1年目:'+s.wR1+'% / 2年目〜:'+s.wR2+'%',body:'月別退会数は率から自動計算'},
+            ...(cap>0?[{bg:'#fef3c7',bd:'#f59e0b',hc:'#92400e',tc:'#78350f',title:'生徒数上限: '+cap+'名',body:'上限到達後は退会者分だけ入会'}]:[]),
+          ].map((c,i)=>h('div',{key:i,style:{flex:'1 1 180px',padding:'8px 12px',background:c.bg,borderRadius:8,border:'1px solid '+c.bd}},
+            h('div',{style:{fontSize:11,fontWeight:700,color:c.hc,marginBottom:3}},'▸ '+c.title),
+            h('div',{style:{fontSize:10,color:c.tc,lineHeight:1.6}},c.body)
+          ))
+        )
+      ),
+      // パラメータ
+      h('details',{style:{background:'#fff',borderRadius:10,marginBottom:12,border:'1px solid #e2e8f0',overflow:'hidden'}},
+        h('summary',{style:{padding:'10px 14px',cursor:'pointer',fontSize:12,fontWeight:600,color:'#475569',background:'#f8fafc'}},'⚙️ 共通パラメータ設定（クリックで展開）'),
+        h('div',{style:{padding:'14px',display:'flex',flexWrap:'wrap',gap:20}},
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #3b82f6',paddingBottom:3}},'基本設定'),
+            h(PI,{label:'初期費用',value:s.iC,onChange:v=>set('iC',v),prefix:'¥'}),
+            h(PI,{label:'社員求人費用',value:s.rc||0,onChange:v=>set('rc',v),prefix:'¥',wide:true}),
+            h('div',{style:{fontSize:10,color:'#92400e',marginLeft:154,marginTop:-4,marginBottom:6}},'1年目1ヵ月目に計上'),
+            h(PI,{label:'家賃（税込）',value:s.rn,onChange:v=>set('rn',v),prefix:'¥'}),
+            h(PI,{label:'教材費（初回）',value:s.mf,onChange:v=>set('mf',v),prefix:'¥'}),
+            h('div',{style:{padding:'6px 8px',background:'#eff6ff',borderRadius:6,border:'1px solid #bfdbfe',marginTop:6}},
+              h(PI,{label:'年間入会数',value:s.ae,onChange:applyAnn,suffix:'人',min:1}),
+              h('div',{style:{fontSize:10,color:'#6b7280',marginTop:2}},'※19教室実績比率で月別配分')
+            ),
+            h('div',{style:{padding:'6px 8px',background:cap>0?'#fef3c7':'#f8fafc',borderRadius:6,border:'1px solid '+(cap>0?'#fde68a':'#e2e8f0'),marginTop:6}},
+              h(PI,{label:'生徒数上限',value:cap,onChange:hCap,suffix:'人',min:0}),
+              h('div',{style:{fontSize:10,color:cap>0?'#92400e':'#6b7280',marginTop:2}},cap>0?'上限到達後は退会者分だけ入会':'※0＝上限なし')
+            )
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #dc2626',paddingBottom:3}},'退会率設定'),
+            h(PI,{label:'1年目 退会率',value:s.wR1,onChange:hR1,suffix:'%'}),
+            h(PI,{label:'2年目〜 退会率',value:s.wR2,onChange:hR2,suffix:'%'}),
+            h(PI,{label:'中3退会率(3月)',value:c3p,onChange:v=>hC3(Math.min(100,Math.max(0,v))/100),suffix:'%',wide:true})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #10b981',paddingBottom:3}},'固定費'),
+            h(PI,{label:'水道代',value:s.wt,onChange:v=>set('wt',v),prefix:'¥'}),
+            h(PI,{label:'電気代',value:s.el,onChange:v=>set('el',v),prefix:'¥'}),
+            h(PI,{label:'電話・ネット',value:s.ph,onChange:v=>set('ph',v),prefix:'¥'}),
+            h(PI,{label:'その他',value:s.oc,onChange:v=>set('oc',v),prefix:'¥'})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #f59e0b',paddingBottom:3}},'変動費（生徒1人/月）'),
+            h(PI,{label:'備品費',value:s.er,onChange:v=>set('er',v),prefix:'¥'}),
+            h(PI,{label:'システム使用料',value:s.sr,onChange:v=>set('sr',v),prefix:'¥'})
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #ef4444',paddingBottom:3}},'人件費'),
+            h(PI,{label:'講師人件費',value:s.tp,onChange:v=>set('tp',v),prefix:'¥'}),
+            h('div',{style:{fontSize:10,color:'#6b7280',marginLeft:106,marginTop:-4,marginBottom:6}},'生徒数60名以上で発生'),
+            h(PI,{label:'社員人件費（基本給）',value:s.sp,onChange:v=>set('sp',v),prefix:'¥',wide:true}),
+            h(PI,{label:'法定福利費率',value:Math.round(s.wr*100),onChange:v=>set('wr',v/100),suffix:'%'}),
+            h(PI,{label:'消費税率',value:Math.round(s.tr*100),onChange:v=>set('tr',v/100),suffix:'%'}),
+            // 賞与設定
+            h(BonusCard,null)
+          ),
+          h('div',null,
+            h('div',{style:{fontSize:11,fontWeight:700,color:'#334155',marginBottom:6,borderBottom:'2px solid #8b5cf6',paddingBottom:3}},'学年別授業料（税込/月）'),
+            ...GL.map((g,i)=>{
+              if(i===3||i===4)return h('div',{key:i,style:{display:'flex',alignItems:'center',gap:6,marginBottom:6}},
+                h('label',{style:{fontSize:11,color:'#64748b',minWidth:100,whiteSpace:'nowrap'}},g),
+                h('span',{style:{fontSize:11,color:'#94a3b8',background:'#f1f5f9',padding:'4px 8px',borderRadius:4,minWidth:120,textAlign:'right',display:'inline-block'}},i===3?'全員ライト':'4〜11月 LT / 12月〜 STD')
+              );
+              return h('div',{key:i},h(PI,{label:g,value:tui[i],onChange:v=>{const n=[...tui];n[i]=v;set('tui',n);},prefix:'¥'}));
+            })
+          )
+        )
+      ),
+      // サマリー
+      tab==='summary'&&h('div',null,
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10,marginBottom:16}},
+          ...sumD.map((y,i)=>h('div',{key:i,style:{background:'#fff',borderRadius:10,padding:14,border:'1px solid '+(y.profit>=0?'#bbf7d0':'#fecaca')}},
+            h('div',{style:{fontSize:11,color:'#64748b',fontWeight:600,marginBottom:6}},(i+1)+'年目'),
+            h('div',{style:{fontSize:10,color:'#94a3b8'}},'売上'),
+            h('div',{style:{fontSize:14,fontWeight:700,color:'#0f172a'}},'¥'+fm(y.sales)),
+            h('div',{style:{display:'flex',justifyContent:'space-between',marginTop:6}},
+              h('div',null,
+                h('div',{style:{fontSize:10,color:'#94a3b8'}},'営業利益'),
+                h('div',{style:{fontSize:16,fontWeight:900,color:y.profit>=0?'#059669':'#dc2626'}},(y.profit>=0?'+':'')+'¥'+fm(y.profit))
+              ),
+              h('div',{style:{textAlign:'right'}},
+                h('div',{style:{fontSize:10,color:'#dc2626',fontWeight:600}},'②高2以下退会率'),
+                h('div',{style:{fontSize:13,fontWeight:700,color:'#dc2626'}},y.wdR2.toFixed(2)+'%')
+              )
+            )
+          ))
+        ),
+        h('div',{style:{background:'#fff',borderRadius:10,overflow:'hidden',border:'1px solid #e2e8f0',marginBottom:16}},
+          h('div',{style:{padding:'10px 14px',background:'#f8fafc',borderBottom:'1px solid #e2e8f0',fontWeight:700,fontSize:13,color:'#334155'}},'5年間サマリー'),
+          h('div',{style:{overflowX:'auto'}},
+            h('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+              h('thead',null,h('tr',{style:{background:'#f1f5f9'}},
+                h('th',{style:{padding:'8px 14px',textAlign:'left',borderBottom:'2px solid #cbd5e1'}},'項目'),
+                ...[1,2,3,4,5].map(y=>h('th',{key:y,style:{padding:'8px 10px',textAlign:'right',borderBottom:'2px solid #cbd5e1'}},y+'年目'))
+              )),
+              h('tbody',null,
+                h('tr',{style:{borderBottom:'1px solid #e5e7eb',background:'#fef2f2'}},
+                  h('td',{style:{padding:'8px 14px',fontWeight:600,color:'#991b1b',fontSize:11}},'②高2以下退会率'),
+                  ...sumD.map((y,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right'}},
+                    h('span',{style:{fontSize:14,fontWeight:700,color:'#dc2626'}},y.wdR2.toFixed(2)+'%'),
+                    h('div',{style:{fontSize:9,color:'#be185d'}},'中3卒業'+y.c3g)
+                  ))
+                ),
+                ...[
+                  {l:'売上',k:'sales'},
+                  {l:'初期費用',k:'ic',bg:'#fefce8'},
+                  {l:'社員求人費（1年目のみ）',k:'rc',bg:'#fefce8'},
+                  ...(!s.ignoreBonus?[{l:'賞与（年間）',k:'bonus',bg:'#fdf4ff'}]:[]),
+                  {l:'経費合計',k:'expenses'},
+                ].map(r=>h('tr',{key:r.k,style:{borderBottom:'1px solid #e5e7eb',background:r.bg||'transparent'}},
+                  h('td',{style:{padding:'8px 14px',fontWeight:600,color:'#475569'}},r.l),
+                  ...sumD.map((y,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right'}},'¥'+fm(y[r.k]||0)))
+                )),
+                h('tr',{style:{background:'#ecfdf5',fontWeight:700}},
+                  h('td',{style:{padding:'8px 14px',color:'#065f46'}},'収支（年）'),
+                  ...sumD.map((y,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right',color:y.profit>=0?'#059669':'#dc2626',fontSize:13}},'¥'+fm(y.profit)))
+                ),
+                h('tr',{style:{background:'#f0f9ff',fontWeight:700}},
+                  h('td',{style:{padding:'8px 14px',color:'#0c4a6e'}},'総収支（累計）'),
+                  ...cum.map((c,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right',color:c.p>=0?'#059669':'#dc2626',fontSize:13}},'¥'+fm(c.p)))
+                )
+              )
+            )
+          )
+        ),
+        h('div',{style:{background:'#fff',borderRadius:10,padding:16,border:'1px solid #e2e8f0',marginBottom:16}},
+          h('div',{style:{fontWeight:700,fontSize:13,color:'#334155',marginBottom:12}},'年間推移チャート'),
+          h('div',{style:{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}},
+            ...sumD.map((y,i)=>h('div',{key:i,style:{textAlign:'center'}},
+              h('div',{style:{fontSize:11,fontWeight:600,color:'#64748b',marginBottom:6}},(i+1)+'年目'),
+              h('div',{style:{display:'flex',gap:3,alignItems:'flex-end',height:100,justifyContent:'center'}},
+                h('div',{style:{width:20,background:'linear-gradient(to top,#3b82f6,#60a5fa)',borderRadius:'3px 3px 0 0',height:Math.max(4,(y.sales/mx)*90)}}),
+                h('div',{style:{width:20,background:'linear-gradient(to top,#f43f5e,#fb7185)',borderRadius:'3px 3px 0 0',height:Math.max(4,(y.expenses/mx)*90)}})
+              ),
+              h('div',{style:{fontSize:11,fontWeight:700,marginTop:4,color:y.profit>=0?'#059669':'#dc2626'}},(y.profit>=0?'+':'')+'¥'+(y.profit/10000).toFixed(0)+'万')
+            ))
+          ),
+          h('div',{style:{display:'flex',gap:12,justifyContent:'center',marginTop:10}},
+            h('div',{style:{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#64748b'}},h('div',{style:{width:10,height:10,background:'#3b82f6',borderRadius:2}}),'売上'),
+            h('div',{style:{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#64748b'}},h('div',{style:{width:10,height:10,background:'#f43f5e',borderRadius:2}}),'経費')
+          ),
+          h('div',{style:{marginTop:12,padding:'10px 14px',background:'#f0fdf4',borderRadius:8,border:'1px solid #bbf7d0'}},
+            h('div',{style:{fontSize:12,fontWeight:600,color:'#065f46'}},'💰 累計黒字転換: '+(cum.findIndex(c=>c.p>=0)>=0?(cum.findIndex(c=>c.p>=0)+1)+'年目':'5年以内には達成できません')),
+            h('div',{style:{fontSize:11,color:'#047857',marginTop:3}},'5年目終了時の累計収支: ¥'+fm(cum[4]?cum[4].p:0))
+          )
+        )
+      ),
+      ...[0,1,2,3,4].map(i=>tab===('y'+(i+1))?h(YSTab,{key:i,yearIdx:i,params:mkP(),tui,gs:allG[i],c3r,actEnr:allAE[i],
+        wds:yc[i].w,setWds:yc[i].sw,ads:yc[i].a,setAds:yc[i].sa,enr:yc[i].e,setEnr:yc[i].se,
+        openMonth:om,school:s}):null)
+    )
+  );
+}
+
+// ── TopPage ──
+function TopPage({schools,onSelect,onAdd,onDelete,onDuplicate,saveMsg}){
+  const colors=["#3b82f6","#10b981","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#84cc16"];
+  return h('div',{style:{minHeight:'100vh',background:'#f1f5f9',fontFamily:"'Noto Sans JP',sans-serif"}},
+    h('div',{style:{background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0c4a6e 100%)',padding:'24px 32px',color:'white'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:12}},
+        h('div',{style:{width:44,height:44,borderRadius:10,background:'linear-gradient(135deg,#38bdf8,#818cf8)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:900}},'M'),
+        h('div',null,h('div',{style:{fontSize:20,fontWeight:700}},'まんてん個別プラス'),h('div',{style:{fontSize:11,opacity:0.7}},'ビジネスモデル シミュレーター')),
+        saveMsg&&h('span',{style:{fontSize:11,background:'rgba(255,255,255,0.15)',padding:'4px 10px',borderRadius:6,color:'#fef9c3',marginLeft:16}},saveMsg)
+      )
+    ),
+    h('div',{style:{padding:'32px',maxWidth:1200,margin:'0 auto'}},
+      h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}},
+        h('div',null,h('div',{style:{fontSize:18,fontWeight:700,color:'#1e293b'}},'教室一覧'),h('div',{style:{fontSize:12,color:'#64748b',marginTop:2}},'教室を選択してシミュレーターを開きます')),
+        h('button',{onClick:onAdd,style:{padding:'10px 20px',border:'none',cursor:'pointer',borderRadius:8,fontSize:13,fontWeight:700,background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',color:'white'}},'＋ 教室を追加')
+      ),
+      schools.length===0
+        ?h('div',{style:{textAlign:'center',padding:'80px 20px',background:'#fff',borderRadius:16,border:'2px dashed #cbd5e1'}},
+          h('div',{style:{fontSize:48,marginBottom:16}},'🏫'),
+          h('div',{style:{fontSize:16,fontWeight:600,color:'#475569',marginBottom:8}},'まだ教室が登録されていません'),
+          h('button',{onClick:onAdd,style:{padding:'12px 24px',border:'none',cursor:'pointer',borderRadius:8,fontSize:13,fontWeight:700,background:'#3b82f6',color:'white'}},'＋ 最初の教室を追加')
+        )
+        :h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:16}},
+          ...schools.map((sc,idx)=>{
+            const color=colors[idx%colors.length];
+            return h('div',{key:sc.id,style:{background:'#fff',borderRadius:14,overflow:'hidden',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:'1px solid #e2e8f0'}},
+              h('div',{style:{background:color,height:6}}),
+              h('div',{style:{padding:20}},
+                h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:12}},
+                  h('div',null,
+                    h('div',{style:{fontSize:18,fontWeight:700,color:'#1e293b'}},(sc.schoolName||'（未設定）')+' 教室'),
+                    h('div',{style:{fontSize:11,color:'#64748b',marginTop:2}},
+                      sc.openDate&&h('span',{style:{marginRight:8}},'📅 '+sc.openDate+'開校予定'),
+                      sc.staffName&&h('span',null,'👤 担当：'+sc.staffName)
+                    )
+                  ),
+                  h('div',{style:{display:'flex',gap:4}},
+                    h('button',{onClick:e=>{e.stopPropagation();if(window.confirm('「'+(sc.schoolName||'未設定')+'教室」を削除しますか？'))onDelete(sc.id);},
+                      style:{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:6,padding:'4px 8px',fontSize:11,color:'#dc2626',cursor:'pointer',fontWeight:600}},'削除'),
+                    h('button',{onClick:e=>{e.stopPropagation();onDuplicate(sc.id);},
+                      style:{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:6,padding:'4px 8px',fontSize:11,color:'#059669',cursor:'pointer',fontWeight:600}},'複製')
+                  )
+                ),
+                h('div',{style:{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}},
+                  h('span',{style:{background:'#f1f5f9',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#475569'}},'年間入会 '+sc.ae+'人'),
+                  h('span',{style:{background:'#f1f5f9',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#475569'}},'退会率 '+sc.wR2+'%設定'),
+                  h('span',{style:{background:'#f1f5f9',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#475569'}},'初期費用 ¥'+(sc.iC/10000).toFixed(0)+'万'),
+                  sc.openMonth>0&&h('span',{style:{background:'#eff6ff',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#1e40af'}},MO_S[sc.openMonth]+'開校')
+                ),
+                h('button',{onClick:()=>onSelect(sc.id),style:{width:'100%',padding:10,border:'none',cursor:'pointer',borderRadius:8,fontSize:13,fontWeight:700,background:color,color:'white'}},'シミュレーターを開く →')
+              )
+            );
+          })
+        )
+    )
+  );
+}
+
+// ── App ──
+const PRESET={id:1774525935985.992,schoolName:"新在家",openDate:"2026年4月13日",staffName:"川口",openMonth:3,
+  iC:3340049,rc:800000,rn:242000,ae:30,mf:11000,wt:2000,el:30000,ph:10000,er:500,sr:500,oc:10000,
+  tp:90000,sp:350000,wr:0.15,tr:0.07,
+  bm1:5,br1:1.0,bm2:9,br2:1.0,br1_2:1.0,br2_2:1.0,ignoreBonus:false,
+  tui:[13640,13640,13640,32450,32450,32450,41250,42350,44550],
+  c3r:0.6666666666666666,wR1:4.5,wR2:3.5,cap:80,
+  e1:[3,2,2,5,1,2,2,2,2,2,3,4],e2:[3,2,2,5,1,2,2,2,2,2,3,4],e3:[3,2,2,5,1,2,2,2,2,2,3,4],e4:[3,2,2,5,1,2,2,2,2,2,3,4],e5:[3,2,2,5,1,2,2,2,2,2,3,4],
+  w1:[0,0,0,1,0,0,0,0,0,0,1,1],w2:[1,0,0,1,0,0,1,0,1,0,1,1],w3:[1,0,0,1,1,1,1,0,1,1,1,1],w4:[1,0,0,1,1,1,1,1,1,1,1,1],w5:[1,1,1,1,1,1,1,1,1,1,1,1],
+  a1:[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000],
+  a2:[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000],
+  a3:[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000],
+  a4:[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000],
+  a5:[150000,150000,150000,150000,150000,50000,50000,100000,150000,150000,100000,150000]};
+
+function App(){
+  const[schools,setSchools]=useState([PRESET]);
+  const[selId,setSelId]=useState(null);
+  const[saveMsg,setSaveMsg]=useState('');
+  useEffect(()=>{try{const d=localStorage.getItem('manten_v6');if(d)setSchools(JSON.parse(d));}catch(e){}},[] );
+  useEffect(()=>{try{localStorage.setItem('manten_v6',JSON.stringify(schools));}catch(e){}}, [schools]);
+  const handleBack=()=>{setSaveMsg('💾 自動保存しました');setTimeout(()=>setSaveMsg(''),3000);setSelId(null);};
+  const sel=schools.find(s=>s.id===selId);
+  return sel
+    ?h(SchoolSim,{school:sel,onChange:u=>setSchools(prev=>prev.map(s=>s.id===u.id?u:s)),onBack:handleBack})
+    :h(TopPage,{schools,saveMsg,
+      onSelect:setSelId,
+      onAdd:()=>setSchools(prev=>[...prev,mkDef('')]),
+      onDelete:id=>setSchools(prev=>prev.filter(s=>s.id!==id)),
+      onDuplicate:id=>{const s=schools.find(x=>x.id===id);if(s)setSchools(prev=>[...prev,{...s,id:Date.now()+Math.random(),schoolName:(s.schoolName||'')+'のコピー'}]);}
+    });
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(h(App,null));
+</script>
+</body>
+</html>

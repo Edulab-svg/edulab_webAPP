@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新入社員研修タスク管理</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;background:#f1f5f9;color:#1e293b;font-size:14px}
+button{cursor:pointer;border:none;background:none;font-family:inherit}
+input,select,textarea{font-family:inherit;font-size:13px}
+::-webkit-scrollbar{height:4px;width:4px}
+::-webkit-scrollbar-track{background:#f1f5f9}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+
+/* Layout */
+.min-h-screen{min-height:100vh}
+.flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1}.flex-shrink-0{flex-shrink:0}
+.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.items-start{align-items:flex-start}
+.items-end{align-items:flex-end}.justify-between{justify-content:space-between}
+.justify-end{justify-content:flex-end}.justify-center{justify-content:justify-center}
+.gap-1{gap:4px}.gap-2{gap:8px}.gap-3{gap:12px}.gap-4{gap:16px}
+.grid{display:grid}
+.max-w-4xl{max-width:896px;margin-left:auto;margin-right:auto}
+.w-full{width:100%}.min-w-0{min-width:0}
+.overflow-hidden{overflow:hidden}.overflow-x-auto{overflow-x:auto}
+
+/* Spacing */
+.p-2{padding:8px}.p-3{padding:12px}.p-4{padding:16px}.p-5{padding:20px}.p-6{padding:24px}
+.px-2{padding-left:8px;padding-right:8px}.px-3{padding-left:12px;padding-right:12px}
+.px-4{padding-left:16px;padding-right:16px}.py-1{padding-top:4px;padding-bottom:4px}
+.py-1\.5{padding-top:6px;padding-bottom:6px}.py-2{padding-top:8px;padding-bottom:8px}
+.py-3{padding-top:12px;padding-bottom:12px}.py-4{padding-top:16px;padding-bottom:16px}
+.pb-1{padding-bottom:4px}.pb-2{padding-bottom:8px}.pb-3{padding-bottom:12px}.pb-4{padding-bottom:16px}
+.pt-2{padding-top:8px}.pt-3{padding-top:12px}.pt-4{padding-top:16px}
+.mb-1{margin-bottom:4px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}
+.mb-4{margin-bottom:16px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}
+.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}
+.mt-4{margin-top:16px}.mt-5{margin-top:20px}.mt-6{margin-top:24px}
+.mr-2{margin-right:8px}.ml-1{margin-left:4px}
+.space-y-1>*+*{margin-top:4px}.space-y-2>*+*{margin-top:8px}
+.space-y-3>*+*{margin-top:12px}.space-y-4>*+*{margin-top:16px}
+
+/* Typography */
+.text-xs{font-size:11px;line-height:1.4}.text-sm{font-size:13px;line-height:1.5}
+.text-base{font-size:14px}.text-lg{font-size:16px}.text-xl{font-size:20px}.text-2xl{font-size:24px}
+.font-medium{font-weight:500}.font-semibold{font-weight:600}.font-bold{font-weight:700}
+.text-center{text-align:center}.text-right{text-align:right}.text-left{text-align:left}
+.italic{font-style:italic}.leading-relaxed{line-height:1.7}.leading-snug{line-height:1.4}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whitespace-nowrap{white-space:nowrap}.select-none{user-select:none}
+.line-through{text-decoration:line-through}
+
+/* Colors - Text */
+.text-white{color:#fff}.text-gray-400{color:#94a3b8}.text-gray-500{color:#64748b}
+.text-gray-600{color:#475569}.text-gray-700{color:#334155}.text-gray-800{color:#1e293b}
+.text-blue-400{color:#60a5fa}.text-blue-500{color:#3b82f6}.text-blue-600{color:#2563eb}
+.text-blue-700{color:#1d4ed8}.text-green-500{color:#22c55e}.text-green-600{color:#16a34a}
+.text-red-400{color:#f87171}.text-red-500{color:#ef4444}.text-red-600{color:#dc2626}
+.text-orange-500{color:#f97316}.text-yellow-600{color:#ca8a04}.text-yellow-700{color:#a16207}
+.text-indigo-600{color:#4f46e5}.text-indigo-700{color:#4338ca}.text-purple-400{color:#c084fc}
+.text-teal-700{color:#0f766e}.text-slate-600{color:#475569}
+
+/* Colors - Backgrounds */
+.bg-white{background:#fff}.bg-gray-50{background:#f8fafc}.bg-gray-100{background:#f1f5f9}
+.bg-gray-200{background:#e2e8f0}.bg-gray-700{background:#334155}.bg-gray-800{background:#1e293b}
+.bg-blue-50{background:#eff6ff}.bg-blue-100{background:#dbeafe}.bg-blue-400{background:#60a5fa}
+.bg-blue-500{background:#3b82f6}.bg-green-400{background:#4ade80}.bg-green-500{background:#22c55e}
+.bg-red-500{background:#ef4444}.bg-orange-400{background:#fb923c}.bg-indigo-500{background:#6366f1}
+.bg-indigo-50{background:#eef2ff}.bg-yellow-50{background:#fefce8}.bg-yellow-100{background:#fef9c3}
+.bg-amber-100{background:#fef3c7}.bg-amber-400{background:#fbbf24}
+.bg-gradient-profile{background:linear-gradient(135deg,#eff6ff 0%,#e0e7ff 100%)}
+
+/* Borders */
+.border{border:1px solid #e2e8f0}.border-t{border-top:1px solid #e2e8f0}
+.border-b{border-bottom:1px solid #e2e8f0}.border-2{border-width:2px}
+.border-dashed{border-style:dashed}.border-gray-100{border-color:#f1f5f9}
+.border-gray-200{border-color:#e2e8f0}.border-gray-300{border-color:#cbd5e1}
+.border-gray-400{border-color:#94a3b8}.border-blue-400{border-color:#60a5fa}
+.border-blue-500{border-color:#3b82f6}.border-yellow-200{border-color:#fde68a}
+.border-transparent{border-color:transparent}
+
+/* Radius */
+.rounded{border-radius:4px}.rounded-lg{border-radius:8px}.rounded-xl{border-radius:12px}
+.rounded-2xl{border-radius:16px}.rounded-full{border-radius:9999px}
+
+/* Shadow */
+.shadow{box-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06)}
+.shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.shadow-xl{box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
+.shadow-lg{box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -2px rgba(0,0,0,.05)}
+
+/* Positioning */
+.fixed{position:fixed}.sticky{position:sticky}.top-0{top:0}.left-0{left:0}.right-0{right:0}
+.bottom-6{bottom:24px}.inset-0{inset:0}.z-10{z-index:10}.z-50{z-index:50}
+.transform{transform:translateX(-50%)}.left-1\/2{left:50%}
+
+/* Misc */
+.cursor-pointer{cursor:pointer}.cursor-grab{cursor:grab}
+.opacity-40{opacity:.4}.opacity-50{opacity:.5}.opacity-60{opacity:.6}
+.transition{transition:all .15s ease}.hidden{display:none}
+.relative{position:relative}.block{display:block}.inline-block{display:inline-block}
+
+/* Hover states */
+.btn-blue{background:#3b82f6;color:#fff;transition:background .15s}
+.btn-blue:hover{background:#2563eb}
+.btn-green{background:#22c55e;color:#fff;transition:background .15s}
+.btn-green:hover{background:#16a34a}
+.btn-red{background:#ef4444;color:#fff;transition:background .15s}
+.btn-red:hover{background:#dc2626}
+.btn-gray{background:#f1f5f9;color:#475569;transition:background .15s}
+.btn-gray:hover{background:#e2e8f0}
+.btn-dark{background:#334155;color:#fff;transition:background .15s}
+.btn-dark:hover{background:#1e293b}
+.btn-orange{background:#fb923c;color:#fff;transition:background .15s}
+.btn-orange:hover{background:#f97316}
+.btn-indigo{background:#6366f1;color:#fff;transition:background .15s}
+.btn-indigo:hover{background:#4f46e5}
+.btn-emerald{background:#10b981;color:#fff;transition:background .15s}
+.btn-emerald:hover{background:#059669}
+
+/* Card */
+.card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.card-elevated{background:#fff;border-radius:16px;box-shadow:0 20px 25px -5px rgba(0,0,0,.1)}
+
+/* Progress bar */
+.progress-track{background:#e2e8f0;border-radius:999px;height:10px;overflow:hidden}
+.progress-bar{background:linear-gradient(90deg,#4ade80,#22c55e);height:100%;border-radius:999px;transition:width .4s ease}
+
+/* Header */
+.app-header{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);position:sticky;top:0;z-index:10}
+
+/* Save bar */
+.save-bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;padding:8px 0;align-items:center}
+
+/* Tab bar */
+.tab-bar{display:flex;overflow-x:auto;border-bottom:2px solid #f1f5f9;gap:0}
+.tab-btn{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:10px 14px;font-size:12px;font-weight:600;color:#64748b;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none}
+.tab-btn:hover{color:#334155;background:#f8fafc}
+.tab-btn.active{color:#3b82f6;border-bottom-color:#3b82f6}
+
+/* Filter pills */
+.pill{padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid #cbd5e1;color:#475569;background:#fff;transition:all .15s}
+.pill:hover{border-color:#94a3b8}
+.pill.active{background:#334155;color:#fff;border-color:#334155}
+.pill-status{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid #e2e8f0;color:#94a3b8;transition:all .15s}
+.pill-status:hover{border-color:#94a3b8}
+
+/* Category card */
+.cat-card{border-radius:12px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,.06);border-width:2px;border-style:solid}
+.cat-header{padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+
+/* Task item */
+.task-item{background:#fff;border-radius:8px;border:1px solid #e2e8f0;overflow:hidden;transition:border-color .15s}
+.task-item:hover{border-color:#bfdbfe}
+.task-item.drag-over{border:2px solid #3b82f6}
+.task-row{display:flex;align-items:center;gap:8px;padding:8px 10px}
+
+/* Checkbox */
+.checkbox{width:20px;height:20px;flex-shrink:0;border-radius:6px;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.checkbox:hover{border-color:#3b82f6}
+.checkbox.checked{background:#22c55e;border-color:#22c55e}
+.checkmark{color:#fff;font-size:11px;font-weight:900}
+
+/* Status steps */
+.status-steps{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:6px}
+
+/* Modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+.modal-box{background:#fff;border-radius:20px;box-shadow:0 25px 50px rgba(0,0,0,.2);width:100%;max-width:400px;padding:24px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;background:#1e293b;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:999px;box-shadow:0 10px 25px rgba(0,0,0,.2);white-space:nowrap}
+
+/* Form inputs */
+.form-input{width:100%;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;color:#1e293b;background:#fff;transition:border-color .15s;outline:none}
+.form-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.form-label{display:block;font-size:11px;font-weight:600;color:#64748b;margin-bottom:4px}
+
+/* Profile screen */
+.profile-screen{min-height:100vh;background:linear-gradient(135deg,#eff6ff 0%,#e0e7ff 50%,#f0fdf4 100%);display:flex;align-items:center;justify-content:center;padding:16px}
+.profile-card{background:#fff;border-radius:24px;box-shadow:0 25px 50px rgba(0,0,0,.15);width:100%;max-width:380px;padding:32px}
+
+/* Calendar */
+.cal-day{min-height:60px;border-radius:8px;padding:4px;border:1px solid #f1f5f9;background:#f8fafc;cursor:pointer;transition:all .15s}
+.cal-day:hover{background:#f1f5f9}
+.cal-day.today{border-color:#60a5fa;background:#eff6ff}
+.cal-day.selected{border-color:#3b82f6;background:#dbeafe;border-width:2px}
+.cal-chip{font-size:10px;padding:1px 4px;border-radius:4px;color:#fff;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+
+/* Table */
+.summary-table{width:100%;border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0}
+.summary-table th{background:#f8fafc;padding:10px 14px;text-align:left;font-size:11px;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0}
+.summary-table th.right,.summary-table td.right{text-align:right}
+.summary-table td{padding:10px 14px;font-size:12px;border-bottom:1px solid #f1f5f9}
+.summary-table tr.total-row td{background:#eef2ff;font-weight:700;color:#4338ca;font-size:13px;border-bottom:none}
+
+/* Drag handle */
+.drag-handle{color:#cbd5e1;cursor:grab;font-size:14px;user-select:none;flex-shrink:0}
+.drag-handle:active{cursor:grabbing}
+
+/* New cat add */
+.add-cat-box{background:#fff;border-radius:12px;border:2px dashed #cbd5e1;padding:16px;margin-top:16px}
+
+/* Section title */
+.section-title{font-size:11px;font-weight:700;color:#94a3b8;border-bottom:1px solid #f1f5f9;padding-bottom:6px;margin-bottom:10px}
+
+/* Badge */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600}
+
+/* Inquiry/Lecture row */
+.record-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:box-shadow .15s}
+.record-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.record-header{display:flex;align-items:flex-start;gap:8px;padding:12px 14px;cursor:pointer}
+.record-body{border-top:1px solid #f1f5f9;background:#f8fafc;padding:14px}
+.grid-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px}
+
+/* Discount note */
+.discount-note{background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:11px;color:#92400e;margin-top:8px}
+
+/* confirm button row */
+.confirm-btns{display:flex;gap:10px;margin-top:20px}
+
+@media(max-width:600px){
+  .grid-form{grid-template-columns:1fr 1fr}
+  .cat-grid{grid-template-columns:1fr!important}
+}
+
+/* Collapse arrow */
+.arrow{font-size:10px;color:#94a3b8;flex-shrink:0;transition:transform .2s}
+.arrow.open{transform:rotate(180deg)}
+
+/* Edit detail panel */
+.detail-panel{padding:12px;background:#f8fafc;border-top:1px solid #f1f5f9}
+
+/* Green complete btn */
+.complete-btn{flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:700;transition:all .15s}
+.complete-btn.done{background:#f1f5f9;color:#475569}
+.complete-btn.done:hover{background:#e2e8f0}
+.complete-btn.notdone{background:linear-gradient(135deg,#4ade80,#22c55e);color:#fff;box-shadow:0 4px 12px rgba(34,197,94,.3)}
+.complete-btn.notdone:hover{background:linear-gradient(135deg,#22c55e,#16a34a)}
+
+/* Cloud status indicator */
+.cloud-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid transparent;transition:all .2s}
+.cloud-badge.saved{background:#f0fdf4;border-color:#bbf7d0;color:#16a34a}
+.cloud-badge.saving{background:#f8fafc;border-color:#e2e8f0;color:#94a3b8}
+.cloud-badge.error{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+.cloud-badge.idle{background:#f8fafc;border-color:#e2e8f0;color:#94a3b8}
+
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo,useRef,useEffect}=React;
+
+/* ── API エンドポイント ── */
+const API='./api/index.php';
+
+const CAT_STYLES=[
+  {color:"#3b82f6",light:"#eff6ff",border:"#bfdbfe"},
+  {color:"#22c55e",light:"#f0fdf4",border:"#bbf7d0"},
+  {color:"#eab308",light:"#fefce8",border:"#fde68a"},
+  {color:"#a855f7",light:"#faf5ff",border:"#e9d5ff"},
+  {color:"#ec4899",light:"#fdf2f8",border:"#fbcfe8"},
+  {color:"#f97316",light:"#fff7ed",border:"#fed7aa"},
+  {color:"#ef4444",light:"#fef2f2",border:"#fecaca"},
+  {color:"#14b8a6",light:"#f0fdfa",border:"#99f6e4"},
+  {color:"#64748b",light:"#f8fafc",border:"#cbd5e1"},
+  {color:"#6366f1",light:"#eef2ff",border:"#c7d2fe"},
+  {color:"#84cc16",light:"#f7fee7",border:"#d9f99d"},
+  {color:"#f59e0b",light:"#fffbeb",border:"#fde68a"},
+  {color:"#f43f5e",light:"#fff1f2",border:"#fecdd3"},
+  {color:"#06b6d4",light:"#ecfeff",border:"#a5f3fc"},
+  {color:"#8b5cf6",light:"#f5f3ff",border:"#ddd6fe"},
+];
+const STATUS_COLORS_MAP={"通電":"#94a3b8","初回面談":"#3b82f6","体験":"#f59e0b","報告":"#f97316","連絡待ち":"#a855f7","終了":"#22c55e"};
+
+const INIT_CATS=[
+  {category:"教務",tasks:["自立型個別の巡回（初めと終わり）と単語テスト","小学生の授業（生徒ファイルも）","キュレオのログイン方法","1:4の授業","ファイルチェック","生徒の出席確認","宿題忘れの後追い","フォレスタ動画視聴の説明"]},
+  {category:"業務",tasks:["kintone休暇申請とタイムカードへの入力","コピー機使い方（両面、縮小、スキャン）","講師出勤簿 授業比率のカウントとkintone入力","kintone 講師出勤簿（交通費）","外チラシのコピーと封入作業","kintone月初タイムカード作成","教材発注①フォレスタ②塾まる","備品発注（モノタロウ）","モノグサ登録","kintone 【マスタ】支出","kintone講師出勤簿 月初作成","領収書（生徒の月謝）作成"]},
+  {category:"入会面談",tasks:["規約の説明の仕方","契約書の書き方","kintone紹介クオカード申請","準備物：①入退室カード作成","準備物：②kintone【マスタ】売上作成","準備物：③Comiru生徒の作成","準備物：④Comiru座席マスター作成","準備物：⑤生徒ファイル作成（①ラベル屋さん②進行表・成績表印刷③答えファイル④教材準備）"]},
+  {category:"Comiru",tasks:["Comiru時間割調整（ブースの変更）","Comiru次月スケジュール作成（講師依頼含む）","Comiruお問い合わせの返信","Comiruお知らせ","Comiru欠席のラジオボタン"]},
+  {category:"初回面談",tasks:["準備物"]},
+  {category:"講師",tasks:["講師面接","講師採用","kintone入力","名札作成","kintone【マスタ】講師作成","講師支払い明細作成"]},
+  {category:"定期テスト関連",tasks:["テスト対策①kintone申請","テスト対策②Comiruお知らせ③講師配置","テスト対策④モノグサ対策用作成","テスト範囲の進行表記入","テスト対策ワンオペ","テスト後①kintone素点入力②成績アップ者掲示","テスト後③成績アップ写真"]},
+  {category:"問合せ対応",tasks:["問合せ対応①塾ナビ②HP・直電","kintone問合せ反映"]},
+  {category:"締め処理",tasks:["締め処理①kintone②Comiru","金額確認"]},
+  {category:"講習面談",tasks:["Comiruお知らせ","Comiru面談予約フォーマット作成","kintone講習進捗表、提案コマ作成","プランニングシート作成","申し込み用紙作成","（任意）スケジュール表作成"]},
+  {category:"講習",tasks:["ファイル作成","引継ぎシート準備","教材準備","進行表準備","Comiru時間割作成"]},
+  {category:"模試",note:"口頭ではレクチャー済み。未実施",tasks:["Comiruお知らせ（タイムスケジュール作成）","座席作成","受験票作成","大阪進研郵送","試験監督（リスニング実施）"]},
+  {category:"人事考課資料作成",tasks:["人事考課資料作成"]},
+  {category:"総括資料作成",tasks:["総括資料作成"]},
+];
+
+const buildTasks=cats=>{const a=[];cats.forEach((c,ci)=>c.tasks.forEach((task,i)=>a.push({id:`t_${ci}_${i}_${task.slice(0,3)}`,category:c.category,task,ci,ti:i})));return a;};
+const buildMeta=tasks=>{const m={};tasks.forEach(t=>{m[t.id]={done:false,assignee:"",date:""}});return m;};
+const uid=()=>Math.random().toString(36).slice(2);
+const n=v=>parseInt(v)||0;
+const disc=k=>{const v=n(k);if(v>=41)return 200;if(v>=21)return 100;return 0;};
+const calcP=(u,k)=>{const kv=n(k),uv=n(u);if(!uv||!kv)return 0;return(uv-disc(kv))*kv;};
+const taxIn=v=>Math.round(v*1.1);
+const yen=v=>(v!=null&&v!=="")?"¥"+Number(v).toLocaleString():"—";
+const YR=Array.from({length:10},(_,i)=>`${2023+i}年`);
+const MO=["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+const SS=["通電","初回面談","体験","報告","連絡待ち","終了"];
+const ROUTES=["塾ナビ","HP","直電","紹介","チラシ","その他"];
+const PROBS=["30%","50%","70%","90%以上"];
+const SUBS=["数","英","理","社","国"];
+const newInq=()=>({id:uid(),inquiryDate:"",route:"",type:"",referrer:"",materialRequest:false,school:"",grade:"",name:"",phone:"",interviewDate:"",trialDate:"",trialSubject:"",aiReport:false,contractDate:"",deadline:"",probability:"",status:"通電",failReason:"",measure:""});
+const newLec=()=>({id:uid(),school:"",grade:"",name:"",interviewDate:"",unitPrice:"",maxKoma:"",midKoma:"",minKoma:"",suKoma:"",eiKoma:"",riKoma:"",shaKoma:"",kokuKoma:"",materialFee:"",statusNote:"",contractDate:"",memo:""});
+
+/* ─ Toast ─ */
+function Toast({msg}){return msg?<div className="toast">{msg}</div>:null;}
+
+/* ─ ConfirmDialog ─ */
+function Confirm({msg,onOk,onCancel}){
+  return <div className="modal-overlay">
+    <div className="modal-box" style={{maxWidth:320,textAlign:"center"}}>
+      <div style={{fontSize:40,marginBottom:12}}>🗑️</div>
+      <p style={{fontSize:13,color:"#475569",lineHeight:1.6,marginBottom:20}}>{msg}</p>
+      <div className="confirm-btns">
+        <button onClick={onCancel} style={{flex:1,padding:"10px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:13,fontWeight:600,cursor:"pointer"}}>キャンセル</button>
+        <button onClick={onOk} style={{flex:1,padding:"10px",borderRadius:12,background:"#ef4444",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",border:"none"}}>削除する</button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ─ TaskEditModal ─ */
+function TaskEditModal({taskId,task,meta,onClose,onToggle,onUpdate}){
+  const [assignee,setA]=useState(meta.assignee||"");
+  const [date,setD]=useState(meta.date||"");
+  const save=()=>{onUpdate(taskId,"assignee",assignee);onUpdate(taskId,"date",date);onClose();};
+  return <div className="modal-overlay">
+    <div className="modal-box">
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+        <span style={{fontWeight:700,fontSize:15,color:"#1e293b"}}>タスク編集</span>
+        <button onClick={onClose} style={{fontSize:20,color:"#94a3b8",lineHeight:1,padding:"0 4px"}}>×</button>
+      </div>
+      <div style={{background:"#f8fafc",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#475569",lineHeight:1.7,marginBottom:16}}>{task}</div>
+      <div style={{marginBottom:12}}>
+        <label className="form-label">担当者</label>
+        <input className="form-input" value={assignee} onChange={e=>setA(e.target.value)} placeholder="例：田中"/>
+      </div>
+      <div>
+        <label className="form-label">研修予定日</label>
+        <input type="date" className="form-input" value={date} onChange={e=>setD(e.target.value)}/>
+      </div>
+      <div style={{display:"flex",gap:10,marginTop:20}}>
+        <button onClick={()=>{onToggle(taskId);onClose();}} className={"complete-btn "+(meta.done?"done":"notdone")}>
+          {meta.done?"✓ 完了を取消す":"✓ 完了にする"}
+        </button>
+        <button onClick={save} style={{flex:1,padding:10,borderRadius:12,background:"#3b82f6",color:"#fff",fontSize:13,fontWeight:700,border:"none",cursor:"pointer"}}>保存</button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ─ ProfileForm ─ */
+function ProfileForm({profile,onSave}){
+  const [f,setF]=useState(profile);
+  const s=(k,v)=>setF(p=>({...p,[k]:v}));
+  return <div style={{display:"flex",flexDirection:"column",gap:16}}>
+    {[["社員名","name","text","例：山田 太郎"],["研修教室","classroom","text","例：〇〇校"]].map(([lbl,k,t,ph])=>(
+      <div key={k}>
+        <label className="form-label">{lbl}</label>
+        <input className="form-input" type={t} value={f[k]} onChange={e=>s(k,e.target.value)} placeholder={ph}/>
+      </div>
+    ))}
+    <div>
+      <label className="form-label">研修開始</label>
+      <div style={{display:"flex",gap:8}}>
+        <select className="form-input" value={f.startYear} onChange={e=>s("startYear",e.target.value)}>
+          <option value="">年</option>{YR.map(y=><option key={y}>{y}</option>)}
+        </select>
+        <select className="form-input" value={f.startMonth} onChange={e=>s("startMonth",e.target.value)}>
+          <option value="">月</option>{MO.map(m=><option key={m}>{m}</option>)}
+        </select>
+      </div>
+    </div>
+    <div>
+      <label className="form-label">研修終了</label>
+      <div style={{display:"flex",gap:8}}>
+        <select className="form-input" value={f.endYear} onChange={e=>s("endYear",e.target.value)}>
+          <option value="">年</option>{YR.map(y=><option key={y}>{y}</option>)}
+        </select>
+        <select className="form-input" value={f.endMonth} onChange={e=>s("endMonth",e.target.value)}>
+          <option value="">月</option>{MO.map(m=><option key={m}>{m}</option>)}
+        </select>
+      </div>
+    </div>
+    <button onClick={()=>onSave(f)} style={{background:"linear-gradient(135deg,#3b82f6,#6366f1)",color:"#fff",border:"none",borderRadius:12,padding:"12px",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 12px rgba(99,102,241,.3)"}}>
+      はじめる →
+    </button>
+  </div>;
+}
+
+/* ─ SaveLoadBar（シンプル版：クラウド状態＋JSONバックアップ）─ */
+function SaveLoadBar({userName,getSnapshot,onLoad,cloudStatus,onSwitch}){
+  const saveJson=()=>{
+    const snap=getSnapshot();
+    const blob=new Blob([JSON.stringify(snap,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`研修タスク_${userName||""}${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const cloudLabel={saved:"自動保存済",saving:"保存中…",error:"保存失敗",idle:""}[cloudStatus]||"";
+  const cloudIcon={saved:"☁️ ✓",saving:"☁️ ↻",error:"⚠️",idle:"☁️"}[cloudStatus]||"☁️";
+  return <div className="save-bar">
+    <span className={"cloud-badge "+cloudStatus}>{cloudIcon} {cloudLabel}</span>
+    <button onClick={onSwitch} style={{background:"#f1f5f9",color:"#475569",border:"1px solid #e2e8f0",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+      👥 ユーザー切替
+    </button>
+    <button onClick={saveJson} style={{background:"#f8fafc",color:"#475569",border:"1px solid #e2e8f0",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+      💾 JSONを保存
+    </button>
+    <label style={{background:"#fff7ed",color:"#ea580c",border:"1.5px solid #fed7aa",borderRadius:8,padding:"3px 10px",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+      📂 JSONを読込む
+      <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+        const f=e.target.files?.[0];if(!f)return;
+        const r=new FileReader();
+        r.onload=ev=>{try{onLoad(JSON.parse(ev.target.result));}catch{alert("読み込み失敗");}};
+        r.readAsText(f);e.target.value="";
+      }}/>
+    </label>
+  </div>;
+}
+
+/* ─ UserSelectScreen ─ */
+function UserSelectScreen({onSelect}){
+  const [users,setUsers]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [manageMode,setManageMode]=useState(false);
+  const [newName,setNewName]=useState("");
+  const [adding,setAdding]=useState(false);
+  const [confirmDel,setConfirmDel]=useState(null); // {id,display_name}
+  const [busy,setBusy]=useState(false);
+
+  const load=()=>{
+    setLoading(true);
+    fetch(`${API}?action=get_users&_=${Date.now()}`,{credentials:"same-origin"})
+      .then(r=>r.json())
+      .then(d=>{if(d.ok)setUsers(d.users||[]);})
+      .catch(()=>{})
+      .finally(()=>setLoading(false));
+  };
+  useEffect(load,[]);
+
+  const addUser=async()=>{
+    const name=newName.trim();if(!name)return;
+    setBusy(true);
+    try{
+      const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"add_user",name})});
+      const d=await r.json();
+      if(d.ok){setUsers(u=>[...u,d.user]);setNewName("");setAdding(false);}
+      else alert("追加に失敗しました");
+    }catch{alert("通信エラーが発生しました");}
+    setBusy(false);
+  };
+
+  const deleteUser=async(id)=>{
+    setBusy(true);
+    try{
+      const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"delete_user",user_id:id})});
+      const d=await r.json();
+      if(d.ok){setUsers(u=>u.filter(x=>x.id!==id));setConfirmDel(null);}
+      else alert("削除に失敗しました");
+    }catch{alert("通信エラーが発生しました");}
+    setBusy(false);
+  };
+
+  const COLORS=["#3b82f6","#22c55e","#f59e0b","#ec4899","#a855f7","#f97316","#14b8a6","#6366f1","#ef4444","#84cc16"];
+
+  return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#eff6ff 0%,#e0e7ff 50%,#f0fdf4 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
+    {/* 削除確認 */}
+    {confirmDel&&<Confirm msg={`「${confirmDel.display_name}」のデータをすべて削除しますか？\nこの操作は取り消せません。`} onOk={()=>deleteUser(confirmDel.id)} onCancel={()=>setConfirmDel(null)}/>}
+
+    <div style={{width:"100%",maxWidth:480}}>
+      {/* タイトル */}
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{width:68,height:68,background:"linear-gradient(135deg,#3b82f6,#6366f1)",borderRadius:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:14,boxShadow:"0 8px 24px rgba(99,102,241,.3)"}}>📋</div>
+        <h1 style={{fontSize:22,fontWeight:800,color:"#1e293b",letterSpacing:"-0.3px"}}>新入社員研修タスク管理</h1>
+        <p style={{fontSize:13,color:"#64748b",marginTop:6}}>あなたの名前を選んでください</p>
+      </div>
+
+      {/* ユーザー一覧カード */}
+      <div style={{background:"#fff",borderRadius:20,boxShadow:"0 20px 40px rgba(0,0,0,.12)",padding:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#334155"}}>👥 社員一覧</span>
+          <button onClick={()=>{setManageMode(m=>!m);setAdding(false);}} style={{fontSize:11,fontWeight:600,padding:"4px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:manageMode?"#334155":"#f8fafc",color:manageMode?"#fff":"#475569",cursor:"pointer",transition:"all .15s"}}>
+            {manageMode?"✕ 管理終了":"⚙️ 管理"}
+          </button>
+        </div>
+
+        {loading?<div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>読み込み中…</div>:
+        users.length===0?<div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>社員が登録されていません<br/>「＋ 社員を追加」から登録してください</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:300,overflowY:"auto",marginBottom:16}}>
+          {users.map((u,i)=>{
+            const col=COLORS[i%COLORS.length];
+            return <div key={u.id} style={{display:"flex",alignItems:"center",gap:12}}>
+              <button onClick={()=>!manageMode&&onSelect(u)} disabled={manageMode}
+                style={{flex:1,display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"#f8fafc",cursor:manageMode?"default":"pointer",textAlign:"left",transition:"all .15s",opacity:manageMode?.7:1}}
+                onMouseEnter={e=>{if(!manageMode)e.currentTarget.style.cssText+=";background:#eff6ff;border-color:#bfdbfe"}}
+                onMouseLeave={e=>{if(!manageMode)e.currentTarget.style.cssText+=";background:#f8fafc;border-color:#e2e8f0"}}>
+                <div style={{width:36,height:36,borderRadius:10,background:col,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff",flexShrink:0}}>
+                  {u.display_name.charAt(0)}
+                </div>
+                <span style={{fontWeight:600,fontSize:14,color:"#1e293b"}}>{u.display_name}</span>
+              </button>
+              {manageMode&&<button onClick={()=>setConfirmDel(u)} disabled={busy}
+                style={{padding:"8px 12px",borderRadius:10,background:"#fef2f2",border:"1px solid #fecaca",color:"#ef4444",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>
+                🗑 削除
+              </button>}
+            </div>;
+          })}
+        </div>}
+
+        {/* 追加エリア */}
+        {manageMode&&!adding&&<button onClick={()=>setAdding(true)} style={{width:"100%",padding:"10px",borderRadius:12,border:"2px dashed #cbd5e1",background:"transparent",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer"}}>
+          ＋ 社員を追加
+        </button>}
+        {manageMode&&adding&&<div style={{display:"flex",gap:8,marginTop:4}}>
+          <input className="form-input" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="社員名（例：山田 太郎）" onKeyDown={e=>e.key==="Enter"&&addUser()} autoFocus style={{flex:1}}/>
+          <button onClick={addUser} disabled={busy||!newName.trim()} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,opacity:(!newName.trim()||busy)?.5:1}}>追加</button>
+          <button onClick={()=>{setAdding(false);setNewName("");}} style={{color:"#94a3b8",fontSize:20,padding:"0 4px"}}>×</button>
+        </div>}
+      </div>
+    </div>
+  </div>;
+}
+
+/* ─ TaskListTab ─ */
+function TaskListTab({cats,meta,onToggle,onUpdate,onCatsChange,onMetaChange}){
+  const [filt,setFilt]=useState("all");
+  const [modal,setModal]=useState(null);
+  const [newCat,setNewCat]=useState("");
+  const [addTask,setAddTask]=useState({});
+  const [newTaskText,setNewTaskText]=useState({});
+  const [dragSrc,setDragSrc]=useState(null);
+  const [dragOver,setDragOver]=useState(null);
+
+  const all=buildTasks(cats);
+  const total=all.length,done=all.filter(t=>meta[t.id]?.done).length;
+
+  const addCategory=()=>{
+    const name=newCat.trim();if(!name)return;
+    onCatsChange(c=>[...c,{category:name,tasks:[]}]);
+    setNewCat("");
+  };
+  const delCategory=ci=>onCatsChange(c=>c.filter((_,i)=>i!==ci));
+  const addTaskTocat=(ci)=>{
+    const t=(newTaskText[ci]||"").trim();if(!t)return;
+    onCatsChange(c=>c.map((cat,i)=>i===ci?{...cat,tasks:[...cat.tasks,t]}:cat));
+    setNewTaskText(p=>({...p,[ci]:""}));setAddTask(p=>({...p,[ci]:false}));
+  };
+  const delTask=(ci,ti)=>onCatsChange(c=>c.map((cat,i)=>i===ci?{...cat,tasks:cat.tasks.filter((_,j)=>j!==ti)}:cat));
+
+  const onDragStart=(e,id)=>{setDragSrc(id);e.dataTransfer.effectAllowed="move";};
+  const onDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
+  const onDrop=(e,targetId)=>{
+    e.preventDefault();setDragOver(null);
+    if(!dragSrc||dragSrc===targetId)return;
+    const all2=buildTasks(cats);
+    const si=all2.findIndex(t=>t.id===dragSrc),ti=all2.findIndex(t=>t.id===targetId);
+    if(si<0||ti<0)return;
+    const src=all2[si],tgt=all2[ti];
+    if(src.ci!==tgt.ci)return;
+    const ci=src.ci;
+    const tasks=[...cats[ci].tasks];
+    tasks.splice(si-all2.findIndex(t=>t.ci===ci),1);
+    tasks.splice(ti-all2.findIndex(t=>t.ci===ci),0,src.task);
+    onCatsChange(c=>c.map((cat,i)=>i===ci?{...cat,tasks}:cat));
+    const newMeta={...meta};
+    const oldKey=`t_${ci}_${src.ti}_${src.task.slice(0,3)}`;
+    const newKey=`t_${ci}_${tasks.indexOf(src.task)}_${src.task.slice(0,3)}`;
+    if(oldKey!==newKey&&newMeta[oldKey]){newMeta[newKey]=newMeta[oldKey];delete newMeta[oldKey];}
+    onMetaChange(newMeta);
+    setDragSrc(null);
+  };
+
+  const filters=[["all","すべて"],["done","完了"],["undone","未完了"]];
+  const catColorMap={};cats.forEach((c,ci)=>{catColorMap[c.category]=CAT_STYLES[ci%CAT_STYLES.length].color;});
+
+  return <div>
+    {modal&&<TaskEditModal {...modal} onClose={()=>setModal(null)} onToggle={onToggle} onUpdate={onUpdate}/>}
+    <div className="card" style={{padding:16,marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <span style={{fontWeight:700,fontSize:13,color:"#334155"}}>進捗 {done}/{total}</span>
+        <div style={{display:"flex",gap:6}}>
+          {filters.map(([k,lbl])=><button key={k} onClick={()=>setFilt(k)} className={"pill"+(filt===k?" active":"")}>{lbl}</button>)}
+        </div>
+      </div>
+      <div className="progress-track"><div className="progress-bar" style={{width:(total?Math.round(done/total*100):0)+"%"}}/></div>
+    </div>
+
+    <div className="cat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
+      {cats.map((cat,ci)=>{
+        const style=CAT_STYLES[ci%CAT_STYLES.length];
+        const catTasks=buildTasks([cat]).map(t=>({...t,id:`t_${ci}_${t.ti}_${t.task.slice(0,3)}`,ci,meta:meta[`t_${ci}_${t.ti}_${t.task.slice(0,3)}`]||{done:false,assignee:"",date:""}}));
+        const vis=filt==="done"?catTasks.filter(t=>t.meta.done):filt==="undone"?catTasks.filter(t=>!t.meta.done):catTasks;
+        const cdone=catTasks.filter(t=>t.meta.done).length;
+        return <div key={ci} className="cat-card" style={{background:style.light,borderColor:style.border}}>
+          <div className="cat-header" style={{background:style.color}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{cat.category}</span>
+              {cat.note&&<span style={{fontSize:10,background:"rgba(255,255,255,.2)",color:"#fff",padding:"1px 6px",borderRadius:999}}>{cat.note}</span>}
+              <span style={{fontSize:11,color:"rgba(255,255,255,.7)"}}>{cdone}/{catTasks.length}</span>
+            </div>
+            <button onClick={()=>delCategory(ci)} style={{color:"rgba(255,255,255,.6)",fontSize:14,padding:"2px 6px",borderRadius:6,background:"rgba(0,0,0,.1)"}}>🗑</button>
+          </div>
+          <div style={{padding:"8px"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {vis.map(t=><div key={t.id} className={"task-item"+(dragOver===t.id?" drag-over":"")}
+                draggable onDragStart={e=>onDragStart(e,t.id)} onDragOver={e=>onDragOver(e,t.id)} onDrop={e=>onDrop(e,t.id)} onDragEnd={()=>{setDragSrc(null);setDragOver(null);}}>
+                <div className="task-row">
+                  <span className="drag-handle">⠿</span>
+                  <div className={"checkbox"+(t.meta.done?" checked":"")} onClick={()=>onToggle(t.id)}>{t.meta.done&&<span className="checkmark">✓</span>}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,color:t.meta.done?"#94a3b8":"#334155",textDecoration:t.meta.done?"line-through":"none",lineHeight:1.5}}>{t.task}</div>
+                    {(t.meta.assignee||t.meta.date)&&<div style={{display:"flex",gap:6,marginTop:2,flexWrap:"wrap"}}>
+                      {t.meta.assignee&&<span style={{fontSize:10,color:"#64748b"}}>👤{t.meta.assignee}</span>}
+                      {t.meta.date&&<span style={{fontSize:10,color:"#94a3b8"}}>📅{t.meta.date}</span>}
+                    </div>}
+                  </div>
+                  <div style={{display:"flex",gap:4,flexShrink:0}}>
+                    <button onClick={()=>setModal({taskId:t.id,task:t.task,meta:t.meta})} style={{background:"#eff6ff",color:"#3b82f6",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:600}}>✏️</button>
+                    <button onClick={()=>delTask(ci,t.ti)} style={{background:"#fef2f2",color:"#ef4444",border:"none",borderRadius:6,padding:"3px 8px",fontSize:11}}>🗑</button>
+                  </div>
+                </div>
+              </div>)}
+            </div>
+            {addTask[ci]?<div style={{display:"flex",gap:6,padding:"6px 4px 2px"}}>
+              <input className="form-input" style={{fontSize:12}} value={newTaskText[ci]||""} onChange={e=>setNewTaskText(p=>({...p,[ci]:e.target.value}))} placeholder="タスク名を入力" onKeyDown={e=>e.key==="Enter"&&addTaskTocat(ci)} autoFocus/>
+              <button onClick={()=>addTaskTocat(ci)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:700,flexShrink:0}}>追加</button>
+              <button onClick={()=>setAddTask(p=>({...p,[ci]:false}))} style={{color:"#94a3b8",fontSize:18,padding:"0 4px"}}>×</button>
+            </div>:
+            <button onClick={()=>setAddTask(p=>({...p,[ci]:true}))} style={{width:"100%",padding:"6px",marginTop:4,borderRadius:8,border:"1.5px dashed "+style.border,color:style.color,fontSize:12,fontWeight:600,background:"transparent"}}>＋ タスクを追加</button>}
+          </div>
+        </div>;
+      })}
+    </div>
+
+    <div className="add-cat-box">
+      <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8}}>＋ カテゴリを追加</div>
+      <div style={{display:"flex",gap:8}}>
+        <input className="form-input" value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="カテゴリ名" onKeyDown={e=>e.key==="Enter"&&addCategory()}/>
+        <button onClick={addCategory} style={{background:"#334155",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,flexShrink:0}}>追加</button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ─ AssigneeTab ─ */
+function AssigneeTab({cats,meta,onToggle,onUpdate}){
+  const [modal,setModal]=useState(null);
+  const [showUnassigned,setShowUnassigned]=useState(false);
+  const all=buildTasks(cats);
+  const catColorMap={};cats.forEach((c,ci)=>{catColorMap[c.category]=CAT_STYLES[ci%CAT_STYLES.length].color;});
+  const groups={};
+  all.forEach(t=>{
+    const mt=meta[t.id]||{};
+    const k=mt.assignee||"__unassigned__";
+    if(!groups[k])groups[k]=[];
+    groups[k].push({...t,meta:mt});
+  });
+  const assignees=Object.keys(groups).filter(k=>k!=="__unassigned__").sort();
+  const unassigned=groups["__unassigned__"]||[];
+
+  return <div>
+    {modal&&<TaskEditModal {...modal} onClose={()=>setModal(null)} onToggle={onToggle} onUpdate={onUpdate}/>}
+    {!assignees.length&&!unassigned.length&&<div style={{textAlign:"center",color:"#94a3b8",padding:"32px 0",fontSize:13}}>担当者が設定されていません</div>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
+      {assignees.map(k=>{
+        const tasks=groups[k];const done=tasks.filter(t=>t.meta.done).length;const vis=tasks;
+        return <div key={k} style={{background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,.06)"}}>
+          <div style={{background:"linear-gradient(135deg,#334155,#475569)",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#fff",fontSize:13}}>👤 {k}</span>
+            <span style={{color:"rgba(255,255,255,.6)",fontSize:11}}>{done}/{tasks.length}</span>
+          </div>
+          <div style={{padding:"8px",display:"flex",flexDirection:"column",gap:4}}>
+            {vis.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:8,border:"1px solid #f1f5f9",background:t.meta.done?"#f8fafc":"#fff",opacity:t.meta.done?.7:1}}>
+              <div className={"checkbox"+(t.meta.done?" checked":"")} onClick={()=>onToggle(t.id)}>{t.meta.done&&<span className="checkmark">✓</span>}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,color:t.meta.done?"#94a3b8":"#334155",textDecoration:t.meta.done?"line-through":"none",lineHeight:1.5}}>{t.task}</div>
+                <div style={{display:"flex",gap:6,marginTop:3,flexWrap:"wrap"}}>
+                  <span style={{fontSize:10,padding:"1px 6px",borderRadius:999,background:catColorMap[t.category]||"#94a3b8",color:"#fff"}}>{t.category}</span>
+                  {t.meta.date&&<span style={{fontSize:10,color:"#94a3b8"}}>📅 {t.meta.date}</span>}
+                </div>
+              </div>
+              <button onClick={()=>setModal({taskId:t.id,task:t.task,meta:t.meta})} style={{background:"#eff6ff",color:"#3b82f6",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",flexShrink:0}}>✏️ 編集</button>
+            </div>)}
+          </div>
+        </div>;
+      })}
+    </div>
+    {unassigned.length>0&&<div style={{marginTop:14}}>
+      <button onClick={()=>setShowUnassigned(s=>!s)} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:600,color:"#64748b",cursor:"pointer",marginBottom:10}}>
+        {showUnassigned?"▲":"▼"} 担当者未設定 ({unassigned.length}件)
+      </button>
+      {showUnassigned&&<div style={{display:"flex",flexDirection:"column",gap:4}}>
+        {unassigned.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",borderRadius:8,border:"1px solid #f1f5f9",background:t.meta.done?"#f8fafc":"#fff",opacity:t.meta.done?.7:1}}>
+          <div className={"checkbox"+(t.meta.done?" checked":"")} onClick={()=>onToggle(t.id)}>{t.meta.done&&<span className="checkmark">✓</span>}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,color:t.meta.done?"#94a3b8":"#334155",textDecoration:t.meta.done?"line-through":"none"}}>{t.task}</div>
+            <span style={{fontSize:10,padding:"1px 6px",borderRadius:999,background:catColorMap[t.category]||"#94a3b8",color:"#fff",marginTop:3,display:"inline-block"}}>{t.category}</span>
+          </div>
+          <button onClick={()=>setModal({taskId:t.id,task:t.task,meta:t.meta})} style={{background:"#eff6ff",color:"#3b82f6",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",flexShrink:0}}>✏️ 編集</button>
+        </div>)}
+      </div>}
+    </div>}
+  </div>;
+}
+
+/* ─ CalendarTab ─ */
+function CalendarTab({cats,meta,onToggle,onUpdate}){
+  const today=new Date();
+  const [yr,setYr]=useState(today.getFullYear()),[mo,setMo]=useState(today.getMonth());
+  const [modal,setModal]=useState(null);
+  const [selDay,setSelDay]=useState(null);
+  const all=buildTasks(cats);
+  const catColorMap={};cats.forEach((c,ci)=>{catColorMap[c.category]=CAT_STYLES[ci%CAT_STYLES.length].color;});
+  const byDate=useMemo(()=>{const m={};all.forEach(t=>{const mt=meta[t.id]||{};if(mt.date){if(!m[mt.date])m[mt.date]=[];m[mt.date].push({...t,meta:mt});}});return m;},[all,meta]);
+  const fd=new Date(yr,mo,1).getDay(),dim=new Date(yr,mo+1,0).getDate();
+  const cells=[...Array(fd).fill(null),...Array.from({length:dim},(_,i)=>i+1)];
+  const prev=()=>{if(mo===0){setYr(y=>y-1);setMo(11);}else setMo(m=>m-1);};
+  const next=()=>{if(mo===11){setYr(y=>y+1);setMo(0);}else setMo(m=>m+1);};
+  const selDs=selDay?`${yr}-${String(mo+1).padStart(2,"0")}-${String(selDay).padStart(2,"0")}`:null;
+  const selTasks=selDs?byDate[selDs]||[]:[];
+  return <div>
+    {modal&&<TaskEditModal {...modal} onClose={()=>setModal(null)} onToggle={onToggle} onUpdate={onUpdate}/>}
+    <div className="card" style={{padding:16,marginBottom:16}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <button onClick={prev} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 12px",fontSize:13,cursor:"pointer",fontWeight:700,color:"#475569"}}>◀</button>
+        <span style={{fontWeight:700,fontSize:15,color:"#1e293b"}}>{yr}年 {mo+1}月</span>
+        <button onClick={next} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 12px",fontSize:13,cursor:"pointer",fontWeight:700,color:"#475569"}}>▶</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:6}}>
+        {["日","月","火","水","木","金","土"].map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:700,padding:"4px 0",color:i===0?"#ef4444":i===6?"#3b82f6":"#94a3b8"}}>{d}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+        {cells.map((d,i)=>{
+          if(!d)return<div key={`e${i}`}/>;
+          const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dt=byDate[ds]||[];
+          const isToday=d===today.getDate()&&mo===today.getMonth()&&yr===today.getFullYear();
+          const isSel=d===selDay,dow=(fd+d-1)%7;
+          return <div key={d} onClick={()=>setSelDay(d===selDay?null:d)}
+            style={{minHeight:58,borderRadius:8,padding:4,border:isSel?"2px solid #3b82f6":isToday?"2px solid #93c5fd":"1px solid #f1f5f9",background:isSel?"#dbeafe":isToday?"#eff6ff":"#f8fafc",cursor:"pointer",transition:"all .15s"}}>
+            <div style={{fontSize:11,fontWeight:700,marginBottom:2,color:dow===0?"#ef4444":dow===6?"#3b82f6":"#475569"}}>{d}</div>
+            {dt.slice(0,2).map(t=><div key={t.id} className="cal-chip" style={{background:catColorMap[t.category]||"#94a3b8",opacity:t.meta.done?.5:1,textDecoration:t.meta.done?"line-through":"none"}}>{t.task.length>5?t.task.slice(0,5)+"…":t.task}</div>)}
+            {dt.length>2&&<div style={{fontSize:9,color:"#94a3b8"}}>+{dt.length-2}</div>}
+          </div>;
+        })}
+      </div>
+    </div>
+    {selDay&&<div className="card" style={{padding:16}}>
+      <div style={{fontWeight:700,fontSize:13,color:"#334155",marginBottom:12}}>📅 {yr}年{mo+1}月{selDay}日（{selTasks.length}件）</div>
+      {!selTasks.length?<div style={{textAlign:"center",color:"#94a3b8",fontSize:12,padding:"16px 0"}}>この日のタスクはありません</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {selTasks.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",borderRadius:10,border:"1px solid #f1f5f9",background:t.meta.done?"#f8fafc":"#fff",opacity:t.meta.done?.7:1}}>
+            <div className={"checkbox"+(t.meta.done?" checked":"")} onClick={()=>onToggle(t.id)}>{t.meta.done&&<span className="checkmark">✓</span>}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,color:t.meta.done?"#94a3b8":"#334155",textDecoration:t.meta.done?"line-through":"none"}}>{t.task}</div>
+              <div style={{display:"flex",gap:6,marginTop:3}}>
+                <span style={{fontSize:10,padding:"1px 6px",borderRadius:999,background:catColorMap[t.category]||"#94a3b8",color:"#fff"}}>{t.category}</span>
+                {t.meta.assignee&&<span style={{fontSize:10,color:"#94a3b8"}}>👤{t.meta.assignee}</span>}
+              </div>
+            </div>
+            <button onClick={()=>setModal({taskId:t.id,task:t.task,meta:t.meta})} style={{background:"#eff6ff",color:"#3b82f6",border:"none",borderRadius:8,padding:"4px 10px",fontSize:11,fontWeight:600,cursor:"pointer",flexShrink:0}}>✏️ 編集</button>
+          </div>)}
+        </div>}
+    </div>}
+  </div>;
+}
+
+/* ─ NewInquiryTab ─ */
+function InqRow({row,onChange,onDelete}){
+  const [open,setOpen]=useState(false);
+  const s=(k,v)=>onChange({...row,[k]:v});
+  const sc=STATUS_COLORS_MAP[row.status]||"#94a3b8";
+  return <div className="record-card">
+    <div className="record-header" onClick={()=>setOpen(o=>!o)}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:6}}>
+          <span style={{fontWeight:700,fontSize:13,color:"#1e293b"}}>{row.name||"（氏名未入力）"}</span>
+          {row.school&&<span style={{fontSize:11,color:"#64748b"}}>{row.school} {row.grade}</span>}
+          {row.inquiryDate&&<span style={{fontSize:11,color:"#94a3b8"}}>📅 {row.inquiryDate}</span>}
+          <span style={{fontSize:10,padding:"2px 8px",borderRadius:999,background:sc,color:"#fff",fontWeight:600}}>{row.status}</span>
+          {row.probability&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:999,background:"#fef9c3",color:"#a16207",fontWeight:600}}>{row.probability}</span>}
+        </div>
+        <div className="status-steps">
+          {SS.map(st=>{
+            const stc=STATUS_COLORS_MAP[st]||"#94a3b8";
+            const isActive=row.status===st;
+            return <button key={st} onClick={e=>{e.stopPropagation();s("status",st);}}
+              style={{fontSize:10,padding:"3px 8px",borderRadius:999,border:`1px solid ${isActive?stc:"#e2e8f0"}`,background:isActive?stc:"#fff",color:isActive?"#fff":"#94a3b8",fontWeight:isActive?700:400,cursor:"pointer",transition:"all .15s"}}>
+              {st}
+            </button>;
+          })}
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:4}}>
+        <button onClick={e=>{e.stopPropagation();onDelete(row.id);}} style={{color:"#fca5a5",background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px"}}>🗑</button>
+        <span style={{fontSize:10,color:"#94a3b8"}}>{open?"▲":"▼"}</span>
+      </div>
+    </div>
+    {open&&<div className="record-body" onClick={e=>e.stopPropagation()}>
+      <div className="grid-form">
+        {[["問合せ日付","inquiryDate","date"],["学校名","school","text"],["学年","grade","text"],["氏名","name","text"],["電話番号","phone","tel"],["紹介者名","referrer","text"],["面談日時","interviewDate","datetime-local"],["体験日時","trialDate","datetime-local"],["体験科目","trialSubject","text"],["契約日時","contractDate","datetime-local"],["回答期限","deadline","date"],["不成約原因","failReason","text"]].map(([lbl,k,t])=>(
+          <div key={k}><label className="form-label">{lbl}</label><input type={t} className="form-input" value={row[k]} onChange={e=>s(k,e.target.value)}/></div>
+        ))}
+        <div><label className="form-label">問合せ経路</label><select className="form-input" value={row.route} onChange={e=>s("route",e.target.value)}><option value="">選択</option>{ROUTES.map(r=><option key={r}>{r}</option>)}</select></div>
+        <div><label className="form-label">初塾/転塾</label><select className="form-input" value={row.type} onChange={e=>s("type",e.target.value)}><option value="">選択</option><option>初塾</option><option>転塾</option></select></div>
+        <div><label className="form-label">入塾確度</label><select className="form-input" value={row.probability} onChange={e=>s("probability",e.target.value)}><option value="">選択</option>{PROBS.map(p=><option key={p}>{p}</option>)}</select></div>
+        <div style={{display:"flex",gap:16,alignItems:"center",paddingTop:16}}>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,cursor:"pointer"}}><input type="checkbox" checked={row.materialRequest} onChange={e=>s("materialRequest",e.target.checked)} style={{width:14,height:14}}/>資料請求</label>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,cursor:"pointer"}}><input type="checkbox" checked={row.aiReport} onChange={e=>s("aiReport",e.target.checked)} style={{width:14,height:14}}/>AI体験報告書</label>
+        </div>
+      </div>
+      <div style={{marginTop:10}}><label className="form-label">対策</label><textarea className="form-input" rows={2} style={{resize:"vertical"}} value={row.measure} onChange={e=>s("measure",e.target.value)} placeholder="対策メモ..."/></div>
+    </div>}
+  </div>;
+}
+
+function InquiryTab({inqs,setInqs}){
+  const [filt,setFilt]=useState("all");
+  const [confId,setConfId]=useState(null);
+  const add=()=>setInqs(r=>[...r,newInq()]);
+  const del=id=>{setInqs(r=>r.filter(x=>x.id!==id));setConfId(null);};
+  const upd=u=>setInqs(r=>r.map(x=>x.id===u.id?u:x));
+  const vis=filt==="all"?inqs:inqs.filter(r=>r.status===filt);
+  const cnt={};SS.forEach(st=>{cnt[st]=inqs.filter(r=>r.status===st).length;});
+  const cr=confId?inqs.find(r=>r.id===confId):null;
+  return <div>
+    {confId&&<Confirm msg={`「${cr?.name||"この案件"}」を削除しますか？`} onOk={()=>del(confId)} onCancel={()=>setConfId(null)}/>}
+    <div className="card" style={{padding:16,marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <span style={{fontWeight:700,fontSize:13,color:"#334155"}}>🗒 新規面談（{inqs.length}件）</span>
+        <button onClick={add} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>＋ 追加</button>
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        <button onClick={()=>setFilt("all")} className={"pill"+(filt==="all"?" active":"")}>すべて（{inqs.length}）</button>
+        {SS.map(st=>{const sc=STATUS_COLORS_MAP[st]||"#94a3b8";const isA=filt===st;return<button key={st} onClick={()=>setFilt(st)} style={{padding:"4px 10px",borderRadius:999,fontSize:11,fontWeight:600,border:`1px solid ${isA?sc:"#e2e8f0"}`,background:isA?sc:"#fff",color:isA?"#fff":"#94a3b8",cursor:"pointer",transition:"all .15s"}}>{st}（{cnt[st]||0}）</button>;})}
+      </div>
+    </div>
+    {!vis.length&&<div style={{textAlign:"center",color:"#94a3b8",fontSize:13,padding:"32px 0"}}>該当するデータがありません</div>}
+    {vis.map(row=><InqRow key={row.id} row={row} onChange={upd} onDelete={id=>setConfId(id)}/>)}
+  </div>;
+}
+
+/* ─ LectureTab ─ */
+function LecRow({row,onChange,onDelete}){
+  const [open,setOpen]=useState(false);
+  const s=(k,v)=>onChange({...row,[k]:v});
+  const subT=SUBS.reduce((a,su)=>a+n(row[su.toLowerCase()+"Koma"]),0);
+  const jukoFee=calcP(row.unitPrice,subT),jukoIn=taxIn(jukoFee);
+  const matFee=n(row.materialFee),matIn=taxIn(matFee);
+  const totalEx=jukoFee+matFee,totalIn=jukoIn+matIn;
+  const maxP=calcP(row.unitPrice,row.maxKoma),midP=calcP(row.unitPrice,row.midKoma),minP=calcP(row.unitPrice,row.minKoma);
+  const dl=k=>{const d=disc(k);return d>0?`(-${d}円/コマ)`:""};
+  return <div className="record-card">
+    <div className="record-header" onClick={()=>setOpen(o=>!o)}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:4}}>
+          <span style={{fontWeight:700,fontSize:13,color:"#1e293b"}}>{row.name||"（氏名未入力）"}</span>
+          {row.school&&<span style={{fontSize:11,color:"#64748b"}}>{row.school} {row.grade}</span>}
+          {row.interviewDate&&<span style={{fontSize:11,color:"#94a3b8"}}>📅 {row.interviewDate}</span>}
+          {row.unitPrice&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:999,background:"#eff6ff",color:"#2563eb",fontWeight:600}}>{n(row.unitPrice).toLocaleString()}円/コマ</span>}
+          {row.statusNote&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:999,background:"#eef2ff",color:"#4338ca",fontWeight:600}}>{row.statusNote}</span>}
+        </div>
+        {(row.maxKoma||row.midKoma||row.minKoma)&&<div style={{display:"flex",gap:12,fontSize:11,flexWrap:"wrap"}}>
+          {row.maxKoma&&<span style={{color:"#64748b"}}>MAX {row.maxKoma}コマ→<b style={{color:"#16a34a"}}>{yen(maxP)}</b></span>}
+          {row.midKoma&&<span style={{color:"#64748b"}}>MID {row.midKoma}コマ→<b style={{color:"#ca8a04"}}>{yen(midP)}</b></span>}
+          {row.minKoma&&<span style={{color:"#64748b"}}>MIN {row.minKoma}コマ→<b style={{color:"#dc2626"}}>{yen(minP)}</b></span>}
+        </div>}
+        {subT>0&&<div style={{fontSize:11,color:"#64748b",marginTop:2}}>受講合計 {subT}コマ → 税抜<b>{yen(jukoFee)}</b> 税込<b>{yen(jukoIn)}</b></div>}
+      </div>
+      <div style={{display:"flex",alignItems:"center",gap:4}}>
+        <button onClick={e=>{e.stopPropagation();onDelete(row.id);}} style={{color:"#fca5a5",background:"none",border:"none",cursor:"pointer",fontSize:14,padding:"2px 4px"}}>🗑</button>
+        <span style={{fontSize:10,color:"#94a3b8"}}>{open?"▲":"▼"}</span>
+      </div>
+    </div>
+    {open&&<div className="record-body" onClick={e=>e.stopPropagation()}>
+      <div className="section-title">■ 基本情報</div>
+      <div className="grid-form" style={{marginBottom:16}}>
+        {[["学校","school","text"],["学年","grade","text"],["氏名","name","text"],["面談予定日","interviewDate","date"],["契約日","contractDate","date"]].map(([lbl,k,t])=>(
+          <div key={k}><label className="form-label">{lbl}</label><input type={t} className="form-input" value={row[k]} onChange={e=>s(k,e.target.value)}/></div>
+        ))}
+        <div><label className="form-label">申込状況</label><select className="form-input" value={row.statusNote} onChange={e=>s("statusNote",e.target.value)}><option value="">選択</option><option>検討中</option><option>申込済</option><option>見送り</option><option>保留</option></select></div>
+      </div>
+      <div className="section-title">■ コマ単価・提案コマ数</div>
+      <div className="grid-form" style={{marginBottom:8}}>
+        <div><label className="form-label">コマ単価（円）</label><input type="number" className="form-input" value={row.unitPrice} onChange={e=>s("unitPrice",e.target.value)} placeholder="例：2000"/></div>
+        {[["maxKoma","MAX"],["midKoma","MID"],["minKoma","MIN"]].map(([k,lbl])=>(
+          <div key={k}><label className="form-label">{lbl} コマ数</label>
+            <input type="number" className="form-input" value={row[k]} onChange={e=>s(k,e.target.value)}/>
+            {n(row[k])>0&&<div style={{fontSize:10,color:"#3b82f6",fontWeight:600,marginTop:3}}>{yen(calcP(row.unitPrice,row[k]))} {dl(row[k])}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="discount-note">💡 21〜40コマ→-100円/コマ　41コマ以上→-200円/コマ　20コマ以下→定価</div>
+      <div className="section-title" style={{marginTop:14}}>■ 受講コマ数（科目別）</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(70px,1fr))",gap:8,marginBottom:14}}>
+        {SUBS.map(sub=>{const k=sub.toLowerCase()+"Koma";return<div key={sub}><label className="form-label">{sub}（コマ）</label><input type="number" className="form-input" style={{textAlign:"center"}} value={row[k]||""} onChange={e=>s(k,e.target.value)} placeholder="0"/></div>;})}
+        <div style={{display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+          <label className="form-label">合計</label>
+          <div style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 8px",textAlign:"center",fontWeight:700,fontSize:14,background:"#f8fafc",color:"#1e293b"}}>{subT}</div>
+        </div>
+      </div>
+      <div className="section-title">■ 受講金額・教材費・合計</div>
+      <div style={{marginBottom:12}}>
+        <label className="form-label">教材費（税抜）</label>
+        <input type="number" className="form-input" style={{maxWidth:200}} value={row.materialFee} onChange={e=>s("materialFee",e.target.value)} placeholder="例：5000"/>
+      </div>
+      {(subT>0||matFee>0)&&<table className="summary-table">
+        <thead><tr><th>項目</th><th className="right">税抜</th><th className="right">税込（10%）</th></tr></thead>
+        <tbody>
+          <tr><td>受講料（{subT}コマ {dl(subT)}）</td><td className="right" style={{fontWeight:600}}>{yen(jukoFee)}</td><td className="right" style={{fontWeight:600}}>{yen(jukoIn)}</td></tr>
+          <tr><td>教材費</td><td className="right" style={{fontWeight:600}}>{yen(matFee)}</td><td className="right" style={{fontWeight:600}}>{yen(matIn)}</td></tr>
+          <tr className="total-row"><td>合計</td><td className="right">{yen(totalEx)}</td><td className="right">{yen(totalIn)}</td></tr>
+        </tbody>
+      </table>}
+      <div style={{marginTop:12}}><label className="form-label">メモ・備考</label><textarea className="form-input" rows={2} style={{resize:"vertical"}} value={row.memo} onChange={e=>s("memo",e.target.value)} placeholder="メモ..."/></div>
+    </div>}
+  </div>;
+}
+
+function LectureTab({lecs,setLecs}){
+  const [confId,setConfId]=useState(null);
+  const add=()=>setLecs(r=>[...r,newLec()]);
+  const del=id=>{setLecs(r=>r.filter(x=>x.id!==id));setConfId(null);};
+  const upd=u=>setLecs(r=>r.map(x=>x.id===u.id?u:x));
+  const grand=lecs.reduce((acc,row)=>{const sub=SUBS.reduce((s,su)=>s+n(row[su.toLowerCase()+"Koma"]),0);return acc+taxIn(calcP(row.unitPrice,sub))+taxIn(n(row.materialFee));},0);
+  const cr=confId?lecs.find(r=>r.id===confId):null;
+  return <div>
+    {confId&&<Confirm msg={`「${cr?.name||"この案件"}」を削除しますか？`} onOk={()=>del(confId)} onCancel={()=>setConfId(null)}/>}
+    <div className="card" style={{padding:16,marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:grand?8:0}}>
+        <span style={{fontWeight:700,fontSize:13,color:"#334155"}}>📚 講習面談（{lecs.length}件）</span>
+        <button onClick={add} style={{background:"#6366f1",color:"#fff",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>＋ 追加</button>
+      </div>
+      {grand>0&&<div style={{fontSize:13,color:"#475569"}}>全体合計（税込）：<span style={{fontSize:20,fontWeight:700,color:"#4338ca"}}>  {yen(grand)}</span></div>}
+    </div>
+    {lecs.map(row=><LecRow key={row.id} row={row} onChange={upd} onDelete={id=>setConfId(id)}/>)}
+  </div>;
+}
+
+/* ─ App ─ */
+function App(){
+  // screen: "loading" | "userSelect" | "main"
+  const [screen,setScreen]=useState("loading");
+  const [currentUser,setCurrentUser]=useState(null); // {id, display_name}
+
+  const [editProf,setEditProf]=useState(false);
+  const [profile,setProfile]=useState({name:"",classroom:"",startYear:"",startMonth:"",endYear:"",endMonth:""});
+  const [cats,setCats]=useState(INIT_CATS);
+  const [meta,setMeta]=useState(()=>buildMeta(buildTasks(INIT_CATS)));
+  const [inqs,setInqs]=useState([newInq()]);
+  const [lecs,setLecs]=useState([newLec()]);
+  const [tab,setTab]=useState("list");
+
+  const [cloudStatus,setCloudStatus]=useState("idle");
+  const [toast,setToast]=useState("");
+  const saveTimer=useRef(null);
+  const toastTimer=useRef(null);
+  const initDone=useRef(false);
+
+  const showToast=msg=>{
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current=setTimeout(()=>setToast(""),2500);
+  };
+
+  /* 初期画面：ユーザー選択へ */
+  useEffect(()=>{setScreen("userSelect");},[]);
+
+  /* ユーザー選択 → データロード */
+  const handleSelectUser=async(user)=>{
+    initDone.current=false;
+    setCurrentUser(user);
+    setCloudStatus("idle");
+    // データリセット
+    const freshMeta=buildMeta(buildTasks(INIT_CATS));
+    setCats(INIT_CATS);setMeta(freshMeta);setInqs([newInq()]);setLecs([newLec()]);
+    setProfile({name:"",classroom:"",startYear:"",startMonth:"",endYear:"",endMonth:""});
+    try{
+      const r=await fetch(`${API}?action=load&user_id=${user.id}&_=${Date.now()}`,{credentials:"same-origin"});
+      const d=await r.json();
+      if(d.ok&&d.data){
+        if(d.data.profile)setProfile(d.data.profile);
+        if(d.data.cats)setCats(d.data.cats);
+        if(d.data.meta)setMeta(d.data.meta);
+        if(d.data.inqs)setInqs(d.data.inqs);
+        if(d.data.lecs)setLecs(d.data.lecs);
+      }
+    }catch(e){}
+    setTimeout(()=>{initDone.current=true;},500);
+    setScreen("main");
+  };
+
+  /* ユーザー切替 */
+  const handleSwitch=()=>{
+    clearTimeout(saveTimer.current);
+    initDone.current=false;
+    setCurrentUser(null);
+    setScreen("userSelect");
+  };
+
+  /* 変更時オートセーブ（デバウンス 1.5秒）*/
+  useEffect(()=>{
+    if(!initDone.current||!currentUser)return;
+    clearTimeout(saveTimer.current);
+    setCloudStatus("saving");
+    const snap={profile,cats,meta,inqs,lecs,savedAt:new Date().toISOString()};
+    saveTimer.current=setTimeout(()=>{
+      fetch(API,{
+        method:"POST",credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({action:"save",user_id:currentUser.id,data:snap})
+      })
+      .then(r=>r.json())
+      .then(d=>setCloudStatus(d.ok?"saved":"error"))
+      .catch(()=>setCloudStatus("error"));
+    },1500);
+  },[profile,cats,meta,inqs,lecs]);
+
+  const getSnap=()=>({profile,cats,meta,inqs,lecs,savedAt:new Date().toISOString()});
+  const loadSnap=d=>{
+    try{
+      if(d.profile)setProfile(d.profile);
+      if(d.cats)setCats(d.cats);
+      if(d.meta)setMeta(d.meta);
+      if(d.inqs)setInqs(d.inqs);
+      if(d.lecs)setLecs(d.lecs);
+    }catch(e){}
+  };
+  const saveProf=p=>{setProfile(p);setEditProf(false);};
+  const toggleT=id=>setMeta(m=>({...m,[id]:{...m[id],done:!m[id]?.done}}));
+  const updateT=(id,k,v)=>setMeta(m=>({...m,[id]:{...m[id],[k]:v}}));
+
+  const all=buildTasks(cats);
+  const total=all.length,done=all.filter(t=>meta[t.id]?.done).length,pct=total?Math.round(done/total*100):0;
+  const TABS=[["list","📋","タスク一覧"],["assignee","👥","担当者別"],["calendar","📅","カレンダー"],["inquiry","🗒","新規面談"],["lecture","📚","講習面談"]];
+
+  if(screen==="loading") return(
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f1f5f9"}}>
+      <div style={{fontSize:13,color:"#94a3b8"}}>読み込み中…</div>
+    </div>
+  );
+
+  if(screen==="userSelect") return <UserSelectScreen onSelect={handleSelectUser}/>;
+
+  return(
+    <div style={{minHeight:"100vh",background:"#f1f5f9"}}>
+      {/* Header */}
+      <div className="app-header">
+        <div style={{maxWidth:896,margin:"0 auto",padding:"12px 16px 0"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div>
+              <div style={{fontWeight:800,fontSize:15,color:"#1e293b",letterSpacing:"-0.2px"}}>📋 研修タスク管理</div>
+              <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>
+                {currentUser&&<span style={{marginRight:8,fontWeight:600,color:"#3b82f6"}}>👤 {currentUser.display_name}</span>}
+                {profile.classroom&&<span style={{marginRight:8}}>🏫 {profile.classroom}</span>}
+                {profile.startYear&&<span>📅 {profile.startYear}{profile.startMonth} ～ {profile.endYear}{profile.endMonth}</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:10}}>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:11,color:"#94a3b8",marginBottom:3}}>{done}/{total}</div>
+                <div style={{width:72,background:"#e2e8f0",borderRadius:999,height:8,overflow:"hidden"}}>
+                  <div style={{width:pct+"%",height:"100%",background:"linear-gradient(90deg,#4ade80,#22c55e)",borderRadius:999,transition:"width .4s"}}/>
+                </div>
+              </div>
+              <button onClick={()=>setEditProf(true)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 12px",fontSize:11,fontWeight:600,color:"#475569",cursor:"pointer"}}>編集</button>
+            </div>
+          </div>
+          <SaveLoadBar
+            userName={currentUser?.display_name}
+            getSnapshot={getSnap}
+            onLoad={loadSnap}
+            cloudStatus={cloudStatus}
+            onSwitch={handleSwitch}
+          />
+          <div className="tab-bar">
+            {TABS.map(([k,icon,lbl])=><button key={k} onClick={()=>setTab(k)} className={"tab-btn"+(tab===k?" active":"")}>{icon} {lbl}</button>)}
+          </div>
+        </div>
+      </div>
+
+      {editProf&&<div className="modal-overlay">
+        <div className="modal-box">
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <span style={{fontWeight:700,fontSize:15}}>研修情報の編集</span>
+            <button onClick={()=>setEditProf(false)} style={{fontSize:20,color:"#94a3b8"}}>×</button>
+          </div>
+          <ProfileForm profile={profile} onSave={saveProf}/>
+        </div>
+      </div>}
+
+      <div style={{maxWidth:896,margin:"0 auto",padding:"16px"}}>
+        {tab==="list"&&<TaskListTab cats={cats} meta={meta} onToggle={toggleT} onUpdate={updateT} onCatsChange={setCats} onMetaChange={setMeta}/>}
+        {tab==="assignee"&&<AssigneeTab cats={cats} meta={meta} onToggle={toggleT} onUpdate={updateT}/>}
+        {tab==="calendar"&&<CalendarTab cats={cats} meta={meta} onToggle={toggleT} onUpdate={updateT}/>}
+        {tab==="inquiry"&&<InquiryTab inqs={inqs} setInqs={setInqs}/>}
+        {tab==="lecture"&&<LectureTab lecs={lecs} setLecs={setLecs}/>}
+      </div>
+
+      <Toast msg={toast}/>
+    </div>
+  );
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>

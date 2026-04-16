@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リスティング広告 集計ダッシュボード</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0b0f19;--bg2:#111827;--bg3:#1a1f2e;--bg4:#0d111b;--bdr:#1f2937;--bdr2:#2d3548;--t1:#f0f2f5;--t2:#c9d1e0;--t3:#8896ab;--t4:#5a6578;--t5:#3d4656;--blue:#3b82f6;--purple:#7c3aed;--red:#dc2626;--green:#16a34a;--amber:#f59e0b}
+body{min-height:100vh;background:var(--bg);color:var(--t2);font-family:'Noto Sans JP','Hiragino Sans',system-ui,sans-serif;font-size:13px}
+button{cursor:pointer;font-family:inherit}input,select{font-family:inherit}
+.header{background:linear-gradient(135deg,#111827,#1a1535);border-bottom:1px solid var(--bdr);padding:16px 20px}
+.header-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff}
+.header h1{font-size:18px;font-weight:800;color:var(--t1)}
+.header p{font-size:11px;color:var(--t4)}
+.main{max-width:1440px;margin:0 auto;padding:12px 20px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.month-tabs{display:flex;gap:2px;background:var(--bg3);border-radius:10px;padding:3px;flex-wrap:wrap}
+.mbtn{padding:5px 12px;border-radius:7px;border:none;font-size:11px;background:transparent;color:var(--t5);font-weight:400;transition:.15s}
+.mbtn.has{color:var(--t3);font-weight:500}.mbtn.act{background:linear-gradient(135deg,var(--blue),#6366f1);color:#fff;font-weight:700}
+.sinp{background:var(--bg3);border:1px solid var(--bdr2);border-radius:7px;padding:6px 12px;color:var(--t2);font-size:11px;width:140px;outline:none}
+.vtabs{display:flex;gap:2px;background:var(--bg3);border-radius:8px;padding:3px}
+.vbtn{padding:5px 10px;border-radius:6px;border:none;font-size:11px;font-weight:500;background:transparent;color:var(--t3);transition:.15s}
+.vbtn.act{background:var(--bdr2);color:var(--t1);font-weight:700}
+.imp-row{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.dzone{flex:1;min-width:300px;background:#111c2e;border:2px dashed var(--bdr2);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:.2s}
+.dzone.over{background:#1e3a5f;border-color:var(--blue)}
+.imsg{border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;margin-left:auto}
+.imsg.ok{background:#052e16;border:1px solid var(--green);color:#4ade80}
+.imsg.err{background:#450a0a;border:1px solid var(--red);color:#fca5a5}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:10px}
+.card{background:var(--bg3);border-radius:10px;padding:12px 14px;border:1px solid var(--bdr2)}
+.card-head{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.card-icon{width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900}
+.card-lbl{font-size:10px;color:var(--t4);font-weight:600}
+.card-val{font-size:16px;font-weight:800;color:var(--t1);font-variant-numeric:tabular-nums}
+.twrap{background:var(--bg2);border-radius:10px;border:1px solid var(--bdr);overflow:auto;max-height:calc(100vh - 380px)}
+table{width:100%;border-collapse:collapse;min-width:800px}
+th{position:sticky;top:0;background:var(--bg2);padding:8px;text-align:right;font-size:11px;font-weight:700;color:var(--t3);border-bottom:2px solid var(--bdr);white-space:nowrap;user-select:none;z-index:3}
+th.nc{text-align:left;position:sticky;left:0;z-index:4;background:var(--bg2);min-width:100px}
+td{padding:4px 6px;text-align:right;font-size:12px;border-bottom:1px solid var(--bdr);color:var(--t2);font-variant-numeric:tabular-nums}
+td.nc{padding:4px 8px;text-align:left;font-weight:600;color:var(--t1);position:sticky;left:0;background:var(--bg2);z-index:1;white-space:nowrap}
+tr:nth-child(even){background:var(--bg4)}
+tfoot tr{background:var(--bg3)!important}
+tfoot td.nc{background:var(--bg3);font-weight:800;color:var(--amber)}
+.gc{color:#60a5fa!important;font-weight:700;border-left:2px solid #1e3a5f}
+.yc{color:#f87171!important;font-weight:600}
+.tc{color:#a78bfa!important;font-weight:800;font-size:13px;border-left:2px solid #2d1f5e}
+.cv{padding:2px 4px;border-radius:3px;min-height:20px;cursor:pointer;transition:.1s}
+.cv:hover{background:#1e293b}.cv.z{color:var(--t5)}.cv.yv{color:#f87171}
+.ce{width:100%;background:#1e293b;border:2px solid var(--blue);border-radius:4px;padding:3px 6px;color:var(--t1);font-size:12px;text-align:right;outline:none}
+/* Rules panel */
+.rpanel{background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:16px;margin-bottom:12px;display:none}
+.rpanel.show{display:block}
+.rcard{background:var(--bg4);border-radius:8px;padding:10px 14px;border:1px solid var(--bdr);margin-bottom:8px}
+.rbtn{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;transition:.15s}
+.rbtn.on{border:2px solid var(--blue);background:#1e3a5f;color:#60a5fa}
+.rbtn.off{border:1px solid var(--bdr2);background:var(--bg3);color:var(--t4)}
+/* Unmatched panel */
+.umpanel{background:#1a0f00;border:2px solid var(--amber);border-radius:10px;padding:16px;margin-bottom:12px}
+.umrow{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #2d200a;flex-wrap:wrap}
+.umname{font-size:12px;font-weight:700;color:var(--t1);min-width:200px}
+.umcost{font-size:11px;color:var(--amber);font-weight:600;min-width:80px}
+.umsel{background:var(--bg2);border:1px solid var(--bdr2);border-radius:5px;padding:4px 8px;color:var(--t2);font-size:11px;outline:none}
+.umbtn{padding:6px 16px;border-radius:7px;border:none;font-size:12px;font-weight:700;background:linear-gradient(135deg,var(--amber),#d97706);color:#000;margin-top:10px}
+/* Mapping management */
+.mfilter{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center}
+.mfbtn{padding:4px 12px;border-radius:6px;border:1px solid var(--bdr2);background:var(--bg3);color:var(--t3);font-size:11px;font-weight:600}
+.mfbtn.act{border-color:var(--blue);background:#1e3a5f;color:#60a5fa}
+.mtable{background:var(--bg2);border-radius:10px;border:1px solid var(--bdr);overflow:auto;max-height:calc(100vh - 340px)}
+.mtable table{min-width:700px}
+.mtable th{font-size:10px;text-align:left;position:static;padding:6px 8px}
+.mtable td{text-align:left;font-size:11px;padding:4px 8px}
+.mtable .act-skip{color:var(--t5);font-style:italic}
+.mdel{background:none;border:none;color:#ef4444;font-size:13px;cursor:pointer;padding:2px 6px}
+.madd{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.madd input,.madd select{background:var(--bg3);border:1px solid var(--bdr2);border-radius:5px;padding:5px 8px;color:var(--t2);font-size:11px;outline:none}
+.madd input{min-width:180px}
+.madd button{padding:5px 14px;border-radius:6px;border:none;font-size:11px;font-weight:700;background:var(--blue);color:#fff}
+/* Chart */
+.cgrid{display:grid;grid-template-columns:1fr 280px;gap:14px}
+.cbox{background:var(--bg3);border-radius:10px;padding:18px;border:1px solid var(--bdr2)}
+.cbox h3{margin:0 0 14px;font-size:13px;font-weight:700;color:var(--t1)}
+.t5i{display:flex;align-items:center;gap:7px;margin-bottom:7px}
+.t5r{width:17px;height:17px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff}
+.tcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;margin-top:14px}
+.tcard{background:var(--bg2);border-radius:7px;padding:8px 10px;border:1px solid var(--bdr2);cursor:pointer}
+.tcard.act{border:2px solid #6366f1}
+.hint{font-size:10px;color:var(--t4);margin-bottom:6px;background:var(--bg3);display:inline-block;padding:3px 10px;border-radius:20px}
+.pleg{display:flex;justify-content:center;gap:14px;margin-top:4px}
+.rtbtn{padding:12px 18px;border-radius:10px;border:1px solid var(--bdr2);background:var(--bg3);color:var(--t3);font-size:12px;font-weight:700;white-space:nowrap;transition:.15s}
+.rtbtn.open{border-color:var(--amber);background:#1a1500;color:var(--amber)}
+@media(max-width:900px){.cgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="header"><div class="header-inner">
+  <div class="logo">広</div>
+  <div><h1>リスティング広告 集計ダッシュボード</h1><p>2025年度 ─ マッピング管理対応版</p></div>
+</div></div>
+<div class="main">
+  <div class="controls">
+    <div class="month-tabs" id="mTabs"></div>
+    <div style="flex:1"></div>
+    <input class="sinp" id="sInp" placeholder="教室を検索..." oninput="render()">
+    <div class="vtabs">
+      <button class="vbtn act" data-v="edit" onclick="setV('edit')">✏️ 入力</button>
+      <button class="vbtn" data-v="table" onclick="setV('table')">📊 一覧</button>
+      <button class="vbtn" data-v="chart" onclick="setV('chart')">📈 グラフ</button>
+      <button class="vbtn" data-v="trend" onclick="setV('trend')">📉 推移</button>
+      <button class="vbtn" data-v="mapping" onclick="setV('mapping')">⚙️ マッピング</button>
+    </div>
+  </div>
+  <div class="imp-row">
+    <div class="dzone" id="dz" onclick="document.getElementById('fi').click()">
+      <input type="file" id="fi" accept=".csv,.tsv,.txt" multiple style="display:none" onchange="handleFiles(this.files)">
+      <div style="font-size:26px">📄</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--t1)">CSVをドロップ or クリック</div>
+      <div style="font-size:10px;color:var(--t4);margin-top:2px"><span style="color:var(--blue)">●</span> Google　<span style="color:var(--red)">●</span> Yahoo　自動判別</div></div>
+      <div id="imsg" style="display:none"></div>
+    </div>
+    <button class="rtbtn" id="rtBtn" onclick="toggleR()">🔀 按分ルール ▼</button>
+  </div>
+  <!-- Unmatched campaigns panel -->
+  <div id="umPanel" style="display:none"></div>
+  <!-- Rules panel -->
+  <div class="rpanel" id="rPanel"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><h3 style="font-size:14px;font-weight:700;color:var(--t1)">🔀 按分ルール設定</h3><button onclick="toggleR()" style="background:none;border:none;color:var(--t4);font-size:16px">✕</button></div><div id="rLog"></div><div style="font-size:11px;color:var(--t3);font-weight:600;margin-bottom:8px">按分先の変更</div><div id="rBody"></div></div>
+  <div class="summary" id="sumCards"></div>
+  <div id="content"></div>
+</div>
+<script>
+const API='api/index.php';
+const ALL_M=['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+const DEF_CLS=['新長田','湊川','兵庫駅前','東垂水','月見山','舞子坂','西明石','大久保','垂水星陵台','西鈴蘭台','大石','二見','六甲','加古川','西新町','山の街','東加古川','住吉駅前','垂水駅前','たつの','FC板宿','広畑','英賀保駅前','姫路中地','正社員募集'];
+const COL_LABELS={cost:'費用',top_display:'上位表示',remarketing:'リマーケ',other_cost:'その他',yahoo:'Yahoo広告'};
+
+let curM='1月',curV='edit',mData={},allSum={},rules=[],mappings=[],impLogs=[],unmatchedCamps=[],sortK='total',sortA=false,editC=null,charts={};
+
+// ═══ API ═══
+async function aGet(act,p={}){try{const q=new URLSearchParams({action:act,...p,_t:Date.now()});const r=await fetch(API+'?'+q);return await r.json()}catch(e){console.error('API GET error:',act,e);return{ok:false}}}
+async function aPost(b){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return await r.json()}catch(e){console.error('API POST error:',b.action,e);return{ok:false}}}
+
+// ═══ Load ═══
+async function loadMonth(m){const r=await aGet('get_data',{month:m});if(r.ok)mData[m]=r.data}
+async function loadSum(){const r=await aGet('get_all_summary');if(r.ok)allSum=r.data}
+async function loadRules(){const r=await aGet('get_rules');if(r.ok)rules=r.data}
+async function loadMappings(){const r=await aGet('get_mappings');if(r.ok)mappings=r.data}
+
+async function init(){
+  await Promise.all([loadSum(),loadRules(),loadMappings()]);
+  await loadMonth(curM);
+  renderMTabs();render();
+}
+
+// ═══ CSV parsing ═══
+function detectSrc(t){if(t.includes('キャンペーン レポート')&&t.includes('\t'))return'google';if(t.includes('キャンペーン名')&&t.includes('コスト'))return'yahoo';if(t.includes('\t')&&t.includes('費用'))return'google';return null}
+function detectMo(t,fn){const m=t.match(/(\d{4})年(\d{1,2})月/);if(m)return parseInt(m[2])+'月';const f=(fn||'').match(/_(\d{4})(\d{2})\d{2}_/);if(f)return parseInt(f[2])+'月';return null}
+function splitL(line,sep){const c=[];let q=false,cur='';for(const ch of line+sep){if(ch==='"'){q=!q;continue}if(ch===sep&&!q){c.push(cur.trim());cur='';continue}cur+=ch}return c}
+function parseCamps(text,src){
+  const lines=text.replace(/^\ufeff/,'').trim().split(/\r?\n/),camps={};
+  if(src==='google'){
+    if(lines.length<3)return camps;const h=lines[2].split('\t'),ci=h.indexOf('キャンペーン'),xi=h.indexOf('費用');if(ci<0||xi<0)return camps;
+    for(let i=3;i<lines.length;i++){const c=splitL(lines[i],'\t'),n=(c[ci]||'').trim(),v=parseInt((c[xi]||'0').replace(/,/g,''))||0;if(n)camps[n]=(camps[n]||0)+v}
+  }else{
+    const h=lines[0].split(','),ni=h.indexOf('キャンペーン名'),xi=h.indexOf('コスト');if(ni<0||xi<0)return camps;
+    for(let i=1;i<lines.length;i++){const c=splitL(lines[i],','),n=(c[ni]||'').trim(),v=parseInt((c[xi]||'0').replace(/,/g,''))||0;if(n)camps[n]=(camps[n]||0)+v}
+  }
+  return camps;
+}
+
+// ═══ DB-driven mapping ═══
+function findMapping(campName, src) {
+  const srcMaps = mappings.filter(m => m.source === src && m.enabled == 1);
+  // Priority: exact > prefix > contains
+  for (const mt of ['exact','prefix','contains']) {
+    for (const m of srcMaps.filter(x => x.match_type === mt)) {
+      if (mt === 'exact') {
+        if (campName === m.campaign_name) return m;
+        // auto_top_display: check if campName = pattern + "_上位表示"
+        if (m.auto_top_display == 1 && campName === m.campaign_name + '_上位表示') {
+          return { ...m, target_column: 'top_display', _auto: true };
+        }
+      } else if (mt === 'prefix') {
+        if (campName.startsWith(m.campaign_name)) return m;
+      } else {
+        if (campName.includes(m.campaign_name)) return m;
+      }
+    }
+  }
+  return null;
+}
+
+function mapCampaigns(camps, src) {
+  const result = {};
+  DEF_CLS.forEach(n => { result[n] = { cost:0, top_display:0, remarketing:0, other_cost:0, yahoo:0 }; });
+  const logs = [], unmatched = [];
+
+  // Apply allocation rules (shared campaigns)
+  for (const rule of rules) {
+    const isYahooRule = rule.column_name === 'yahoo';
+    if ((src === 'google' && isYahooRule) || (src === 'yahoo' && !isYahooRule)) continue;
+    let total = 0;
+    for (const [cn, cv] of Object.entries(camps)) {
+      if (rule.match_keywords.some(m => cn === m || cn.includes(m))) {
+        // Check if this campaign has a direct mapping (shouldn't be counted for shared)
+        const dm = findMapping(cn, src);
+        if (dm && dm.action === 'map') continue; // has direct mapping
+        if (dm && dm.action === 'skip') continue;
+        total += cv;
+      }
+    }
+    if (total > 0 && rule.targets.length > 0) {
+      const per = Math.round(total / rule.targets.length);
+      rule.targets.forEach(t => { if (result[t]) result[t][rule.column_name] += per; });
+      logs.push({ rule: rule.label, total, targets: [...rule.targets], per, column: rule.column_name });
+    }
+  }
+
+  // Direct mappings
+  for (const [cn, cv] of Object.entries(camps)) {
+    const mapping = findMapping(cn, src);
+    if (mapping) {
+      if (mapping.action === 'skip') continue;
+      const acc = mapping.target_account;
+      const col = mapping.target_column;
+      if (acc && result[acc]) {
+        result[acc][col] = (result[acc][col] || 0) + cv;
+      } else if (acc) {
+        result[acc] = { cost:0, top_display:0, remarketing:0, other_cost:0, yahoo:0 };
+        result[acc][col] = cv;
+      }
+    } else {
+      // Check if it's handled by allocation rules
+      let handledByRule = false;
+      for (const rule of rules) {
+        if (rule.match_keywords.some(m => cn === m || cn.includes(m))) { handledByRule = true; break; }
+      }
+      if (!handledByRule && cv > 0) {
+        unmatched.push({ name: cn, cost: cv, source: src });
+      }
+    }
+  }
+  return { result, logs, unmatched };
+}
+
+// ═══ File handling ═══
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');handleFiles(e.dataTransfer.files)});
+
+async function handleFiles(files){for(const f of files)await processFile(f)}
+async function processFile(file){
+  const buf=await file.arrayBuffer();let text='';
+  try{text=new TextDecoder('utf-16le').decode(buf)}catch{}
+  if(!text.includes('\t')&&!text.includes('コスト')){try{text=new TextDecoder('utf-8').decode(buf)}catch{}}
+  if(!text||text.length<10){try{text=new TextDecoder('utf-8').decode(buf)}catch{showMsg('読取エラー',0);return}}
+  const src=detectSrc(text);if(!src){showMsg('CSV形式を認識できません',0);return}
+  const tgtM=detectMo(text,file.name)||curM;
+  const camps=parseCamps(text,src);
+  const{result:mapped,logs,unmatched}=mapCampaigns(camps,src);
+  const rows=Object.entries(mapped).map(([account,vals])=>({account,...vals}));
+  const res=await aPost({action:'save_month',month:tgtM,rows,source:src});
+  if(res.ok){
+    await loadMonth(tgtM);await loadSum();curM=tgtM;impLogs=logs;
+    renderMTabs();render();
+    // Show unmatched
+    if(unmatched.length>0){
+      unmatchedCamps=unmatched;renderUnmatched(tgtM,src);
+    }else{
+      document.getElementById('umPanel').style.display='none';unmatchedCamps=[];
+    }
+    // Show rules
+    document.getElementById('rPanel').classList.add('show');
+    document.getElementById('rtBtn').classList.add('open');document.getElementById('rtBtn').textContent='🔀 按分ルール ▲';
+    renderRules();
+    showMsg(`${src==='google'?'Google':'Yahoo'}広告 → ${tgtM}（按分${logs.length}件${unmatched.length>0?'、未登録'+unmatched.length+'件':''})`,1);
+  }else showMsg('保存エラー',0);
+}
+function showMsg(msg,ok){const e=document.getElementById('imsg');e.style.display='block';e.className='imsg '+(ok?'ok':'err');e.textContent=(ok?'✅ ':'❌ ')+msg;setTimeout(()=>{e.style.display='none'},6000)}
+
+// ═══ Unmatched campaigns UI ═══
+function renderUnmatched(month, src) {
+  const panel = document.getElementById('umPanel');
+  const accounts = DEF_CLS;
+  const cols = src === 'google' ? ['cost','top_display','other_cost'] : ['yahoo'];
+  let html = `<div class="umpanel"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <h3 style="font-size:14px;font-weight:700;color:var(--amber)">⚠️ 未登録キャンペーン ${unmatchedCamps.length}件</h3>
+    <button onclick="document.getElementById('umPanel').innerHTML='';document.getElementById('umPanel').style.display='none'" style="background:none;border:none;color:var(--t4);font-size:16px">✕</button></div>
+    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">振分先を設定して「保存」すると、マッピングルールに登録され次回以降自動で振り分けられます。「除外」にすると無視されます。</div>`;
+  unmatchedCamps.forEach((c, i) => {
+    html += `<div class="umrow">
+      <span class="umname">${c.name}</span><span class="umcost">¥${Math.round(c.cost).toLocaleString()}</span>
+      <select class="umsel" id="um_act_${i}" onchange="umActChange(${i})"><option value="map">振分</option><option value="skip">除外</option></select>
+      <select class="umsel" id="um_acc_${i}">${accounts.map(a=>`<option value="${a}">${a}</option>`).join('')}</select>
+      <select class="umsel" id="um_col_${i}">${cols.map(c=>`<option value="${c}">${COL_LABELS[c]||c}</option>`).join('')}</select>
+    </div>`;
+  });
+  html += `<button class="umbtn" onclick="saveUnmatched('${month}','${src}')">💾 保存してマッピングに登録</button></div>`;
+  panel.innerHTML = html;
+  panel.style.display = 'block';
+}
+function umActChange(i) {
+  const act = document.getElementById('um_act_'+i).value;
+  document.getElementById('um_acc_'+i).disabled = (act === 'skip');
+  document.getElementById('um_col_'+i).disabled = (act === 'skip');
+}
+async function saveUnmatched(month, src) {
+  const newMappings = [];
+  unmatchedCamps.forEach((c, i) => {
+    const act = document.getElementById('um_act_'+i).value;
+    const acc = document.getElementById('um_acc_'+i).value;
+    const col = document.getElementById('um_col_'+i).value;
+    newMappings.push({
+      campaign_name: c.name, match_type: 'exact', source: src,
+      action: act, target_account: act === 'skip' ? '' : acc,
+      target_column: act === 'skip' ? '' : col, auto_top_display: 0, notes: '画面から追加'
+    });
+  });
+  await aPost({ action: 'add_mappings_bulk', mappings: newMappings });
+  await loadMappings();
+  // Re-import the data with new mappings
+  showMsg('マッピング登録完了。データを再計算中...', 1);
+  document.getElementById('umPanel').style.display = 'none';
+  unmatchedCamps = [];
+  // Note: user should re-drop the CSV or we could store it, but simpler to just register mappings
+}
+
+// ═══ Render ═══
+function f$(n){return Math.round(n).toLocaleString('ja-JP')}
+function renderMTabs(){
+  document.getElementById('mTabs').innerHTML=ALL_M.map(m=>{
+    const has=allSum[m]||mData[m];const cls=[];if(m===curM)cls.push('act');if(has)cls.push('has');
+    return`<button class="mbtn ${cls.join(' ')}" onclick="selM('${m}')">${m}</button>`;
+  }).join('');
+}
+async function selM(m){curM=m;if(!mData[m]){await loadMonth(m);if(!mData[m]||mData[m].length===0){await aPost({action:'init_month',month:m,accounts:DEF_CLS});await loadMonth(m)}}renderMTabs();render()}
+function setV(v){curV=v;document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('act',b.dataset.v===v));render()}
+function getCalc(){return(mData[curM]||[]).map(r=>{const c=r.cost||0,t=r.top_display||0,rm=r.remarketing||0,o=r.other_cost||0,y=r.yahoo||0;return{...r,other_cost:o,google_total:c+t+rm+o,total:c+t+rm+o+y}})}
+function getFilt(){let d=getCalc();const s=document.getElementById('sInp').value.toLowerCase();if(s)d=d.filter(r=>r.account.toLowerCase().includes(s));if(curV==='table')d.sort((a,b)=>sortA?a[sortK]-b[sortK]:b[sortK]-a[sortK]);return d}
+
+function render(){
+  const data=getFilt();const tot={cost:0,top_display:0,remarketing:0,other_cost:0,google_total:0,yahoo:0,total:0};
+  data.forEach(r=>{for(const k of Object.keys(tot))tot[k]+=(r[k]||0)});
+  document.getElementById('sumCards').innerHTML=[
+    {l:'Google広告',v:tot.google_total,c:'var(--blue)',i:'G'},{l:'Yahoo広告',v:tot.yahoo,c:'var(--red)',i:'Y'},
+    {l:'広告費合計',v:tot.total,c:'var(--purple)',i:'¥'},{l:'教室数',v:data.length,c:'var(--green)',i:'#',cn:1},
+    {l:'教室平均',v:data.length?tot.total/data.length:0,c:'var(--amber)',i:'μ'}
+  ].map(x=>`<div class="card"><div class="card-head"><div class="card-icon" style="background:${x.c}20;color:${x.c}">${x.i}</div><span class="card-lbl">${x.l}</span></div><div class="card-val">${x.cn?x.v:'¥'+f$(x.v)}</div></div>`).join('');
+  const ct=document.getElementById('content');
+  if(curV==='edit')ct.innerHTML=renderEdit(data,tot);
+  else if(curV==='table')ct.innerHTML=renderTbl(data,tot);
+  else if(curV==='chart'){ct.innerHTML=renderChart(data,tot);drawCharts(data,tot)}
+  else if(curV==='trend'){ct.innerHTML=renderTrend();drawTrend()}
+  else if(curV==='mapping'){ct.innerHTML='';renderMappingView(ct)}
+}
+
+// ═══ Edit view ═══
+const FLDS=[{k:'cost',l:'費用'},{k:'top_display',l:'上位表示'},{k:'remarketing',l:'リマーケ'},{k:'other_cost',l:'その他'},{k:'yahoo',l:'Yahoo広告'}];
+function renderEdit(data,tot){
+  let h=`<div class="hint">📝 ${curM} ─ セルクリック→編集 / Enter確定</div><div class="twrap"><table><thead><tr><th class="nc">計上先</th>`;
+  FLDS.forEach(f=>h+=`<th>${f.l}</th>`);
+  h+='<th class="gc">Google合計</th><th class="tc">合計</th></tr></thead><tbody>';
+  data.forEach((r,i)=>{
+    h+=`<tr><td class="nc">${r.account}</td>`;
+    FLDS.forEach(f=>{const v=r[f.k]||0;const cls=v>0?(f.k==='yahoo'?'yv':''):'z';h+=`<td><div class="cv ${cls}" onclick="startE(${i},'${f.k}',${v},this)">${v>0?'¥'+f$(v):'—'}</div></td>`});
+    h+=`<td class="gc">¥${f$(r.google_total)}</td><td class="tc">¥${f$(r.total)}</td></tr>`;
+  });
+  h+='</tbody><tfoot><tr><td class="nc">合計</td>';
+  FLDS.forEach(f=>h+=`<td style="text-align:right;font-weight:700;color:var(--t1)">¥${f$(tot[f.k])}</td>`);
+  h+=`<td class="gc">¥${f$(tot.google_total)}</td><td class="tc" style="font-size:14px">¥${f$(tot.total)}</td></tr></tfoot></table></div>`;
+  return h;
+}
+function startE(i,f,v,el){if(editC)return;editC={i,f};const d=getFilt(),acc=d[i].account;el.innerHTML=`<input class="ce" value="${v}" onblur="commitE('${acc}','${f}',this)" onkeydown="eKey(event,'${acc}','${f}',this)" autofocus>`;el.querySelector('input').focus();el.querySelector('input').select()}
+async function commitE(acc,f,inp){if(!editC)return;editC=null;await aPost({action:'save_cell',month:curM,account:acc,field:f,value:parseInt(inp.value)||0});await loadMonth(curM);await loadSum();render()}
+function eKey(e,acc,f,inp){if(e.key==='Enter')inp.blur();else if(e.key==='Escape'){editC=null;render()}}
+
+// ═══ Table view ═══
+function renderTbl(data,tot){
+  const cols=[{k:'account',l:'計上先'},{k:'cost',l:'費用'},{k:'top_display',l:'上位表示'},{k:'remarketing',l:'リマーケ'},{k:'other_cost',l:'その他'},{k:'google_total',l:'Google合計'},{k:'yahoo',l:'Yahoo広告'},{k:'total',l:'合計'}];
+  let h='<div class="twrap" style="max-height:calc(100vh - 290px)"><table><thead><tr>';
+  cols.forEach(c=>{const cls=c.k==='account'?'nc':c.k==='google_total'?'gc':c.k==='yahoo'?'yc':c.k==='total'?'tc':'';const ar=sortK===c.k?(sortA?' ↑':' ↓'):'';h+=`<th class="${cls}" style="cursor:pointer" onclick="tSort('${c.k}')">${c.l}${ar}</th>`});
+  h+='</tr></thead><tbody>';const mx=Math.max(...data.map(r=>r.total),1);
+  data.forEach(r=>{h+=`<tr><td class="nc"><div style="position:relative"><div style="position:absolute;left:0;top:-2px;bottom:-2px;width:${(r.total/mx*100)}%;background:var(--blue);opacity:.06;border-radius:3px"></div><span style="position:relative">${r.account}</span></div></td>`;
+    ['cost','top_display','remarketing','other_cost'].forEach(k=>h+=`<td>${r[k]>0?'¥'+f$(r[k]):'<span style="color:var(--t5)">—</span>'}</td>`);
+    h+=`<td class="gc">¥${f$(r.google_total)}</td><td class="yc">${r.yahoo>0?'¥'+f$(r.yahoo):'<span style="color:var(--t5)">—</span>'}</td><td class="tc">¥${f$(r.total)}</td></tr>`});
+  h+='</tbody><tfoot><tr><td class="nc">合計</td>';['cost','top_display','remarketing','other_cost'].forEach(k=>h+=`<td style="text-align:right;font-weight:700;color:var(--t1)">¥${f$(tot[k])}</td>`);
+  h+=`<td class="gc">¥${f$(tot.google_total)}</td><td class="yc" style="font-weight:700">¥${f$(tot.yahoo)}</td><td class="tc" style="font-size:14px">¥${f$(tot.total)}</td></tr></tfoot></table></div>`;return h;
+}
+function tSort(k){if(sortK===k)sortA=!sortA;else{sortK=k;sortA=false}render()}
+
+// ═══ Chart view ═══
+function renderChart(data,tot){
+  const t5=[...data].sort((a,b)=>b.total-a.total).slice(0,5);const clrs=['var(--amber)','#94a3b8','#b45309','var(--t4)','var(--t5)'];
+  const gP=tot.total>0?((tot.google_total/tot.total)*100).toFixed(1):'0',yP=tot.total>0?((tot.yahoo/tot.total)*100).toFixed(1):'0';
+  let h=`<div class="cgrid"><div class="cbox"><h3>教室別広告費（${curM}）</h3><canvas id="barC"></canvas></div><div style="display:flex;flex-direction:column;gap:14px"><div class="cbox"><h3>Google / Yahoo構成比</h3><canvas id="pieC" style="max-height:180px"></canvas><div class="pleg"><div style="display:flex;align-items:center;gap:5px;font-size:10px"><div style="width:9px;height:9px;border-radius:2px;background:var(--blue)"></div><span style="color:var(--t3)">Google</span><span style="font-weight:700;color:var(--t1)">${gP}%</span></div><div style="display:flex;align-items:center;gap:5px;font-size:10px"><div style="width:9px;height:9px;border-radius:2px;background:var(--red)"></div><span style="color:var(--t3)">Yahoo</span><span style="font-weight:700;color:var(--t1)">${yP}%</span></div></div></div>`;
+  h+='<div class="cbox" style="flex:1"><h3>上位5教室</h3>';t5.forEach((c,i)=>{h+=`<div class="t5i"><span class="t5r" style="background:${clrs[i]}">${i+1}</span><span style="flex:1;font-size:11px;color:var(--t2)">${c.account}</span><span style="font-size:11px;font-weight:700;color:var(--t1)">¥${f$(c.total)}</span></div>`});
+  h+='</div></div></div>';return h;
+}
+function drawCharts(data,tot){
+  destroyC();
+  const bc=document.getElementById('barC');if(bc){charts.bar=new Chart(bc,{type:'bar',data:{labels:data.map(r=>r.account),datasets:[{label:'Google',data:data.map(r=>r.google_total),backgroundColor:'#3b82f6'},{label:'Yahoo',data:data.map(r=>r.yahoo),backgroundColor:'#dc2626'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8896ab',font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': ¥'+f$(c.raw)}}},scales:{x:{ticks:{color:'#5a6578',callback:v=>'¥'+(v/1000).toFixed(0)+'k'},grid:{color:'#1f2937'}},y:{ticks:{color:'#c9d1e0',font:{size:10}},grid:{display:false}}}}});bc.parentElement.style.height=Math.max(380,data.length*26)+'px'}
+  const pc=document.getElementById('pieC');if(pc){charts.pie=new Chart(pc,{type:'doughnut',data:{labels:['Google','Yahoo'],datasets:[{data:[tot.google_total,tot.yahoo],backgroundColor:['#3b82f6','#dc2626'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{display:false}}}})}
+}
+
+// ═══ Trend view ═══
+function renderTrend(){
+  let h='<div class="cbox"><h3>月別広告費推移</h3><canvas id="trendC" height="340"></canvas><div class="tcards">';
+  ALL_M.forEach(m=>{const s=allSum[m],total=s?s.total:0;h+=`<div class="tcard ${m===curM?'act':''}" onclick="selM('${m}')"><div style="font-size:10px;font-weight:700;color:${m===curM?'#a5b4fc':'var(--t3)'};margin-bottom:3px">${m}</div><div style="font-size:13px;font-weight:800;color:var(--t1)">¥${(total/10000).toFixed(0)}<span style="font-size:9px;color:var(--t4)">万</span></div></div>`});
+  h+='</div></div>';return h;
+}
+function drawTrend(){
+  destroyC();const mos=ALL_M.filter(m=>allSum[m]);const ctx=document.getElementById('trendC');if(!ctx)return;
+  charts.trend=new Chart(ctx,{type:'line',data:{labels:mos,datasets:[{label:'Google',data:mos.map(m=>allSum[m].google),borderColor:'#3b82f6',tension:.3,pointRadius:4,fill:false},{label:'Yahoo',data:mos.map(m=>allSum[m].yahoo),borderColor:'#dc2626',tension:.3,pointRadius:4,fill:false},{label:'合計',data:mos.map(m=>allSum[m].total),borderColor:'#7c3aed',tension:.3,pointRadius:5,borderDash:[5,3],fill:false}]},options:{responsive:true,plugins:{legend:{labels:{color:'#8896ab'}},tooltip:{callbacks:{label:c=>c.dataset.label+': ¥'+f$(c.raw)}}},scales:{x:{ticks:{color:'#8896ab'},grid:{color:'#1f2937'}},y:{ticks:{color:'#5a6578',callback:v=>'¥'+(v/10000).toFixed(0)+'万'},grid:{color:'#1f293780'}}}}});
+}
+function destroyC(){Object.values(charts).forEach(c=>c.destroy());charts={}}
+
+// ═══ Rules panel ═══
+function toggleR(){const p=document.getElementById('rPanel'),b=document.getElementById('rtBtn'),o=p.classList.toggle('show');b.classList.toggle('open',o);b.textContent=o?'🔀 按分ルール ▲':'🔀 按分ルール ▼';if(o)renderRules()}
+function renderRules(){
+  const logEl=document.getElementById('rLog');
+  if(impLogs.length>0){let h='<div style="margin-bottom:16px"><div style="font-size:11px;color:var(--t3);font-weight:600;margin-bottom:8px">直近インポートの按分結果</div>';
+    impLogs.forEach(l=>{h+=`<div class="rcard"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:12px;font-weight:700;color:var(--t1)">${l.rule}</span><span style="font-size:13px;font-weight:800;color:var(--amber)">¥${f$(l.total)}</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-size:10px;color:var(--t4)">→ ${l.targets.length}等分 →</span>`;
+      const cls=l.column==='yahoo'?'y':'g';l.targets.forEach(t=>h+=`<span style="font-size:10px;background:#1e293b;padding:2px 8px;border-radius:4px;color:var(--t2)">${t}: <strong style="font-weight:700;color:${cls==='y'?'#f87171':'#60a5fa'}">¥${f$(l.per)}</strong></span>`);
+      h+=`</div></div>`});h+='</div>';logEl.innerHTML=h}else logEl.innerHTML='';
+  const body=document.getElementById('rBody');let h='';
+  rules.filter(r=>r.rule_id!=='rmk').forEach(rule=>{h+=`<div class="rcard"><div style="font-size:12px;font-weight:700;color:var(--t1);margin-bottom:6px">${rule.label}<span style="font-size:10px;color:var(--t4);margin-left:8px">→ ${rule.targets.length}等分</span></div><div style="display:flex;gap:6px;flex-wrap:wrap">`;
+    rule.all_options.forEach(opt=>{const on=rule.targets.includes(opt);h+=`<button class="rbtn ${on?'on':'off'}" onclick="toggleTgt('${rule.rule_id}','${opt}')">${on?'✓ ':''}${opt}</button>`});h+='</div></div>'});
+  body.innerHTML=h;
+}
+async function toggleTgt(rid,tgt){const rule=rules.find(r=>r.rule_id===rid);if(!rule)return;const has=rule.targets.includes(tgt);rule.targets=has?rule.targets.filter(t=>t!==tgt):[...rule.targets,tgt];await aPost({action:'save_rules',rules:[{rule_id:rid,targets:rule.targets}]});renderRules()}
+
+// ═══ Mapping management view ═══
+let mapFilter = 'all'; // all, google, yahoo
+function renderMappingView(container) {
+  const filtered = mapFilter === 'all' ? mappings : mappings.filter(m => m.source === mapFilter);
+  const gCount = mappings.filter(m => m.source === 'google').length;
+  const yCount = mappings.filter(m => m.source === 'yahoo').length;
+
+  let h = `<div style="margin-bottom:12px"><h3 style="font-size:15px;font-weight:700;color:var(--t1);margin-bottom:8px">⚙️ キャンペーン → 教室 マッピングルール</h3>
+    <div style="font-size:11px;color:var(--t4);margin-bottom:10px">CSVインポート時にキャンペーン名をどの教室のどの列に振り分けるかを管理します。新しいキャンペーンが追加された場合はここで設定してください。</div></div>`;
+
+  // Filter buttons
+  h += `<div class="mfilter">
+    <button class="mfbtn ${mapFilter==='all'?'act':''}" onclick="mapFilter='all';render()">すべて (${mappings.length})</button>
+    <button class="mfbtn ${mapFilter==='google'?'act':''}" onclick="mapFilter='google';render()">Google (${gCount})</button>
+    <button class="mfbtn ${mapFilter==='yahoo'?'act':''}" onclick="mapFilter='yahoo';render()">Yahoo (${yCount})</button>
+    <div style="flex:1"></div>
+    <input class="sinp" id="mapSearch" placeholder="ルール検索..." oninput="render()" style="width:200px">
+  </div>`;
+
+  // Add new mapping form
+  h += `<div class="madd">
+    <input id="nm_name" placeholder="キャンペーン名">
+    <select id="nm_match"><option value="exact">完全一致</option><option value="prefix">前方一致</option><option value="contains">部分一致</option></select>
+    <select id="nm_src"><option value="google">Google</option><option value="yahoo">Yahoo</option></select>
+    <select id="nm_act"><option value="map">振分</option><option value="skip">除外</option></select>
+    <select id="nm_acc">${DEF_CLS.map(a=>`<option value="${a}">${a}</option>`).join('')}</select>
+    <select id="nm_col"><option value="cost">費用</option><option value="top_display">上位表示</option><option value="other_cost">その他</option><option value="yahoo">Yahoo広告</option></select>
+    <label style="font-size:10px;color:var(--t3);display:flex;align-items:center;gap:3px"><input type="checkbox" id="nm_atd"> _上位表示自動</label>
+    <button onclick="addNewMapping()">＋ 追加</button>
+  </div>`;
+
+  // Search filter
+  const searchTerm = document.getElementById('mapSearch')?.value?.toLowerCase() || '';
+  let displayMaps = filtered;
+  if (searchTerm) displayMaps = displayMaps.filter(m => m.campaign_name.toLowerCase().includes(searchTerm) || m.target_account.toLowerCase().includes(searchTerm));
+
+  // Table
+  h += `<div class="mtable"><table style="min-width:900px"><thead><tr>
+    <th style="width:30px"></th>
+    <th>キャンペーン名パターン</th>
+    <th style="width:70px">一致方式</th>
+    <th style="width:60px">ソース</th>
+    <th style="width:50px">動作</th>
+    <th style="width:80px">振分先</th>
+    <th style="width:70px">列</th>
+    <th style="width:50px">上位自動</th>
+    <th style="width:150px">メモ</th>
+  </tr></thead><tbody>`;
+  const matchLabels = { exact: '完全', prefix: '前方', contains: '部分' };
+  displayMaps.forEach(m => {
+    const isSkip = m.action === 'skip';
+    h += `<tr class="${isSkip ? 'act-skip' : ''}">
+      <td><button class="mdel" onclick="delMapping(${m.id})" title="削除">🗑</button></td>
+      <td style="font-weight:600;color:${isSkip ? 'var(--t5)' : 'var(--t1)'}">${m.campaign_name}</td>
+      <td><span style="font-size:10px;background:var(--bg3);padding:2px 6px;border-radius:3px">${matchLabels[m.match_type]||m.match_type}</span></td>
+      <td><span style="color:${m.source==='google'?'#60a5fa':'#f87171'};font-weight:600;font-size:10px">${m.source==='google'?'Google':'Yahoo'}</span></td>
+      <td>${isSkip ? '<span style="color:var(--t5)">除外</span>' : '振分'}</td>
+      <td style="font-weight:600">${m.target_account || '—'}</td>
+      <td>${m.target_column ? (COL_LABELS[m.target_column] || m.target_column) : '—'}</td>
+      <td style="text-align:center">${m.auto_top_display == 1 ? '✓' : ''}</td>
+      <td style="color:var(--t4);font-size:10px">${m.notes || ''}</td>
+    </tr>`;
+  });
+  h += '</tbody></table></div>';
+  container.innerHTML = h;
+}
+
+async function addNewMapping() {
+  const name = document.getElementById('nm_name').value.trim();
+  if (!name) { alert('キャンペーン名を入力してください'); return; }
+  await aPost({
+    action: 'add_mapping',
+    campaign_name: name,
+    match_type: document.getElementById('nm_match').value,
+    source: document.getElementById('nm_src').value,
+    map_action: document.getElementById('nm_act').value,
+    target_account: document.getElementById('nm_acc').value,
+    target_column: document.getElementById('nm_col').value,
+    auto_top_display: document.getElementById('nm_atd').checked ? 1 : 0,
+    notes: ''
+  });
+  document.getElementById('nm_name').value = '';
+  await loadMappings();
+  render();
+}
+
+async function delMapping(id) {
+  if (!confirm('このマッピングルールを削除しますか？')) return;
+  await aPost({ action: 'delete_mapping', id });
+  await loadMappings();
+  render();
+}
+
+// ═══ Start ═══
+init();
+</script>
+</body>
+</html>

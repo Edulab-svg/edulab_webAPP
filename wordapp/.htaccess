@@ -1,0 +1,7 @@
+Options -Indexes
+
+# PHPファイルへの直接アクセスを制限（config.phpのみ）
+<Files "config.php">
+    Order Allow,Deny
+    Deny from all
+</Files>

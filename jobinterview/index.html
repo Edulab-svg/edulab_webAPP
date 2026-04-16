@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1次面接 議事録管理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;background:#f9fafb;color:#1f2937}
+input,textarea,select,button{font-family:inherit}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#c7c7c7;border-radius:3px}
+.page{min-height:100vh;background:#f9fafb}
+.header{background:#4338ca;color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.tabs{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 16px;display:flex;gap:4px;overflow-x:auto}
+.tab-btn{padding:12px 16px;font-size:14px;font-weight:500;white-space:nowrap;border:none;background:none;border-bottom:2px solid transparent;color:#6b7280;cursor:pointer}
+.tab-btn.active{border-bottom-color:#4f46e5;color:#4f46e5}
+.field-label{font-size:12px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px}
+.inp{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;color:#374151;outline:none;background:#fff;transition:box-shadow .15s}
+.inp:focus{box-shadow:0 0 0 2px #a5b4fc}
+.ta{width:100%;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px;font-size:14px;color:#374151;outline:none;resize:none;background:#fff;transition:box-shadow .15s}
+.ta:focus{box-shadow:0 0 0 2px #a5b4fc}
+.tog-btn{padding:6px 12px;border-radius:9999px;font-size:12px;font-weight:500;border:1px solid #e5e7eb;background:#fff;color:#4b5563;cursor:pointer;transition:all .15s}
+.tog-btn:hover{border-color:#a5b4fc}
+.tog-btn.on-indigo{background:#4f46e5;color:#fff;border-color:#4f46e5}
+.tog-btn.on-blue{background:#2563eb;color:#fff;border-color:#2563eb}
+.tog-btn.on-green{background:#16a34a;color:#fff;border-color:#16a34a}
+.tog-btn.on-orange{background:#ea580c;color:#fff;border-color:#ea580c}
+.tog-btn.on-purple{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.tog-btn.on-teal{background:#0d9488;color:#fff;border-color:#0d9488}
+.tog-btn.on-pink{background:#db2777;color:#fff;border-color:#db2777}
+.tog-btn.on-amber{background:#d97706;color:#fff;border-color:#d97706}
+.tog-btn.on-rose{background:#e11d48;color:#fff;border-color:#e11d48}
+.btn-primary{background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+.btn-primary:hover{background:#4338ca}
+.btn-primary:disabled{background:#9ca3af;cursor:not-allowed}
+.btn-sm{font-size:12px;padding:5px 14px;border-radius:9999px;border:none;cursor:pointer;font-weight:500}
+.btn-add{background:#e0e7ff;color:#4338ca}.btn-add:hover{background:#c7d2fe}
+.btn-add-g{background:#dcfce7;color:#15803d}.btn-add-g:hover{background:#bbf7d0}
+.btn-add-o{background:#ffedd5;color:#c2410c}.btn-add-o:hover{background:#fed7aa}
+.btn-add-p{background:#f3e8ff;color:#7e22ce}.btn-add-p:hover{background:#e9d5ff}
+.del-btn{background:none;border:none;cursor:pointer;color:#d1d5db;font-size:16px;padding:4px 6px;border-radius:50%;flex-shrink:0}
+.del-btn:hover{color:#f87171;background:#fef2f2}
+.badge{font-size:11px;padding:2px 8px;border-radius:9999px;font-weight:500}
+.stat-card{background:#fff;border-radius:12px;padding:16px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.cand-row{background:#fff;border-radius:12px;padding:16px;display:flex;align-items:center;gap:16px;border:1px solid transparent;box-shadow:0 1px 2px rgba(0,0,0,.06);transition:all .2s;cursor:default}
+.cand-row:hover{border-color:#c7d2fe;box-shadow:0 4px 6px rgba(0,0,0,.07)}
+.avatar{width:48px;height:48px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-weight:700;font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.filter-btn{padding:4px 12px;border-radius:9999px;font-size:12px;font-weight:500;border:none;cursor:pointer}
+.filter-btn.on{background:#4f46e5;color:#fff}
+.filter-btn.off{background:#f3f4f6;color:#4b5563}
+.filter-btn.off:hover{background:#e5e7eb}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
+.star-btn{font-size:20px;background:none;border:none;cursor:pointer;padding:0 2px}
+.upload-area{border:2px dashed #c7d2fe;border-radius:12px;padding:24px;text-align:center;background:#eef2ff;cursor:pointer;transition:background .15s}
+.upload-area:hover{background:#e0e7ff}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.radio-label{display:flex;align-items:center;gap:8px;font-size:13px;color:#374151;cursor:pointer;padding:5px 8px;border-radius:8px;transition:background .1s}
+.radio-label:hover{background:#f3f4f6}
+.radio-label input[type=radio]{accent-color:#4f46e5;width:15px;height:15px}
+.entry-card{border:1px solid #c7d2fe;border-radius:12px;padding:14px;background:#f5f7ff;display:flex;flex-direction:column;gap:10px}
+.job-card{border:1px solid #fed7aa;border-radius:12px;padding:16px;background:#fff7ed;display:flex;flex-direction:column;gap:12px}
+.stage-card{border:1px solid #e9d5ff;border-radius:12px;padding:16px;background:#faf5ff;display:flex;flex-direction:column;gap:12px}
+.pt-card{border:1px solid #e9d5ff;border-radius:12px;padding:12px;background:#faf5ff;display:flex;flex-direction:column;gap:8px}
+.summary-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f3f4f6}
+.err-bar{background:#fef2f2;border-bottom:2px solid #fca5a5;padding:8px 24px;font-size:13px;color:#b91c1c;display:flex;justify-content:space-between;align-items:center}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f2937;color:#fff;padding:10px 20px;border-radius:8px;font-size:14px;z-index:100;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+.loading{display:flex;align-items:center;justify-content:center;height:100vh;color:#9ca3af;font-size:18px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ════════════════════════════════════════
+// 定数
+// ════════════════════════════════════════
+const API = '/jobinterview/api/index.php';
+const MEDIA_OPTIONS      = ['HP','airwork','マイナビ','duda'];
+const STATUS_OPTIONS     = ['未設定','通過','保留','見送り'];
+const PERSONALITY        = ['陽','やや陽','中間','やや陰','陰'];
+const JOB_THEME_OPTIONS  = ['収入','勤務時間','やりがい'];
+const COMMUTE_OPTIONS    = ['車','電車','バス','自転車','徒歩'];
+const SCHOOL_TYPE_OPTIONS= ['まんてん個別','まんてん個別プラス','どちらでも可'];
+const INCOME_TYPES       = ['年収','月収','時給'];
+const RESIGN_REASONS     = ['給与・待遇への不満','人間関係・職場環境','キャリアアップ・成長機会','労働時間・働き方','会社の方針・将来性','引越し・家庭の事情'];
+const COMPARISON_OPTIONS = ['地域密着','5教科学べる','6時間半勤務','給与形態'];
+const ENTRY_ATTRACT      = ['やりがい','勤務時間','職種','給与','社風','成長機会'];
+const ENTRY_STATUS_OPTIONS = ['エントリー済み','1次面接待ち','1次面接実施済み','2次（最終）面接待ち','内定待ち','内定済み'];
+const SCHOOL_STAGES      = ['中学生','高校生','大学生'];
+const SPORTS_ROLES       = ['キャプテン・部長','副キャプテン・副部長','マネージャー','レギュラー','一般部員','その他'];
+const VENUE_OPTIONS      = ['本部','その他（自由記入）'];
+const INTERVIEWER_OPTIONS= ['川口','岩下'];
+const FAMILY_ROLES       = ['父','母','兄','姉','弟','妹','祖父','祖母','配偶者・パートナー','子ども','一人暮らし'];
+
+// ════════════════════════════════════════
+// API ユーティリティ
+// ════════════════════════════════════════
+function ts() { return '?_=' + Date.now(); }
+
+async function apiGet(action, params = {}) {
+    const q = new URLSearchParams({ action, ...params, _: Date.now() });
+    const r = await fetch(API + '?' + q, { credentials: 'same-origin' });
+    const json = await r.json();
+    if (r.status === 401 || json.error === 'unauthenticated') { _loggedIn = false; render(); return json; }
+    return json;
+}
+
+async function apiPost(data) {
+    const r = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify(data),
+    });
+    const json = await r.json();
+    if (r.status === 401 || json.error === 'unauthenticated') { _loggedIn = false; render(); return json; }
+    return json;
+}
+
+async function apiUpload(candidate_id, file) {
+    const fd = new FormData();
+    fd.append('action', 'upload');
+    fd.append('candidate_id', candidate_id);
+    fd.append('file', file);
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', body: fd });
+    return r.json();
+}
+
+// ════════════════════════════════════════
+// 汎用 helpers
+// ════════════════════════════════════════
+function fmtDate(d) {
+    if (!d) return '―';
+    try { return new Date(d).toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit' }); }
+    catch { return d; }
+}
+function statusStyle(s) {
+    const m = { '未設定':'background:#f3f4f6;color:#6b7280', '通過':'background:#dcfce7;color:#15803d', '見送り':'background:#fef2f2;color:#dc2626', '保留':'background:#fef9c3;color:#a16207' };
+    return m[s] || 'background:#f3f4f6;color:#6b7280';
+}
+function mediaStyle(m) {
+    const c = { 'HP':'background:#dbeafe;color:#1d4ed8', 'airwork':'background:#ffedd5;color:#c2410c', 'マイナビ':'background:#fef2f2;color:#dc2626', 'duda':'background:#f3e8ff;color:#7e22ce' };
+    return c[m] || 'background:#f3f4f6;color:#6b7280';
+}
+const CARD_COLORS = {
+    indigo:{border:'#818cf8',head:'#eef2ff',title:'#4338ca'},
+    blue:  {border:'#60a5fa',head:'#eff6ff',title:'#1d4ed8'},
+    green: {border:'#4ade80',head:'#f0fdf4',title:'#15803d'},
+    orange:{border:'#fb923c',head:'#fff7ed',title:'#c2410c'},
+    purple:{border:'#c084fc',head:'#faf5ff',title:'#7e22ce'},
+    pink:  {border:'#f472b6',head:'#fdf2f8',title:'#be185d'},
+    teal:  {border:'#2dd4bf',head:'#f0fdfa',title:'#0f766e'},
+    rose:  {border:'#fb7185',head:'#fff1f2',title:'#be123c'},
+    amber: {border:'#fbbf24',head:'#fffbeb',title:'#b45309'},
+};
+
+let toastTimer;
+function showToast(msg, isErr = false) {
+    let t = document.getElementById('_toast');
+    if (!t) { t = document.createElement('div'); t.id = '_toast'; t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.style.background = isErr ? '#ef4444' : '#1f2937';
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ════════════════════════════════════════
+// 状態
+// ════════════════════════════════════════
+let _loggedIn    = false;
+let _loginPw     = '';
+let _loginErr    = '';
+let _loginBusy   = false;
+let _currentPage = 'top';
+let _candidates  = [];
+let _selected    = null;
+let _loading     = true;
+
+// ════════════════════════════════════════
+// render ルーター
+// ════════════════════════════════════════
+function render() {
+    const app = document.getElementById('app');
+    if (_loading)           { app.innerHTML = '<div class="loading">読み込み中…</div>'; return; }
+    if (!_loggedIn)         { renderLogin(app); return; }
+    if (_currentPage === 'add')    { renderAdd(app); return; }
+    if (_currentPage === 'detail') { renderDetail(app); return; }
+    renderTop(app);
+}
+
+// ════════════════════════════════════════
+// ログイン画面
+// ════════════════════════════════════════
+function renderLogin(app) {
+    app.innerHTML = `
+    <div class="login-wrap">
+      <div class="login-box">
+        <div class="login-logo">
+          <div class="icon">📋</div>
+          <h1>1次面接 議事録管理</h1>
+          <p>パスワードを入力してください</p>
+        </div>
+        ${_loginErr ? `<div class="login-err">⚠️ ${esc(_loginErr)}</div>` : ''}
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <label class="field-label">パスワード</label>
+            <input id="pwInput" type="password" class="inp" value="${esc(_loginPw)}"
+              oninput="_loginPw=this.value"
+              onkeydown="if(event.key==='Enter')submitLogin()"
+              placeholder="パスワードを入力" autofocus>
+          </div>
+          <button class="btn-primary" style="width:100%;padding:12px 0;border-radius:12px;font-size:15px;margin-top:4px"
+            ${_loginBusy ? 'disabled' : ''} onclick="submitLogin()">
+            ${_loginBusy ? 'ログイン中…' : 'ログイン'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+    if (!_loginBusy) setTimeout(() => document.getElementById('pwInput')?.focus(), 50);
+}
+
+async function submitLogin() {
+    if (_loginBusy || !_loginPw) return;
+    _loginBusy = true; _loginErr = ''; render();
+    const res = await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'login', password: _loginPw }),
+    }).then(r => r.json()).catch(() => ({ ok: false, error: '通信エラー' }));
+    _loginBusy = false;
+    if (res.ok) {
+        _loggedIn = true; _loginPw = ''; _loginErr = '';
+        await loadCandidates();
+    } else {
+        _loginErr = res.error || 'ログイン失敗';
+    }
+    render();
+}
+
+async function logout() {
+    await apiPost({ action: 'logout' });
+    _loggedIn = false; _currentPage = 'top'; _candidates = []; _selected = null;
+    render();
+}
+
+// ════════════════════════════════════════
+// TOP PAGE
+// ════════════════════════════════════════
+let _search = '', _filterStatus = '全て', _filterMedia = '全て', _confirmId = null;
+
+function renderTop(app) {
+    const filtered = _candidates.filter(c =>
+        c.name.includes(_search) &&
+        (_filterStatus === '全て' || c.status === _filterStatus) &&
+        (_filterMedia  === '全て' || c.media  === _filterMedia)
+    );
+
+    app.innerHTML = `
+    <div class="page">
+      ${_confirmId ? confirmModal() : ''}
+      <div class="header">
+        <div>
+          <div style="font-size:18px;font-weight:700;letter-spacing:.04em">📋 1次面接 議事録管理</div>
+          <div style="font-size:12px;color:#c7d2fe;margin-top:2px">2次面接担当者への引き継ぎシステム</div>
+        </div>
+        <button class="btn-primary" style="background:#fff;color:#4338ca" onclick="goAdd()">＋ 新規追加</button>
+        <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,.4);color:#c7d2fe;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer">ログアウト</button>
+      </div>
+      <div style="max-width:896px;margin:0 auto;padding:24px 16px">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+          ${[
+            {l:'総候補者',v:_candidates.length,c:'#4338ca'},
+            {l:'通過',v:_candidates.filter(c=>c.status==='通過').length,c:'#16a34a'},
+            {l:'保留',v:_candidates.filter(c=>c.status==='保留').length,c:'#ca8a04'},
+            {l:'見送り',v:_candidates.filter(c=>c.status==='見送り').length,c:'#ef4444'},
+          ].map(s=>`<div class="stat-card"><div style="font-size:30px;font-weight:700;color:${s.c}">${s.v}</div><div style="font-size:12px;color:#6b7280;margin-top:4px">${s.l}</div></div>`).join('')}
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 2px rgba(0,0,0,.06);display:flex;flex-direction:column;gap:12px">
+          <input class="inp" value="${esc(_search)}" oninput="setSearch(this.value)" placeholder="名前で検索…">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <span style="font-size:12px;color:#9ca3af;font-weight:600;width:56px">ステータス</span>
+            ${['全て',...STATUS_OPTIONS].map(s=>`<button class="filter-btn ${_filterStatus===s?'on':'off'}" onclick="setFilterStatus('${s}')">${s}</button>`).join('')}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <span style="font-size:12px;color:#9ca3af;font-weight:600;width:56px">採用媒体</span>
+            ${['全て',...MEDIA_OPTIONS].map(m=>`<button class="filter-btn ${_filterMedia===m?'on':'off'}" onclick="setFilterMedia('${m}')">${m}</button>`).join('')}
+          </div>
+        </div>
+        ${filtered.length === 0
+          ? `<div style="text-align:center;padding:64px 0;color:#9ca3af"><div style="font-size:48px;margin-bottom:12px">👤</div><p>候補者がいません。「新規追加」から登録してください。</p></div>`
+          : `<div style="display:flex;flex-direction:column;gap:12px">
+              ${filtered.map(c => candRow(c)).join('')}
+             </div>`
+        }
+      </div>
+    </div>`;
+
+    if (_confirmId) attachConfirm();
+}
+
+function candRow(c) {
+    const ss = statusStyle(c.status).split(';');
+    const ms = c.media ? mediaStyle(c.media).split(';') : null;
+    return `
+    <div class="cand-row">
+      <div class="avatar" onclick="goDetail(${c.id})">${esc(c.name[0])}</div>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="goDetail(${c.id})">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+          <span style="font-weight:600;font-size:15px">${esc(c.name)}</span>
+          <span style="color:#9ca3af;font-size:14px">${c.age}歳</span>
+          <span class="badge" style="${statusStyle(c.status)}">${c.status}</span>
+          ${c.media ? `<span class="badge" style="${mediaStyle(c.media)}">${c.media}</span>` : ''}
+        </div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">
+          面接日: ${fmtDate(c.interview_date)} ／ 担当: ${esc(c.interviewer||'―')} ／ 場所: ${esc(venueLabel(c))}
+        </div>
+      </div>
+      <div style="text-align:right;cursor:pointer;margin-right:8px" onclick="goDetail(${c.id})">
+        <div style="color:#facc15;font-size:14px">${'★'.repeat(c.score||0)}${'☆'.repeat(5-(c.score||0))}</div>
+        <div style="font-size:12px;color:#818cf8;margin-top:4px">詳細 →</div>
+      </div>
+      <button class="del-btn" onclick="confirmDelete(${c.id})">🗑️</button>
+    </div>`;
+}
+
+function venueLabel(c) {
+    if (!c.venue) return '―';
+    return c.venue === 'その他（自由記入）' ? (c.venue_other || 'その他') : c.venue;
+}
+
+function confirmModal() {
+    const c = _candidates.find(x => x.id === _confirmId);
+    return `<div class="modal-bg" id="confirmModal">
+      <div style="background:#fff;border-radius:16px;padding:24px;max-width:384px;width:100%" onclick="event.stopPropagation()">
+        <div style="font-size:32px;text-align:center;margin-bottom:8px">🗑️</div>
+        <div style="font-weight:700;text-align:center;margin-bottom:4px">削除の確認</div>
+        <p style="font-size:14px;color:#6b7280;text-align:center;margin-bottom:20px">「${esc(c?.name||'')}」を削除しますか？<br>この操作は元に戻せません。</p>
+        <div style="display:flex;gap:12px">
+          <button onclick="cancelDelete()" style="flex:1;padding:10px 0;border:1px solid #e5e7eb;border-radius:12px;background:#fff;cursor:pointer;font-size:14px">キャンセル</button>
+          <button onclick="execDelete()" style="flex:1;padding:10px 0;border:none;border-radius:12px;background:#ef4444;color:#fff;cursor:pointer;font-size:14px;font-weight:600">削除する</button>
+        </div>
+      </div>
+    </div>`;
+}
+function attachConfirm() {
+    document.getElementById('confirmModal')?.addEventListener('click', cancelDelete);
+}
+
+// ─── top page actions ───
+function setSearch(v) { _search = v; render(); }
+function setFilterStatus(v) { _filterStatus = v; render(); }
+function setFilterMedia(v) { _filterMedia = v; render(); }
+function confirmDelete(id) { _confirmId = id; render(); }
+function cancelDelete() { _confirmId = null; render(); }
+async function execDelete() {
+    const id = _confirmId; _confirmId = null;
+    const res = await apiPost({ action: 'delete', id });
+    if (res.ok) { _candidates = _candidates.filter(c => c.id !== id); showToast('削除しました'); }
+    else showToast(res.error || '削除失敗', true);
+    render();
+}
+function goAdd() { _currentPage = 'add'; _addForm = freshAddForm(); render(); }
+async function goDetail(id) {
+    const res = await apiGet('get', { id });
+    if (!res.ok) { showToast('取得失敗', true); return; }
+    _selected = res.data;
+    _detailTab = 'interview';
+    _currentPage = 'detail';
+    render();
+}
+
+// ════════════════════════════════════════
+// ADD PAGE
+// ════════════════════════════════════════
+function freshAddForm() {
+    return { name:'', age:'', interview_date:'', interviewers:[], interviewer_other:'', status:'未設定', media:'', venue:'', venue_other:'' };
+}
+let _addForm = freshAddForm();
+let _addSaving = false;
+
+function renderAdd(app) {
+    const f = _addForm;
+    app.innerHTML = `
+    <div class="page">
+      <div class="header" style="justify-content:flex-start;gap:12px">
+        <button onclick="goTop()" style="background:none;border:none;color:#c7d2fe;cursor:pointer;font-size:14px">← 戻る</button>
+        <span style="font-weight:700;font-size:18px">新規候補者 登録</span>
+      </div>
+      <div style="max-width:512px;margin:0 auto;padding:32px 16px">
+        <div style="background:#fff;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.1);display:flex;flex-direction:column;gap:16px">
+          <div><label class="field-label">氏名 *</label><input class="inp" value="${esc(f.name)}" oninput="_addForm.name=this.value" placeholder="山田 太郎"></div>
+          <div><label class="field-label">年齢 *</label><input type="number" class="inp" value="${f.age}" oninput="_addForm.age=this.value" placeholder="28"></div>
+          <div><label class="field-label">面接日</label><input type="date" class="inp" value="${f.interview_date}" onchange="_addForm.interview_date=this.value"></div>
+          <div>
+            <label class="field-label">面接担当者（複数選択可）</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              ${[...INTERVIEWER_OPTIONS,'その他'].map(n=>`<button type="button" class="tog-btn ${f.interviewers.includes(n)?'on-indigo':''}" onclick="toggleInterviewer('${n}')">${n}</button>`).join('')}
+            </div>
+            ${f.interviewers.includes('その他') ? `<input class="inp" style="margin-top:8px" value="${esc(f.interviewer_other)}" oninput="_addForm.interviewer_other=this.value" placeholder="担当者名を入力">` : ''}
+          </div>
+          <div>
+            <label class="field-label">面接場所</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">
+              ${VENUE_OPTIONS.map(v=>`<button type="button" class="tog-btn ${f.venue===v?'on-indigo':''}" onclick="setAddVenue('${v}')">${v}</button>`).join('')}
+            </div>
+            ${f.venue==='その他（自由記入）' ? `<input class="inp" value="${esc(f.venue_other)}" oninput="_addForm.venue_other=this.value" placeholder="場所を入力してください">` : ''}
+          </div>
+          <div>
+            <label class="field-label">採用媒体</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              ${MEDIA_OPTIONS.map(m=>`<button type="button" class="tog-btn ${f.media===m?'on-indigo':''}" onclick="setAddMedia('${m}')">${m}</button>`).join('')}
+            </div>
+          </div>
+          <div>
+            <label class="field-label">ステータス</label>
+            <select class="inp" onchange="_addForm.status=this.value">
+              ${STATUS_OPTIONS.map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn-primary" style="padding:12px 0;border-radius:12px;font-size:15px" ${_addSaving?'disabled':''} onclick="submitAdd()">${_addSaving?'登録中…':'登録する'}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function toggleInterviewer(name) {
+    const cur = _addForm.interviewers;
+    _addForm.interviewers = cur.includes(name) ? cur.filter(x=>x!==name) : [...cur, name];
+    render();
+}
+function setAddVenue(v) { _addForm.venue = _addForm.venue === v ? '' : v; render(); }
+function setAddMedia(m) { _addForm.media = _addForm.media === m ? '' : m; render(); }
+
+async function submitAdd() {
+    const f = _addForm;
+    if (!f.name || !f.age) { showToast('名前と年齢は必須です', true); return; }
+    _addSaving = true; render();
+    const ivLabel = f.interviewers.map(n => n === 'その他' ? (f.interviewer_other || 'その他') : n).join('・');
+    const res = await apiPost({
+        action: 'create',
+        name: f.name, age: Number(f.age),
+        interview_date: f.interview_date || null,
+        interviewer: ivLabel,
+        venue: f.venue, venue_other: f.venue_other,
+        media: f.media, status: f.status,
+        iv_data: { entries:[], pastJobs:[], schoolActivities:{中学生:{},高校生:{},大学生:{}}, partTimeJobs:[], familyMembers:[] },
+    });
+    _addSaving = false;
+    if (res.ok) { showToast('登録しました'); await loadCandidates(); goTop(); }
+    else { showToast(res.error || '登録失敗', true); render(); }
+}
+
+// ════════════════════════════════════════
+// DETAIL PAGE
+// ════════════════════════════════════════
+let _detailTab = 'interview';
+let _autoSaveTimer = null;
+
+function scheduleAutoSave() {
+    clearTimeout(_autoSaveTimer);
+    _autoSaveTimer = setTimeout(() => autoSave(), 1000);
+}
+
+async function autoSave() {
+    const c = _selected;
+    if (!c) return;
+    const res = await apiPost({
+        action: 'update',
+        id: c.id,
+        name: c.name, age: c.age,
+        interview_date: c.interview_date || null,
+        interviewer: c.interviewer, venue: c.venue, venue_other: c.venue_other,
+        media: c.media, status: c.status,
+        score: c.score||0, score_comm: c.score_comm||0, score_tech: c.score_tech||0,
+        score_motiv: c.score_motiv||0, score_culture: c.score_culture||0,
+        personality: c.personality, personality_note: c.personality_note,
+        similar_employee: c.similar_employee,
+        handover: c.handover,
+        iv_data: c.iv_data,
+    });
+    if (res.ok) showToast('保存しました');
+    else showToast(res.error || '保存失敗', true);
+}
+
+function renderDetail(app) {
+    const c = _selected;
+    if (!c) { goTop(); return; }
+    const iv = c.iv_data || {};
+    app.innerHTML = `
+    <div class="page">
+      <div class="header" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <button onclick="goTop()" style="background:none;border:none;color:#c7d2fe;cursor:pointer;font-size:14px">← 一覧へ戻る</button>
+        <div style="display:flex;align-items:center;gap:16px;width:100%">
+          <div style="width:56px;height:56px;border-radius:50%;background:#6366f1;color:#fff;font-weight:700;font-size:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0">${esc(c.name[0])}</div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+              <span style="font-weight:700;font-size:18px">${esc(c.name)}</span>
+              <span style="color:#c7d2fe">${c.age}歳</span>
+              ${c.media ? `<span class="badge" style="${mediaStyle(c.media)}">${c.media}</span>` : ''}
+            </div>
+            <div style="color:#c7d2fe;font-size:13px">
+              面接日: ${fmtDate(c.interview_date)} ／ 担当: ${esc(c.interviewer||'―')} ／ 場所: ${esc(venueLabel(c))}
+            </div>
+          </div>
+          <select style="font-size:13px;font-weight:600;padding:4px 12px;border-radius:8px;border:none;cursor:pointer;${statusStyle(c.status)}" onchange="updateStatus(this.value)">
+            ${STATUS_OPTIONS.map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="tabs">
+        ${[{id:'interview',l:'📝 面接内容'},{id:'resume',l:'📄 学歴・職歴'},{id:'eval',l:'⭐ 評価'},{id:'handover',l:'🤝 引き継ぎ'}]
+          .map(t=>`<button class="tab-btn ${_detailTab===t.id?'active':''}" onclick="setDetailTab('${t.id}')">${t.l}</button>`).join('')}
+      </div>
+      <div style="max-width:768px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:20px">
+        ${_detailTab === 'interview' ? renderInterviewTab(c, iv) : ''}
+        ${_detailTab === 'resume'    ? renderResumeTab(c) : ''}
+        ${_detailTab === 'eval'      ? renderEvalTab(c) : ''}
+        ${_detailTab === 'handover'  ? renderHandoverTab(c, iv) : ''}
+      </div>
+    </div>`;
+}
+
+function setDetailTab(t) { _detailTab = t; render(); }
+
+async function updateStatus(v) {
+    _selected.status = v;
+    await autoSave();
+    render();
+}
+
+async function saveDetail() {
+    _detailSaving = true; render();
+    const c = _selected;
+    const res = await apiPost({
+        action: 'update',
+        id: c.id,
+        name: c.name, age: c.age,
+        interview_date: c.interview_date || null,
+        interviewer: c.interviewer, venue: c.venue, venue_other: c.venue_other,
+        media: c.media, status: c.status,
+        score: c.score||0, score_comm: c.score_comm||0, score_tech: c.score_tech||0,
+        score_motiv: c.score_motiv||0, score_culture: c.score_culture||0,
+        personality: c.personality, personality_note: c.personality_note,
+        similar_employee: c.similar_employee,
+        handover: c.handover,
+        iv_data: c.iv_data,
+    });
+    _detailSaving = false;
+    if (res.ok) showToast('保存しました');
+    else showToast(res.error || '保存失敗', true);
+    render();
+}
+
+// iv_data ヘルパー
+function ivGet(key, def) {
+    const iv = _selected.iv_data || {};
+    return iv[key] !== undefined ? iv[key] : def;
+}
+// テキスト入力用：rerenderしない＋1秒後に自動保存
+function ivSetSilent(key, val) {
+    if (!_selected.iv_data) _selected.iv_data = {};
+    _selected.iv_data[key] = val;
+    scheduleAutoSave();
+}
+// ボタン操作用：即時保存＋rerender
+function ivSet(key, val) {
+    if (!_selected.iv_data) _selected.iv_data = {};
+    _selected.iv_data[key] = val;
+    autoSave();
+    render();
+}
+function ivSetSA(stage, key, val) {
+    if (!_selected.iv_data) _selected.iv_data = {};
+    if (!_selected.iv_data.schoolActivities) _selected.iv_data.schoolActivities = {};
+    if (!_selected.iv_data.schoolActivities[stage]) _selected.iv_data.schoolActivities[stage] = {};
+    _selected.iv_data.schoolActivities[stage][key] = val;
+    autoSave();
+    render();
+}
+function ivSetSASilent(stage, key, val) {
+    if (!_selected.iv_data) _selected.iv_data = {};
+    if (!_selected.iv_data.schoolActivities) _selected.iv_data.schoolActivities = {};
+    if (!_selected.iv_data.schoolActivities[stage]) _selected.iv_data.schoolActivities[stage] = {};
+    _selected.iv_data.schoolActivities[stage][key] = val;
+    scheduleAutoSave();
+}
+
+// ── 面接内容タブ ──
+function renderInterviewTab(c, iv) {
+    const entries   = iv.entries    || [];
+    const pastJobs  = iv.pastJobs   || [];
+    const ptJobs    = iv.partTimeJobs || [];
+    const themes    = iv.jobThemes  || [];
+    const family    = iv.familyMembers || [];
+    const sa        = iv.schoolActivities || {};
+    const compTags  = iv.comparisonTags || [];
+
+    return `
+    ${card('blue','🏢','弊社に対して',`
+      ${field('志望理由',`<textarea class="ta" rows="3" oninput="ivSetSilent('reason',this.value)">${esc(iv.reason||'')}</textarea>`)}
+      <div>
+        <label class="field-label">他社との比較（複数選択可）</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${COMPARISON_OPTIONS.map(o=>`<button class="tog-btn ${compTags.includes(o)?'on-blue':''}" onclick="toggleCompTag('${o}')">${o}</button>`).join('')}
+          <button class="tog-btn ${compTags.includes('その他')?'on-blue':''}" onclick="toggleCompTag('その他')">その他</button>
+        </div>
+        ${compTags.includes('その他')?`<input class="inp" style="margin-top:8px" value="${esc(iv.comparisonOther||'')}" oninput="ivSetSilent('comparisonOther',this.value)" placeholder="自由記入">`:''}
+      </div>
+    `)}
+
+    ${card('orange','💼','現職の状況',`
+      ${field('転職のきっかけ',`<textarea class="ta" rows="3" oninput="ivSetSilent('reason4change',this.value)">${esc(iv.reason4change||'')}</textarea>`)}
+      <div class="grid2">
+        ${field('勤務形態',`<input class="inp" value="${esc(iv.workStyle||'')}" oninput="ivSetSilent('workStyle',this.value)" placeholder="例：正社員">`)}
+        ${field('労働時間',`<input class="inp" value="${esc(iv.workHours||'')}" oninput="ivSetSilent('workHours',this.value)" placeholder="例：9〜18時">`)}
+      </div>
+      ${field('現在の収入',`<input class="inp" value="${esc(iv.currentIncome||'')}" oninput="ivSetSilent('currentIncome',this.value)" placeholder="例：月収25万円">`)}
+      <div>
+        <label class="field-label">退職状況</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${['退職届未提出','退職届済み','退職完了'].map(o=>`<button class="tog-btn ${iv.resignStatus===o?'on-orange':''}" onclick="ivSet('resignStatus','${iv.resignStatus===o?'':o}')">${o}</button>`).join('')}
+        </div>
+        <div style="margin-top:8px">
+          <label class="field-label">退職予定日</label>
+          <input type="date" class="inp" value="${iv.resignDate||''}" onchange="ivSetSilent('resignDate',this.value)">
+        </div>
+      </div>
+      <div>
+        <label class="field-label">入社可能日</label>
+        <input type="date" class="inp" value="${iv.joinDate||''}" onchange="ivSetSilent('joinDate',this.value)">
+      </div>
+      <div style="border-top:1px solid #f3f4f6;padding-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="field-label" style="margin:0">過去の職歴</label>
+          <button class="btn-sm btn-add-o" onclick="addPastJob()">＋ 職歴を追加</button>
+        </div>
+        ${pastJobs.length===0?'<p style="font-size:12px;color:#9ca3af">「職歴を追加」で過去の勤務先を記録できます</p>':''}
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${pastJobs.map((job,i)=>`
+          <div class="job-card">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:#9ca3af;font-weight:700;width:20px">${i+1}</span>
+              <input class="inp" style="flex:1" value="${esc(job.company||'')}" oninput="updPastJobSilent(${i},'company',this.value)" placeholder="会社名">
+              <button class="del-btn" onclick="remPastJob(${i})">×</button>
+            </div>
+            <div class="grid2">
+              <input class="inp" value="${esc(job.period||'')}" oninput="updPastJobSilent(${i},'period',this.value)" placeholder="在籍期間（例：2018〜2022年）">
+              <input class="inp" value="${esc(job.jobType||'')}" oninput="updPastJobSilent(${i},'jobType',this.value)" placeholder="職種・業種">
+            </div>
+            <div>
+              <label class="field-label">退職理由（複数選択可）</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                ${RESIGN_REASONS.map(r=>`<button class="tog-btn ${(job.resignReasons||[]).includes(r)?'on-orange':''}" onclick="togglePJReason(${i},'${r}')">${r}</button>`).join('')}
+              </div>
+            </div>
+            <textarea class="ta" rows="2" oninput="updPastJobSilent(${i},'resignNote',this.value)" placeholder="退職理由の詳細・自由記入">${esc(job.resignNote||'')}</textarea>
+          </div>`).join('')}
+        </div>
+      </div>
+    `)}
+
+    ${card('green','🔍','就活状況',`
+      ${field('エントリー開始時期',`<input class="inp" value="${esc(iv.entryStart||'')}" oninput="ivSetSilent('entryStart',this.value)" placeholder="例：3ヶ月前">`)}
+      <div>
+        <label class="field-label">就活テーマ（複数選択可）</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${JOB_THEME_OPTIONS.map(t=>`<button class="tog-btn ${themes.includes(t)?'on-green':''}" onclick="toggleTheme('${t}')">${t}</button>`).join('')}
+        </div>
+        <input class="inp" style="margin-top:8px" value="${esc(iv.jobThemeOther||'')}" oninput="ivSetSilent('jobThemeOther',this.value)" placeholder="その他（自由記入）">
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="field-label" style="margin:0">エントリー企業一覧</label>
+          <button class="btn-sm btn-add-g" onclick="addEntry()">＋ 企業を追加</button>
+        </div>
+        ${entries.length===0?'<p style="font-size:12px;color:#9ca3af">「企業を追加」でエントリー企業を記録できます</p>':''}
+        <div style="display:flex;flex-direction:column;gap:14px">
+          ${entries.map((ent,i)=>`
+          <div class="entry-card">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:#9ca3af;font-weight:700;width:20px">${i+1}</span>
+              <input class="inp" style="flex:1" value="${esc(ent.company||'')}" oninput="updEntrySilent(${i},'company',this.value)" placeholder="企業名">
+              <button class="del-btn" onclick="remEntry(${i})">×</button>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div style="flex-shrink:0">
+                <label class="field-label">選考ステータス</label>
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  ${ENTRY_STATUS_OPTIONS.map(opt=>`<label class="radio-label"><input type="radio" name="es_${i}" ${ent.entryStatus===opt?'checked':''} onchange="updEntry(${i},'entryStatus','${opt}')">${opt}</label>`).join('')}
+                </div>
+              </div>
+              <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">
+                <div>
+                  <label class="field-label">面接日程</label>
+                  <input type="date" class="inp" value="${ent.interviewDate||''}" onchange="updEntrySilent(${i},'interviewDate',this.value)">
+                </div>
+                <div>
+                  <label class="field-label">魅力に感じている点（複数選択可）</label>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px">
+                    ${ENTRY_ATTRACT.map(a=>`<button class="tog-btn ${(ent.attract||[]).includes(a)?'on-green':''}" onclick="toggleEntryAttract(${i},'${a}')">${a}</button>`).join('')}
+                  </div>
+                </div>
+                <div>
+                  <label class="field-label">その企業の想定年収</label>
+                  <input class="inp" value="${esc(ent.desiredIncome||'')}" oninput="updEntrySilent(${i},'desiredIncome',this.value)" placeholder="例：400万円">
+                </div>
+                <input class="inp" value="${esc(ent.note||'')}" oninput="updEntrySilent(${i},'note',this.value)" placeholder="進捗メモ">
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>
+    `)}
+
+    ${card('teal','🗺️','採用後の勤務条件',`
+      <div>
+        <label class="field-label">通勤手段（複数選択可）</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${COMMUTE_OPTIONS.map(o=>`<button class="tog-btn ${(iv.commute||[]).includes(o)?'on-teal':''}" onclick="toggleCommute('${o}')">${o}</button>`).join('')}
+        </div>
+      </div>
+      ${field('出勤可能エリア',`<textarea class="ta" rows="2" oninput="ivSetSilent('workArea',this.value)">${esc(iv.workArea||'')}</textarea>`)}
+      <div>
+        <label class="field-label">希望スクールタイプ</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${SCHOOL_TYPE_OPTIONS.map(o=>`<button class="tog-btn ${iv.schoolType===o?'on-teal':''}" onclick="ivSet('schoolType','${iv.schoolType===o?'':o}')">${o}</button>`).join('')}
+        </div>
+        <input class="inp" style="margin-top:8px" value="${esc(iv.schoolTypeNote||'')}" oninput="ivSetSilent('schoolTypeNote',this.value)" placeholder="補足">
+      </div>
+      <div>
+        <label class="field-label">希望収入</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${INCOME_TYPES.map(o=>`<button class="tog-btn ${iv.desiredIncomeType===o?'on-teal':''}" onclick="ivSet('desiredIncomeType','${iv.desiredIncomeType===o?'':o}')">${o}</button>`).join('')}
+        </div>
+        <input class="inp" style="margin-top:8px" value="${esc(iv.desiredIncome||'')}" oninput="ivSetSilent('desiredIncome',this.value)" placeholder="例：450万円">
+      </div>
+    `)}
+
+    ${card('purple','🎓','【過去】学生時代',`
+      ${SCHOOL_STAGES.map(stage=>{
+        const sd = (sa[stage]||{});
+        return `<div class="stage-card">
+          <h4 style="font-size:14px;font-weight:700;color:#7e22ce">${stage}</h4>
+          ${field('学校名',`<input class="inp" value="${esc(sd.schoolName||'')}" oninput="ivSetSASilent('${stage}','schoolName',this.value)" placeholder="例：〇〇高校">`)}
+          ${field('部活動・サークル名',`<input class="inp" value="${esc(sd.clubName||'')}" oninput="ivSetSASilent('${stage}','clubName',this.value)" placeholder="例：野球部">`)}
+          ${field('種目・活動内容',`<input class="inp" value="${esc(sd.sport||'')}" oninput="ivSetSASilent('${stage}','sport',this.value)" placeholder="例：野球">`)}
+          <div>
+            <label class="field-label">リーダー経験・役職</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              ${SPORTS_ROLES.map(r=>`<button class="tog-btn ${sd.role===r?'on-purple':''}" onclick="ivSetSA('${stage}','role','${sd.role===r?'':r}')">${r}</button>`).join('')}
+            </div>
+          </div>
+          ${field('自由記入',`<textarea class="ta" rows="2" oninput="ivSetSASilent('${stage}','note',this.value)">${esc(sd.note||'')}</textarea>`)}
+        </div>`;
+      }).join('')}
+      <div style="border-top:1px solid #f3f4f6;padding-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <label class="field-label" style="margin:0">アルバイト経験</label>
+          <button class="btn-sm btn-add-p" onclick="addPartTime()">＋ 追加</button>
+        </div>
+        ${ptJobs.length===0?'<p style="font-size:12px;color:#9ca3af">「追加」でアルバイトを記録できます</p>':''}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${ptJobs.map((job,i)=>`
+          <div class="pt-card">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;color:#9ca3af;font-weight:700;width:20px">${i+1}</span>
+              <input class="inp" style="flex:1" value="${esc(job.name||'')}" oninput="updPartTimeSilent(${i},'name',this.value)" placeholder="店名・会社名">
+              <button class="del-btn" onclick="remPartTime(${i})">×</button>
+            </div>
+            <div class="grid2">
+              <input class="inp" value="${esc(job.period||'')}" oninput="updPartTimeSilent(${i},'period',this.value)" placeholder="期間">
+              <input class="inp" value="${esc(job.content||'')}" oninput="updPartTimeSilent(${i},'content',this.value)" placeholder="業種・内容">
+            </div>
+            <input class="inp" value="${esc(job.note||'')}" oninput="updPartTimeSilent(${i},'note',this.value)" placeholder="特記事項">
+          </div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <label class="field-label">教育業・塾講師経験</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${['あり','なし'].map(o=>`<button class="tog-btn ${iv.eduExp===o?'on-purple':''}" onclick="ivSet('eduExp','${iv.eduExp===o?'':o}')">${o}</button>`).join('')}
+        </div>
+        ${iv.eduExp==='あり'?`<textarea class="ta" style="margin-top:8px" rows="2" oninput="ivSetSilent('eduExpDetail',this.value)">${esc(iv.eduExpDetail||'')}</textarea>`:''}
+      </div>
+    `)}
+
+    ${card('rose','🚀','【未来】キャリアプラン',`
+      ${field('キャリアアッププラン',`<textarea class="ta" rows="3" oninput="ivSetSilent('careerPlan',this.value)">${esc(iv.careerPlan||'')}</textarea>`)}
+    `)}
+
+    ${card('pink','👨‍👩‍👧','家族構成',`
+      <div>
+        <label class="field-label">家族構成（複数選択可）</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${FAMILY_ROLES.map(r=>`<button class="tog-btn ${family.includes(r)?'on-pink':''}" onclick="toggleFamily('${r}')">${r}</button>`).join('')}
+          <button class="tog-btn ${family.includes('その他')?'on-pink':''}" onclick="toggleFamily('その他')">その他</button>
+        </div>
+        ${family.includes('その他')?`<input class="inp" style="margin-top:8px" value="${esc(iv.familyOther||'')}" oninput="ivSetSilent('familyOther',this.value)" placeholder="自由記入">`:''}
+      </div>
+      ${field('補足・状況メモ',`<textarea class="ta" rows="2" oninput="ivSetSilent('family',this.value)">${esc(iv.family||'')}</textarea>`)}
+    `)}
+
+    ${card('indigo','✨','第一印象・人物評価',`
+      <div>
+        <label class="field-label">陽・陰</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${PERSONALITY.map(o=>`<button class="tog-btn ${c.personality===o?'on-indigo':''}" onclick="setPersonality('${o}')">${o}</button>`).join('')}
+        </div>
+        ${c.personality?`<input class="inp" style="margin-top:8px" value="${esc(c.personality_note||'')}" oninput="_selected.personality_note=this.value" placeholder="補足コメント">`:''}
+      </div>
+      ${field('社員に例えるなら',`<input class="inp" value="${esc(c.similar_employee||'')}" oninput="_selected.similar_employee=this.value" placeholder="例：〇〇さんに似たタイプ">`)}
+    `)}
+
+    ${card('amber','📌','その他・補足',`
+      ${field('強み',`<textarea class="ta" rows="3" oninput="ivSetSilent('strengths',this.value)">${esc(iv.strengths||'')}</textarea>`)}
+      ${field('弱み・懸念点',`<textarea class="ta" rows="3" oninput="ivSetSilent('weaknesses',this.value)">${esc(iv.weaknesses||'')}</textarea>`)}
+      ${field('その他気になる点',`<textarea class="ta" rows="3" oninput="ivSetSilent('otherNotes',this.value)">${esc(iv.otherNotes||'')}</textarea>`)}
+      ${field('最終面接へのオーダー',`<textarea class="ta" rows="3" oninput="ivSetSilent('finalOrder',this.value)">${esc(iv.finalOrder||'')}</textarea>`)}
+    `)}`;
+}
+
+// ── 学歴・職歴タブ ──
+function renderResumeTab(c) {
+    const files = c.files || [];
+    return `
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <h3 style="font-weight:600;color:#374151;margin-bottom:12px">履歴書・職務経歴書 アップロード</h3>
+      <div class="upload-area" onclick="document.getElementById('resumeFile').click()">
+        <div style="font-size:32px;margin-bottom:8px">📄</div>
+        <p style="font-size:14px;color:#4338ca;font-weight:600">クリックしてファイルをアップロード（複数可）</p>
+        <p style="font-size:12px;color:#9ca3af;margin-top:4px">対応形式：JPEG・PNG・PDF（上限10MB）</p>
+      </div>
+      <input id="resumeFile" type="file" accept="image/jpeg,image/png,image/jpg,application/pdf" multiple style="display:none" onchange="uploadFiles(this)">
+    </div>
+    ${files.length > 0 ? `
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <h3 style="font-weight:600;color:#374151;margin-bottom:16px">アップロード済みファイル（${files.length}件）</h3>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        ${files.map(f=>`
+        <div style="border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f9fafb;border-bottom:1px solid #e5e7eb">
+            <span style="font-size:13px;color:#4b5563;font-weight:500">📎 ${esc(f.original_name)}</span>
+            <button class="btn-sm" style="background:#fef2f2;color:#b91c1c" onclick="deleteFile(${f.id})">🗑️ 削除</button>
+          </div>
+          ${f.mime_type === 'application/pdf'
+            ? `<embed src="${esc(f.url)}" type="application/pdf" style="width:100%;height:600px;display:block">`
+            : `<img src="${esc(f.url)}" alt="${esc(f.original_name)}" style="width:100%;display:block">`
+          }
+        </div>`).join('')}
+      </div>
+    </div>` : ''}`;
+}
+
+// ── 評価タブ ──
+function renderEvalTab(c) {
+    return `
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1);display:flex;flex-direction:column;gap:20px">
+      <h3 style="font-weight:600;color:#374151">評価スコア</h3>
+      ${[{k:'score',l:'総合評価'},{k:'score_comm',l:'コミュニケーション能力'},{k:'score_tech',l:'スキル・専門性'},{k:'score_motiv',l:'志望動機・熱意'},{k:'score_culture',l:'カルチャーフィット'}].map(item=>`
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;color:#4b5563;width:160px">${item.l}</span>
+        <div style="display:flex;gap:4px">
+          ${[1,2,3,4,5].map(n=>`<button class="star-btn" onclick="setScore('${item.k}',${n})" style="color:${n<=(c[item.k]||0)?'#facc15':'#d1d5db'}">★</button>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+
+// ── 引き継ぎタブ ──
+function renderHandoverTab(c, iv) {
+    const entries  = iv.entries    || [];
+    const pastJobs = iv.pastJobs   || [];
+    const themes   = iv.jobThemes  || [];
+    const family   = iv.familyMembers || [];
+
+    const rows = [
+        ['氏名', c.name + '（' + c.age + '歳）'],
+        ['採用媒体', c.media],
+        ['面接日', fmtDate(c.interview_date)],
+        ['担当者', c.interviewer],
+        ['面接場所', venueLabel(c)],
+        ['総合評価', '★'.repeat(c.score||0) + '☆'.repeat(5-(c.score||0))],
+        ['陽・陰', c.personality ? c.personality + (c.personality_note ? ' ／ ' + c.personality_note : '') : ''],
+        ['似ている社員', c.similar_employee],
+        ['ステータス', c.status],
+        ['転職きっかけ', iv.reason4change],
+        ['退職状況', (iv.resignStatus||'') + (iv.resignDate ? '（' + fmtDate(iv.resignDate) + '）' : '')],
+        ['入社可能日', iv.joinDate ? fmtDate(iv.joinDate) : ''],
+        ['現在の収入', iv.currentIncome],
+        ['希望収入', iv.desiredIncome ? (iv.desiredIncomeType||'年収') + '：' + iv.desiredIncome : ''],
+        ['就活テーマ', themes.join('・') + (iv.jobThemeOther ? '・' + iv.jobThemeOther : '')],
+        ['エントリー数', entries.length ? entries.length + '社' : ''],
+        ['通勤手段', (iv.commute||[]).join('・')],
+        ['出勤可能エリア', iv.workArea],
+        ['希望スクールタイプ', iv.schoolType ? iv.schoolType + (iv.schoolTypeNote ? '（' + iv.schoolTypeNote + '）' : '') : ''],
+        ['家族構成', family.length ? family.join('・') + (iv.familyOther && family.includes('その他') ? '（' + iv.familyOther + '）' : '') : ''],
+        ['強み', iv.strengths],
+        ['弱み・懸念点', iv.weaknesses],
+    ];
+
+    return `
+    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;font-size:14px;color:#b45309">
+      💡 2次面接担当者に伝えるべき重要事項を記入してください。
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <h3 style="font-weight:600;color:#374151;margin-bottom:12px">引き継ぎ事項</h3>
+      <textarea class="ta" rows="8" oninput="_selected.handover=this.value;scheduleAutoSave()" placeholder="例：&#10;・給与の希望額が高いため要交渉">${esc(c.handover||'')}</textarea>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+      <h3 style="font-weight:600;color:#374151;margin-bottom:12px">1次面接 サマリー</h3>
+      <div style="font-size:14px;color:#4b5563">
+        ${rows.map(r=>`<div class="summary-row"><span style="color:#9ca3af;flex-shrink:0">${r[0]}</span><span style="color:#1f2937;text-align:right;margin-left:16px;max-width:320px">${esc(r[1]||'―')}</span></div>`).join('')}
+        ${pastJobs.length ? `<div style="padding-top:8px"><div style="color:#9ca3af;margin-bottom:6px;font-size:13px;font-weight:600">過去の職歴</div>${pastJobs.map((j,i)=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f9fafb"><span style="font-weight:600;color:#374151">${i+1}. ${esc(j.company||'（未入力）')}</span>${j.period?`<span style="color:#9ca3af;margin-left:8px">${j.period}</span>`:''}</div>`).join('')}</div>` : ''}
+        ${entries.length ? `<div style="padding-top:8px"><div style="color:#9ca3af;margin-bottom:6px;font-size:13px;font-weight:600">エントリー企業</div>${entries.map((e,i)=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #f9fafb"><span style="font-weight:600;color:#374151">${i+1}. ${esc(e.company||'（未入力）')}</span>${e.entryStatus?`<span style="margin-left:8px;background:#eef2ff;color:#4338ca;padding:1px 6px;border-radius:9999px;font-size:11px">${e.entryStatus}</span>`:''}</div>`).join('')}</div>` : ''}
+        ${iv.finalOrder ? `<div style="padding-top:8px"><div style="color:#9ca3af;margin-bottom:4px;font-size:13px;font-weight:600">最終面接オーダー</div><p style="white-space:pre-wrap;color:#374151">${esc(iv.finalOrder)}</p></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── detail page actions ──
+function setPersonality(v) { _selected.personality = _selected.personality === v ? '' : v; autoSave(); render(); }
+function setScore(key, val) { _selected[key] = val; autoSave(); render(); }
+function toggleCompTag(t) { const cur = ivGet('comparisonTags',[]); ivSet('comparisonTags', cur.includes(t)?cur.filter(x=>x!==t):[...cur,t]); }
+function toggleTheme(t) { const cur = ivGet('jobThemes',[]); ivSet('jobThemes', cur.includes(t)?cur.filter(x=>x!==t):[...cur,t]); }
+function toggleCommute(t) { const cur = ivGet('commute',[]); ivSet('commute', cur.includes(t)?cur.filter(x=>x!==t):[...cur,t]); }
+function toggleFamily(r) { const cur = ivGet('familyMembers',[]); ivSet('familyMembers', cur.includes(r)?cur.filter(x=>x!==r):[...cur,r]); }
+
+function addEntry() { const e=ivGet('entries',[]); ivSet('entries',[...e,{company:'',interviewDate:'',entryStatus:'',attract:[],desiredIncome:'',note:''}]); }
+function updEntry(i,k,v) { const e=[...ivGet('entries',[])]; e[i]={...e[i],[k]:v}; ivSet('entries',e); }
+function remEntry(i) { ivSet('entries',ivGet('entries',[]).filter((_,idx)=>idx!==i)); }
+function toggleEntryAttract(i,a) { const e=[...ivGet('entries',[])]; const cur=e[i].attract||[]; e[i]={...e[i],attract:cur.includes(a)?cur.filter(x=>x!==a):[...cur,a]}; ivSet('entries',e); }
+
+function addPastJob() { const e=ivGet('pastJobs',[]); ivSet('pastJobs',[...e,{company:'',period:'',jobType:'',resignReasons:[],resignNote:''}]); }
+function updPastJob(i,k,v) { const e=[...ivGet('pastJobs',[])]; e[i]={...e[i],[k]:v}; ivSet('pastJobs',e); }
+function remPastJob(i) { ivSet('pastJobs',ivGet('pastJobs',[]).filter((_,idx)=>idx!==i)); }
+function togglePJReason(i,r) { const e=[...ivGet('pastJobs',[])]; const cur=e[i].resignReasons||[]; e[i]={...e[i],resignReasons:cur.includes(r)?cur.filter(x=>x!==r):[...cur,r]}; ivSet('pastJobs',e); }
+
+function addPartTime() { const e=ivGet('partTimeJobs',[]); ivSet('partTimeJobs',[...e,{name:'',period:'',content:'',note:''}]); }
+function updPartTime(i,k,v) { const e=[...ivGet('partTimeJobs',[])]; e[i]={...e[i],[k]:v}; ivSet('partTimeJobs',e); }
+function remPartTime(i) { ivSet('partTimeJobs',ivGet('partTimeJobs',[]).filter((_,idx)=>idx!==i)); }
+
+async function uploadFiles(input) {
+    const files = Array.from(input.files);
+    if (!files.length) return;
+    for (const file of files) {
+        const res = await apiUpload(_selected.id, file);
+        if (res.ok) {
+            if (!_selected.files) _selected.files = [];
+            _selected.files.push(res.file);
+            showToast(file.name + ' をアップロードしました');
+        } else {
+            showToast(res.error || 'アップロード失敗', true);
+        }
+    }
+    render();
+}
+
+async function deleteFile(fileId) {
+    if (!confirm('このファイルを削除しますか？')) return;
+    const res = await apiPost({ action: 'delete_file', file_id: fileId });
+    if (res.ok) {
+        _selected.files = (_selected.files||[]).filter(f => f.id !== fileId);
+        showToast('削除しました');
+        render();
+    } else {
+        showToast(res.error || '削除失敗', true);
+    }
+}
+
+// ════════════════════════════════════════
+// HTML生成ヘルパー
+// ════════════════════════════════════════
+function esc(s) {
+    if (s == null) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function field(label, inputHtml) {
+    return `<div><label class="field-label">${label}</label>${inputHtml}</div>`;
+}
+function card(color, icon, title, body) {
+    const cc = CARD_COLORS[color] || CARD_COLORS.indigo;
+    return `
+    <div style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:4px solid ${cc.border}">
+      <div style="padding:12px 20px;display:flex;align-items:center;gap:8px;background:${cc.head}">
+        <span style="font-size:18px">${icon}</span>
+        <h3 style="font-weight:700;font-size:15px;color:${cc.title}">${title}</h3>
+      </div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:16px">${body}</div>
+    </div>`;
+}
+
+// ════════════════════════════════════════
+// ナビゲーション
+// ════════════════════════════════════════
+function goTop() {
+    _currentPage = 'top';
+    _selected = null;
+    render();
+}
+
+// ════════════════════════════════════════
+// データ読み込み
+// ════════════════════════════════════════
+async function loadCandidates() {
+    const res = await apiGet('list');
+    if (res.ok) _candidates = res.data;
+    else showToast('データ取得失敗', true);
+}
+
+// ════════════════════════════════════════
+// 起動
+// ════════════════════════════════════════
+(async () => {
+    // セッション確認
+    const chk = await fetch(API + '?action=check&_=' + Date.now(), { credentials: 'same-origin' })
+        .then(r => r.json()).catch(() => ({ ok: false }));
+    _loggedIn = !!(chk.authenticated);
+    if (_loggedIn) await loadCandidates();
+    _loading = false;
+    render();
+})();
+</script>
+</body>
+</html>

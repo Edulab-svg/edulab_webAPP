@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBS ダッシュボード｜タスク管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f3ef;--card:#fff;--border:#e2dfd9;--text:#1a1916;--text-s:#6b6860;--text-m:#a09c94;--r:10px;--green:#00b894;--purple:#6c5ce7;--orange:#e17055;--yellow:#f0c040;--green-l:#e8faf4;--purple-l:#f0ecfd;--orange-l:#fde8e2;--yellow-l:#fef9e7;--danger:#e74c3c}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+
+/* Header */
+.header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;position:sticky;top:0;z-index:200}
+.header-inner{max-width:2000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px;gap:10px;flex-wrap:wrap}
+.header-left{display:flex;align-items:center;gap:10px}
+.logo{width:32px;height:32px;background:linear-gradient(135deg,#2d6a4f,#52b788);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:11px}
+.h-title{font-size:15px;font-weight:800}
+.h-sub{font-size:10px;color:var(--text-m)}
+.header-right{display:flex;gap:8px;align-items:center}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;background:#eae8e3;border-radius:8px;padding:3px}
+.tab{font-size:11px;padding:5px 14px;border:none;border-radius:6px;background:transparent;color:var(--text-s);cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* Controls bar */
+.controls{padding:10px 24px;display:flex;gap:8px;align-items:center;max-width:2000px;margin:0 auto;flex-wrap:wrap;border-bottom:1px solid #eae8e3;background:#faf8f5}
+.ctrl-btn{font-family:'Noto Sans JP';font-size:10px;padding:4px 12px;border:1px solid var(--border);border-radius:14px;background:#fff;color:var(--text-s);cursor:pointer;transition:all .15s;white-space:nowrap;font-weight:500}
+.ctrl-btn:hover{border-color:#2d6a4f;color:#2d6a4f}
+.ctrl-btn.active{background:#2d6a4f;border-color:#2d6a4f;color:#fff}
+.ctrl-label{font-size:10px;color:var(--text-m);margin-right:2px;font-weight:600}
+.sep{width:1px;height:18px;background:var(--border);margin:0 6px}
+.kpi-toggle{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-s);cursor:pointer;user-select:none;font-weight:500}
+.kpi-toggle input{accent-color:#2d6a4f;width:13px;height:13px}
+
+/* Action buttons */
+.btn{font-family:'Noto Sans JP';font-size:11px;padding:6px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.btn-primary{background:#2d6a4f;color:#fff}
+.btn-primary:hover{background:#245a42}
+.btn-danger{background:#fff;color:var(--danger);border:1px solid #f5c6cb}
+.btn-danger:hover{background:#fef2f2}
+.btn-ghost{background:transparent;color:var(--text-s);border:1px solid var(--border)}
+.btn-ghost:hover{background:#fff;border-color:#aaa}
+.btn-sm{font-size:10px;padding:3px 8px;border-radius:5px}
+.btn-export{background:#f8f6f2;color:var(--text-s);border:1px solid var(--border)}
+.btn-export:hover{background:#fff}
+
+/* Stats */
+.stats{display:flex;gap:10px;padding:10px 24px;max-width:2000px;margin:0 auto;flex-wrap:wrap}
+.stat-chip{font-size:10px;color:var(--text-s);background:#fff;border:1px solid var(--border);border-radius:12px;padding:3px 10px;font-weight:500}
+.stat-chip b{color:var(--text);font-weight:700}
+
+/* Legend */
+.legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-s);font-weight:500}
+.leg-dot{width:12px;height:12px;border-radius:3px}
+
+/* Canvas (tree view) */
+.canvas{padding:24px;overflow-x:auto;min-height:200px}
+.canvas::-webkit-scrollbar{height:10px}
+.canvas::-webkit-scrollbar-track{background:#eae8e3;border-radius:5px}
+.canvas::-webkit-scrollbar-thumb{background:#c5c0b8;border-radius:5px}
+
+/* WBS Tree */
+.wbs-tree{display:flex;align-items:flex-start;width:fit-content}
+.wbs-row{display:flex;align-items:flex-start}
+.wbs-col{display:flex;flex-direction:column;gap:5px}
+.wbs-conn{display:flex;align-items:center;width:32px;flex-shrink:0}
+
+.node{border-radius:var(--r);display:inline-flex;flex-direction:column;justify-content:center;padding:8px 12px;position:relative;cursor:default;transition:all .15s;flex-shrink:0;line-height:1.35}
+.node:hover{transform:translateY(-1px);box-shadow:0 3px 12px rgba(0,0,0,.07)}
+.node-root{background:#d5d2cc;text-align:center;font-size:14px;font-weight:900;padding:22px 16px;min-width:120px;border-radius:12px;letter-spacing:.04em;line-height:1.5}
+.node-dept{color:#fff;font-size:12px;font-weight:700;min-width:120px;text-align:center;padding:14px 12px}
+.node-cat{font-size:10px;font-weight:600;min-width:100px;text-align:center;border:2px solid;padding:8px 10px}
+.node-mis{font-size:9.5px;font-weight:500;min-width:160px;max-width:240px;text-align:left;border:1.5px solid;padding:7px 10px}
+.node-sub{font-size:9px;font-weight:500;min-width:140px;max-width:220px;text-align:left;border:2px dashed;border-radius:7px;padding:6px 9px}
+.node-task{font-size:9px;font-weight:400;min-width:180px;max-width:280px;text-align:left;border:1px solid;border-radius:5px;flex-direction:row;align-items:center;gap:5px;padding:5px 8px}
+
+.bg-m{background:var(--green)}.bg-p{background:var(--purple)}.bg-a{background:var(--orange)}.bg-z{background:var(--yellow);color:#333!important}
+.cat-m{background:var(--green-l);border-color:var(--green);color:#00866b}
+.cat-p{background:var(--purple-l);border-color:var(--purple);color:#4a3ba0}
+.cat-a{background:var(--orange-l);border-color:var(--orange);color:#b04530}
+.cat-z{background:var(--yellow-l);border-color:#e0c850;color:#8a6d10}
+.mis-m{background:#f2fcf8;border-color:#a3e4d0;color:#00866b}
+.mis-p{background:#f8f5fe;border-color:#c4b8f0;color:#4a3ba0}
+.mis-a{background:#fef5f2;border-color:#f0b8a8;color:#b04530}
+.mis-z{background:#fefcf3;border-color:#f0dda0;color:#8a6d10}
+.sub-m{background:#f5fdf9;border-color:#80d4b2;color:#00866b}
+.sub-p{background:#faf8ff;border-color:#b8aae8;color:#4a3ba0}
+.sub-a{background:#fff8f6;border-color:#efc4b8;color:#b04530}
+.sub-z{background:#fffdf5;border-color:#e8d898;color:#8a6d10}
+.tsk-m{background:#f8fefb;border-color:#c8ede0;color:#1a6b50}
+.tsk-p{background:#fcfaff;border-color:#ddd6f5;color:#4a3ba0}
+.tsk-a{background:#fff9f7;border-color:#f5d0c5;color:#b04530}
+.tsk-z{background:#fefdf8;border-color:#f5ecc0;color:#7a6a10}
+
+.badge{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;background:rgba(255,255,255,.7);padding:1px 5px;border-radius:5px;white-space:nowrap;margin-left:4px}
+.ai-badge{font-size:7px;background:#6366f1;color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px;font-weight:700}
+.pri-badge{font-size:7px;padding:1px 5px;border-radius:3px;font-weight:700;margin-left:3px;letter-spacing:.02em}
+.pri-high{background:#e74c3c;color:#fff}.pri-mid{background:#f39c12;color:#fff}.pri-low{background:#95a5a6;color:#fff}
+.pri-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;vertical-align:middle}
+.pri-dot-high{background:#e74c3c}.pri-dot-mid{background:#f39c12}.pri-dot-low{background:#95a5a6}
+.task-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-g{background:#2d6a4f}.dot-n{background:#bbb}.dot-o{background:#c0392b}
+.kpi{font-size:8px;color:inherit;opacity:.7;margin-top:2px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-label{font-weight:600;margin-right:2px}
+.kpi-hidden .kpi{display:none}
+.who-label{font-size:8px;color:inherit;opacity:.5;flex-shrink:0;max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.due-label{font-family:'IBM Plex Mono';font-size:7.5px;opacity:.4;flex-shrink:0}
+.overdue-border{border-color:#c0392b!important;background:#fef2f0!important}
+.node-count{font-family:'IBM Plex Mono';font-size:8px;opacity:.55;margin-top:2px}
+.tip{display:none;position:absolute;left:calc(100% + 8px);top:0;background:#1a1916;color:#fff;font-size:9px;padding:8px 10px;border-radius:7px;white-space:pre-line;z-index:50;pointer-events:none;max-width:300px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,.25)}
+.node:hover>.tip{display:block}
+
+/* Table view */
+.table-wrap{padding:16px 24px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:11px;min-width:1100px}
+th{background:#f0eee9;padding:8px 10px;text-align:left;font-weight:600;color:var(--text-s);border-bottom:2px solid var(--border);position:sticky;top:0;white-space:nowrap;font-size:10px}
+td{padding:6px 10px;border-bottom:1px solid #f0eee9;vertical-align:top}
+tr:hover td{background:#faf8f5}
+td input,td select{font-family:'Noto Sans JP';font-size:11px;border:1px solid transparent;background:transparent;padding:2px 4px;border-radius:4px;width:100%;color:var(--text)}
+td input:focus,td select:focus{border-color:#2d6a4f;outline:none;background:#fff}
+td select{cursor:pointer}
+.row-actions{display:flex;gap:4px;white-space:nowrap}
+.del-btn{font-size:10px;color:#c0392b;cursor:pointer;border:none;background:none;padding:2px 6px;border-radius:4px;font-family:inherit}
+.del-btn:hover{background:#fef2f2}
+
+/* Modal */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal{background:#fff;border-radius:14px;padding:28px;width:95%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h2{font-size:16px;font-weight:800;margin-bottom:20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:10px;font-weight:600;color:var(--text-s)}
+.form-group input,.form-group select{font-family:'Noto Sans JP';font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#faf8f5;color:var(--text)}
+.form-group input:focus,.form-group select:focus{border-color:#2d6a4f;outline:none;background:#fff}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+.hidden{display:none}
+.conn-line{stroke-width:1.3;fill:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo">WBS</div>
+      <div><div class="h-title">WBS タスク構造図</div><div class="h-sub">本部タスク管理 ダッシュボード</div></div>
+    </div>
+    <div class="header-right">
+      <div class="legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>まんてん個別</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>プラス</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--orange)"></div>atama+FC</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--yellow)"></div>全社</div>
+      </div>
+      <div class="sep"></div>
+      <div class="tabs">
+        <button class="tab active" onclick="setView('tree')">ツリー</button>
+        <button class="tab" onclick="setView('table')">テーブル</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" onclick="openAdd()">＋ タスク追加</button>
+  <div class="sep"></div>
+  <span class="ctrl-label">階層:</span>
+  <button class="ctrl-btn" onclick="setD(2)" id="d2">カテゴリ</button>
+  <button class="ctrl-btn" onclick="setD(3)" id="d3">ミッション</button>
+  <button class="ctrl-btn" onclick="setD(4)" id="d4">サブミッション</button>
+  <button class="ctrl-btn active" onclick="setD(5)" id="d5">タスク</button>
+  <div class="sep"></div>
+  <label class="kpi-toggle"><input type="checkbox" id="kpiChk" checked onchange="toggleKpi()">KPI表示</label>
+  <div class="sep"></div>
+  <span class="ctrl-label">事業部:</span>
+  <button class="ctrl-btn active" onclick="setF('all')" id="fall">すべて</button>
+  <button class="ctrl-btn" onclick="setF('まんてん個別')" id="fm">まんてん個別</button>
+  <button class="ctrl-btn" onclick="setF('まんてん個別プラス')" id="fp">プラス</button>
+  <button class="ctrl-btn" onclick="setF('atama+FC')" id="fa">atama+FC</button>
+  <button class="ctrl-btn" onclick="setF('全社')" id="fz">全社</button>
+  <div class="sep"></div>
+  <span class="ctrl-label">優先度:</span>
+  <button class="ctrl-btn active" onclick="setPri('all')" id="pall">すべて</button>
+  <button class="ctrl-btn" onclick="setPri('高')" id="phigh" style="border-color:#e74c3c;color:#e74c3c">高</button>
+  <button class="ctrl-btn" onclick="setPri('中')" id="pmid" style="border-color:#f39c12;color:#f39c12">中</button>
+  <button class="ctrl-btn" onclick="setPri('低')" id="plow" style="border-color:#95a5a6;color:#95a5a6">低</button>
+  <div class="sep"></div>
+  <button class="btn btn-export" onclick="exportCSV()">📥 CSV出力</button>
+  <button class="btn btn-export" onclick="exportJSON()">📥 JSON出力</button>
+</div>
+
+<div class="stats" id="stats"></div>
+<div id="treeView" class="canvas"></div>
+<div id="tableView" class="table-wrap hidden"></div>
+<div id="modalOverlay" class="modal-overlay hidden" onclick="if(event.target===this)closeModal()"></div>
+
+<script>
+let DATA = [];
+let nextId = 111;
+const TODAY = new Date('2026-02-18');
+let maxD=5, filter='all', priFilter='all', showKpi=true, view='tree';
+
+const BUS=['まんてん個別','まんてん個別プラス','atama+FC','全社'];
+const CATS=['1.サービス','2.マーケティング','3.業務の効率化','4.採用','5.財務','9.その他'];
+const STS=['未着手','進行中'];
+const PRIS=['高','中','低'];
+const PRI_CLS={'高':'high','中':'mid','低':'low'};
+
+// Add default priority to all records
+DATA.forEach(r=>{if(!r.priority)r.priority='中'});
+const DK={'まんてん個別':{c:'m',bg:'#00b894'},'まんてん個別プラス':{c:'p',bg:'#6c5ce7'},'atama+FC':{c:'a',bg:'#e17055'},'全社':{c:'z',bg:'#f0c040'}};
+
+function ov(d){return d&&new Date(d)<TODAY}
+function esc(s){return s?s.replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+function dotCls(st,due){return ov(due)?'dot-o':st==='進行中'?'dot-g':'dot-n'}
+
+function arrow(color){
+  const id='a'+color.replace('#','');
+  return `<svg width="32" height="20" style="overflow:visible"><defs><marker id="${id}" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5Z" fill="${color}"/></marker></defs><line x1="0" y1="10" x2="32" y2="10" stroke="${color}" stroke-width="1.3" marker-end="url(#${id})"/></svg>`;
+}
+
+function getFiltered(){
+  let d=DATA;
+  if(filter!=='all')d=d.filter(r=>r.bu===filter);
+  if(priFilter!=='all')d=d.filter(r=>(r.priority||'中')===priFilter);
+  return d;
+}
+
+function updateStats(){
+  const items=getFiltered();
+  const t=items.length,p=items.filter(r=>r.st==='進行中').length,n=items.filter(r=>r.st==='未着手').length;
+  const od=items.filter(r=>ov(r.due)).length,ai=items.filter(r=>r.ai).length;
+  const ph=items.filter(r=>r.priority==='高').length,pm=items.filter(r=>r.priority==='中').length,pl=items.filter(r=>r.priority==='低').length;
+  document.getElementById('stats').innerHTML=
+    `<div class="stat-chip">全 <b>${t}</b>件</div>`+
+    `<div class="stat-chip">進行中 <b>${p}</b></div>`+
+    `<div class="stat-chip">未着手 <b>${n}</b></div>`+
+    (od?`<div class="stat-chip" style="border-color:#e74c3c;color:#c0392b">期限超過 <b>${od}</b></div>`:'')+
+    `<div class="stat-chip"><span class="pri-dot pri-dot-high"></span>高 <b>${ph}</b></div>`+
+    `<div class="stat-chip"><span class="pri-dot pri-dot-mid"></span>中 <b>${pm}</b></div>`+
+    `<div class="stat-chip"><span class="pri-dot pri-dot-low"></span>低 <b>${pl}</b></div>`+
+    `<div class="stat-chip">AI活用 <b>${ai}</b></div>`;
+}
+
+// ========== TREE VIEW ==========
+function buildTree(items){
+  const t={};
+  items.forEach(r=>{
+    const bu=r.bu,cat=r.cat,mis=r.mis||'（未設定）',sub=r.sub||'';
+    if(!t[bu])t[bu]={};if(!t[bu][cat])t[bu][cat]={};
+    if(!t[bu][cat][mis])t[bu][cat][mis]={_m:{kpiM:r.kpiM,dlM:r.dlM,owner:r.owner},subs:{}};
+    else{if(r.kpiM&&!t[bu][cat][mis]._m.kpiM)t[bu][cat][mis]._m.kpiM=r.kpiM;if(r.owner&&!t[bu][cat][mis]._m.owner)t[bu][cat][mis]._m.owner=r.owner}
+    const sk=sub||'_d';
+    if(!t[bu][cat][mis].subs[sk])t[bu][cat][mis].subs[sk]={_m:{kpiS:r.kpiS,dlS:r.dlS},tasks:[]};
+    else{if(r.kpiS&&!t[bu][cat][mis].subs[sk]._m.kpiS)t[bu][cat][mis].subs[sk]._m.kpiS=r.kpiS}
+    t[bu][cat][mis].subs[sk].tasks.push(r);
+  });return t;
+}
+
+function renderTree(){
+  const items=getFiltered();const tree=buildTree(items);const total=items.length;
+  let h=`<div class="wbs-tree${showKpi?'':' kpi-hidden'}">`;
+  h+=`<div class="node node-root">プロジェクト<br>全体<br><span class="node-count">${total}件</span></div>`;
+  h+=`<div class="wbs-col" style="gap:10px">`;
+  BUS.forEach(bu=>{
+    if(!tree[bu])return;const dk=DK[bu];const buI=items.filter(r=>r.bu===bu);const cats=Object.keys(tree[bu]).sort();
+    h+=`<div class="wbs-row"><div class="wbs-conn">${arrow(dk.bg)}</div>`;
+    h+=`<div class="node node-dept bg-${dk.c}">${esc(bu)}<br><span class="badge">${buI.length}</span></div>`;
+    if(maxD>=2){h+=`<div class="wbs-col">`;
+      cats.forEach(cat=>{
+        const mises=Object.keys(tree[bu][cat]).sort();
+        const cc=mises.reduce((s,m)=>s+Object.values(tree[bu][cat][m].subs).reduce((s2,sb)=>s2+sb.tasks.length,0),0);
+        h+=`<div class="wbs-row"><div class="wbs-conn">${arrow(dk.bg)}</div>`;
+        h+=`<div class="node node-cat cat-${dk.c}">${esc(cat)}<span class="badge">${cc}</span></div>`;
+        if(maxD>=3){h+=`<div class="wbs-col">`;
+          mises.forEach(mis=>{
+            const md=tree[bu][cat][mis];const sks=Object.keys(md.subs);const mc=sks.reduce((s,k)=>s+md.subs[k].tasks.length,0);const me=md._m;
+            h+=`<div class="wbs-row"><div class="wbs-conn">${arrow(dk.bg)}</div>`;
+            h+=`<div class="node node-mis mis-${dk.c}"><div>${esc(mis)}<span class="badge">${mc}</span></div>`;
+            if(me.kpiM)h+=`<div class="kpi"><span class="kpi-label">目標:</span>${esc(me.kpiM)}</div>`;
+            if(me.owner)h+=`<div class="kpi"><span class="kpi-label">責任者:</span>${esc(me.owner)}</div>`;
+            h+=`<div class="tip"><b>${esc(mis)}</b>\n`;if(me.kpiM)h+=`数値目標: ${esc(me.kpiM)}\n`;if(me.owner)h+=`責任者: ${esc(me.owner)}\n`;if(me.dlM)h+=`期限: ${me.dlM}`;h+=`</div></div>`;
+            if(maxD>=4){h+=`<div class="wbs-col">`;
+              sks.forEach(sk=>{
+                const sd=md.subs[sk];const sm=sd._m;const tasks=sd.tasks;
+                if(sk!=='_d'){
+                  h+=`<div class="wbs-row"><div class="wbs-conn">${arrow(dk.bg)}</div>`;
+                  h+=`<div class="node node-sub sub-${dk.c}"><div>▸ ${esc(sk)}<span class="badge">${tasks.length}</span></div>`;
+                  if(sm.kpiS)h+=`<div class="kpi"><span class="kpi-label">目標:</span>${esc(sm.kpiS)}</div>`;
+                  h+=`<div class="tip"><b>SM: ${esc(sk)}</b>\n`;if(sm.kpiS)h+=`数値目標: ${esc(sm.kpiS)}\n`;if(sm.dlS)h+=`期限: ${sm.dlS}`;h+=`</div></div>`;
+                  if(maxD>=5){h+=`<div class="wbs-col">`;tasks.forEach(t=>h+=taskNode(t,dk));h+=`</div>`}
+                  h+=`</div>`;
+                }else{if(maxD>=5)tasks.forEach(t=>h+=taskNode(t,dk))}
+              });h+=`</div>`}
+            h+=`</div>`;
+          });h+=`</div>`}
+        h+=`</div>`;
+      });h+=`</div>`}
+    h+=`</div>`;
+  });
+  h+=`</div></div>`;
+  document.getElementById('treeView').innerHTML=h;
+}
+
+function taskNode(t,dk){
+  const od=ov(t.due);
+  let h=`<div class="wbs-row"><div class="wbs-conn">${arrow(dk.bg)}</div>`;
+  h+=`<div class="node node-task tsk-${dk.c} ${od?'overdue-border':''}" ondblclick="openEdit(${t.id})">`;
+  h+=`<span class="task-dot ${dotCls(t.st,t.due)}"></span>`;
+  h+=`<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">`;
+  if(t.priority&&t.priority!=='中')h+=`<span class="pri-badge pri-${PRI_CLS[t.priority]||'mid'}">${t.priority}</span> `;
+  if(t.ai)h+=`<span class="ai-badge">AI</span> `;
+  h+=`${esc(t.task)}</span>`;
+  h+=`<span class="who-label">${esc((t.who||'').split('・')[0])}</span>`;
+  if(t.due)h+=`<span class="due-label" ${od?'style="color:#c0392b;opacity:.8"':''}>${t.due.slice(5)}</span>`;
+  h+=`<div class="tip"><b>${esc(t.task)}</b>\n優先度: ${t.priority||'中'}\n担当: ${esc(t.who)}\n期限: ${t.due||'未設定'}\n進捗: ${t.st}${od?'\n⚠ 期限超過':''}\n\n💡 ダブルクリックで編集</div>`;
+  h+=`</div></div>`;
+  return h;
+}
+
+// ========== TABLE VIEW ==========
+function renderTable(){
+  const items=getFiltered();
+  let h=`<table><thead><tr>
+    <th style="width:30px"></th>
+    <th>事業部</th><th>カテゴリ</th><th>ミッション</th><th>サブミッション</th>
+    <th>タスク</th><th>優先度</th><th>担当者</th><th>期限</th><th>進捗</th><th>AI</th>
+    <th style="width:60px">操作</th>
+  </tr></thead><tbody>`;
+  items.forEach((r,i)=>{
+    const od=ov(r.due);
+    const dc=DK[r.bu]||{bg:'#999'};
+    h+=`<tr id="row-${r.id}">`;
+    h+=`<td><span class="task-dot ${dotCls(r.st,r.due)}" style="display:inline-block"></span></td>`;
+    h+=`<td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${dc.bg};margin-right:4px"></span>${esc(r.bu)}</td>`;
+    h+=`<td>${esc(r.cat)}</td>`;
+    h+=`<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.mis)}">${esc(r.mis)}</td>`;
+    h+=`<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.sub)}">${esc(r.sub)}</td>`;
+    h+=`<td style="font-weight:500;${od?'color:#c0392b':''}">${r.ai?'<span class="ai-badge">AI</span> ':''}${esc(r.task)}</td>`;
+    h+=`<td><span class="pri-badge pri-${PRI_CLS[r.priority]||'mid'}">${r.priority||'中'}</span></td>`;
+    h+=`<td>${esc(r.who)}</td>`;
+    h+=`<td style="font-family:'IBM Plex Mono';font-size:10px;${od?'color:#c0392b;font-weight:600':''}">${r.due||''}</td>`;
+    h+=`<td>${r.st}</td>`;
+    h+=`<td><input type="checkbox" ${r.ai?'checked':''} onchange="toggleAI(${r.id},this.checked)" style="width:auto;accent-color:#6366f1"></td>`;
+    h+=`<td class="row-actions">`;
+    h+=`<button class="btn btn-ghost btn-sm" onclick="openEdit(${r.id})">✏️</button>`;
+    h+=`<button class="del-btn" onclick="deleteTask(${r.id})">🗑</button>`;
+    h+=`</td></tr>`;
+  });
+  h+=`</tbody></table>`;
+  document.getElementById('tableView').innerHTML=h;
+}
+
+// ========== CRUD ==========
+function openAdd(){
+  const m=document.getElementById('modalOverlay');
+  m.innerHTML=`<div class="modal">
+    <h2>＋ 新規タスク追加</h2>
+    <div class="form-grid">
+      <div class="form-group"><label>事業部 *</label><select id="f-bu">${BUS.map(b=>`<option>${b}</option>`).join('')}</select></div>
+      <div class="form-group"><label>カテゴリ *</label><select id="f-cat">${CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>責任者</label><input id="f-owner" placeholder="例: 岩下智志"></div>
+      <div class="form-group"><label>ミッション *</label><input id="f-mis" placeholder="例: 入会数キープ"></div>
+      <div class="form-group"><label>数値目標(M)</label><input id="f-kpiM" placeholder="例: 年間45名"></div>
+      <div class="form-group"><label>期限(M)</label><input id="f-dlM" type="date"></div>
+      <div class="form-group"><label>サブミッション</label><input id="f-sub" placeholder="例: 小学生の接遇向上"></div>
+      <div class="form-group"><label>数値目標(SM)</label><input id="f-kpiS"></div>
+      <div class="form-group"><label>期限(SM)</label><input id="f-dlS" type="date"></div>
+      <div class="form-group full"><label>タスク名 *</label><input id="f-task" placeholder="具体的なタスク名"></div>
+      <div class="form-group"><label>担当者</label><input id="f-who" placeholder="例: 岩下智志"></div>
+      <div class="form-group"><label>タスク期限</label><input id="f-due" type="date"></div>
+      <div class="form-group"><label>進捗</label><select id="f-st">${STS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>優先度</label><select id="f-pri">${PRIS.map(p=>`<option ${p==='中'?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-group"><label>AI活用</label><select id="f-ai"><option value="0">なし</option><option value="1">あり</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveAdd()">追加する</button>
+    </div>
+  </div>`;
+  m.classList.remove('hidden');
+}
+
+async function saveAdd(){
+  const task=document.getElementById('f-task').value.trim();
+  const mis=document.getElementById('f-mis').value.trim();
+  if(!task||!mis){alert('タスク名とミッションは必須です');return}
+  const obj={
+    bu:document.getElementById('f-bu').value,
+    cat:document.getElementById('f-cat').value,
+    ai:document.getElementById('f-ai').value==='1',
+    owner:document.getElementById('f-owner').value.trim(),
+    mis:mis,
+    kpiM:document.getElementById('f-kpiM').value.trim(),
+    dlM:document.getElementById('f-dlM').value,
+    sub:document.getElementById('f-sub').value.trim(),
+    kpiS:document.getElementById('f-kpiS').value.trim(),
+    dlS:document.getElementById('f-dlS').value,
+    task:task,
+    who:document.getElementById('f-who').value.trim(),
+    due:document.getElementById('f-due').value,
+    st:document.getElementById('f-st').value,
+    priority:document.getElementById('f-pri').value
+  };
+  const res=await fetch('api.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+  const saved=await res.json();
+  DATA.push(saved);
+  nextId=Math.max(nextId,saved.id+1);
+  closeModal();renderAll();
+}
+
+function openEdit(id){
+  const r=DATA.find(d=>d.id===id);if(!r)return;
+  const m=document.getElementById('modalOverlay');
+  m.innerHTML=`<div class="modal">
+    <h2>✏️ タスク編集 <span style="font-size:12px;font-weight:400;color:var(--text-m)">#${id}</span></h2>
+    <div class="form-grid">
+      <div class="form-group"><label>事業部</label><select id="e-bu">${BUS.map(b=>`<option ${b===r.bu?'selected':''}>${b}</option>`).join('')}</select></div>
+      <div class="form-group"><label>カテゴリ</label><select id="e-cat">${CATS.map(c=>`<option ${c===r.cat?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="form-group"><label>責任者</label><input id="e-owner" value="${esc(r.owner||'')}"></div>
+      <div class="form-group"><label>ミッション</label><input id="e-mis" value="${esc(r.mis||'')}"></div>
+      <div class="form-group"><label>数値目標(M)</label><input id="e-kpiM" value="${esc(r.kpiM||'')}"></div>
+      <div class="form-group"><label>期限(M)</label><input id="e-dlM" type="date" value="${r.dlM||''}"></div>
+      <div class="form-group"><label>サブミッション</label><input id="e-sub" value="${esc(r.sub||'')}"></div>
+      <div class="form-group"><label>数値目標(SM)</label><input id="e-kpiS" value="${esc(r.kpiS||'')}"></div>
+      <div class="form-group"><label>期限(SM)</label><input id="e-dlS" type="date" value="${r.dlS||''}"></div>
+      <div class="form-group full"><label>タスク名</label><input id="e-task" value="${esc(r.task||'')}"></div>
+      <div class="form-group"><label>担当者</label><input id="e-who" value="${esc(r.who||'')}"></div>
+      <div class="form-group"><label>タスク期限</label><input id="e-due" type="date" value="${r.due||''}"></div>
+      <div class="form-group"><label>進捗</label><select id="e-st">${STS.map(s=>`<option ${s===r.st?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div class="form-group"><label>優先度</label><select id="e-pri">${PRIS.map(p=>`<option ${p===(r.priority||'中')?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-group"><label>AI活用</label><select id="e-ai"><option value="0" ${!r.ai?'selected':''}>なし</option><option value="1" ${r.ai?'selected':''}>あり</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteTask(${id});closeModal()">🗑 削除</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEdit(${id})">保存する</button>
+    </div>
+  </div>`;
+  m.classList.remove('hidden');
+}
+
+async function saveEdit(id){
+  const r=DATA.find(d=>d.id===id);if(!r)return;
+  r.bu=document.getElementById('e-bu').value;
+  r.cat=document.getElementById('e-cat').value;
+  r.owner=document.getElementById('e-owner').value.trim();
+  r.mis=document.getElementById('e-mis').value.trim();
+  r.kpiM=document.getElementById('e-kpiM').value.trim();
+  r.dlM=document.getElementById('e-dlM').value;
+  r.sub=document.getElementById('e-sub').value.trim();
+  r.kpiS=document.getElementById('e-kpiS').value.trim();
+  r.dlS=document.getElementById('e-dlS').value;
+  r.task=document.getElementById('e-task').value.trim();
+  r.who=document.getElementById('e-who').value.trim();
+  r.due=document.getElementById('e-due').value;
+  r.st=document.getElementById('e-st').value;
+  r.ai=document.getElementById('e-ai').value==='1';
+  r.priority=document.getElementById('e-pri').value;
+  await fetch('api.php?id='+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
+  closeModal();renderAll();
+}
+
+async function deleteTask(id){
+  if(!confirm('このタスクを削除しますか？'))return;
+  await fetch('api.php?id='+id,{method:'DELETE'});
+  DATA=DATA.filter(d=>d.id!==id);
+  renderAll();
+}
+
+async function toggleAI(id,val){
+  const r=DATA.find(d=>d.id===id);if(r)r.ai=val;
+  await fetch('api.php?id='+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(r)});
+  renderAll();
+}
+
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden')}
+
+// ========== EXPORT ==========
+function exportCSV(){
+  const heads=['事業部','カテゴリ','AI活用','責任者','ミッション','数値目標(M)','期限(M)','サブミッション','数値目標(SM)','期限(SM)','タスク','担当者','タスク期限','進捗','優先度'];
+  let csv='\uFEFF'+heads.join(',')+`\n`;
+  DATA.forEach(r=>{
+    csv+=[r.bu,r.cat,r.ai?'○':'',r.owner,r.mis,r.kpiM,r.dlM,r.sub,r.kpiS,r.dlS,r.task,r.who,r.due,r.st,r.priority||'中'].map(v=>`"${(v||'').replace(/"/g,'""')}"`).join(',')+`\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='WBS_タスク管理.csv';a.click();
+}
+
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='WBS_タスク管理.json';a.click();
+}
+
+// ========== VIEW SWITCHING ==========
+function setView(v){
+  view=v;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>{if((v==='tree'&&t.textContent==='ツリー')||(v==='table'&&t.textContent==='テーブル'))t.classList.add('active')});
+  document.getElementById('treeView').classList.toggle('hidden',v!=='tree');
+  document.getElementById('tableView').classList.toggle('hidden',v!=='table');
+  renderAll();
+}
+
+function setD(d){maxD=d;document.querySelectorAll('.ctrl-btn').forEach(b=>{if(b.id&&b.id.startsWith('d'))b.classList.remove('active')});document.getElementById('d'+d).classList.add('active');renderAll()}
+function setF(f){filter=f;['fall','fm','fp','fa','fz'].forEach(id=>document.getElementById(id).classList.remove('active'));const mp={'all':'fall','まんてん個別':'fm','まんてん個別プラス':'fp','atama+FC':'fa','全社':'fz'};document.getElementById(mp[f]).classList.add('active');renderAll()}
+function setPri(p){priFilter=p;['pall','phigh','pmid','plow'].forEach(id=>{const el=document.getElementById(id);el.classList.remove('active');if(id!=='pall')el.style.background='transparent'});const mp={'all':'pall','高':'phigh','中':'pmid','低':'plow'};const el=document.getElementById(mp[p]);el.classList.add('active');if(p==='高'){el.style.background='#e74c3c';el.style.color='#fff'}else if(p==='中'){el.style.background='#f39c12';el.style.color='#fff'}else if(p==='低'){el.style.background='#95a5a6';el.style.color='#fff'};renderAll()}
+function toggleKpi(){showKpi=document.getElementById('kpiChk').checked;renderAll()}
+
+function renderAll(){
+  updateStats();
+  if(view==='tree')renderTree();
+  else renderTable();
+}
+
+// 起動時にサーバーからデータ読み込み
+async function init(){
+  try{
+    const res=await fetch('api.php');
+    DATA=await res.json();
+  }catch(e){
+    console.log('API未接続 - ローカルモードで起動');
+  }
+  DATA.forEach(r=>{if(!r.priority)r.priority='中'});
+  nextId=DATA.length?Math.max(...DATA.map(d=>d.id||0))+1:1;
+  renderAll();
+}
+init();
+</script>
+</body>
+</html>

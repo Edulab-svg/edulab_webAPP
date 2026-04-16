@@ -1,0 +1,2127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HRシステム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e2e8f0;font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif;min-height:100vh;display:flex}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#1a1d2e}::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+input,select,textarea{background:#1e2235;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 14px;width:100%;font-size:14px;font-family:inherit;outline:none;transition:border-color .2s}
+input:focus,select:focus{border-color:#6366f1}
+input::placeholder{color:#64748b}
+select option{background:#1e2235}
+.btn{border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+.btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+.btn-success{background:linear-gradient(135deg,#10b981,#059669);color:#fff}
+.btn-success:hover{opacity:.88;transform:translateY(-1px)}
+.btn-danger{background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff}
+.btn-danger:hover{opacity:.88}
+.btn-ghost{background:transparent;border:1px solid #334155;color:#94a3b8}
+.btn-ghost:hover{border-color:#6366f1;color:#6366f1}
+.btn-sm{background:#1e2235;border:1px solid #334155;color:#94a3b8;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn-sm:hover{border-color:#6366f1;color:#a5b4fc}
+.btn-sm-danger{background:#1e2235;border:1px solid #7f1d1d;color:#f87171;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+.btn-sm-danger:hover{background:#7f1d1d33}
+.card{background:#161927;border:1px solid #1e2a3a;border-radius:16px}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#161927;border:1px solid #2d3748;border-radius:20px;padding:32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.nav-item{padding:10px 16px;border-radius:10px;cursor:pointer;transition:all .2s;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;color:#64748b}
+.nav-item:hover{background:#1e2235;color:#e2e8f0}
+.nav-item.active{background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));color:#a5b4fc;border:1px solid rgba(99,102,241,.3)}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:500}
+.pbar{height:6px;background:#1e2a3a;border-radius:3px;overflow:hidden}
+.pfill{height:100%;border-radius:3px;transition:width .5s ease}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:11px 14px;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #1e2a3a;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:#a5b4fc}
+th.sort-active{color:#a5b4fc}
+td{padding:11px 14px;font-size:14px;border-bottom:1px solid #1e2235}
+tr.emp-row{transition:background .12s;cursor:pointer}
+tr.emp-row:hover{background:#1a1d2e}
+label{display:block;font-size:13px;font-weight:500;color:#94a3b8;margin-bottom:6px}
+.fg{margin-bottom:16px}
+.filter-chip{padding:5px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #334155;background:transparent;color:#64748b;transition:all .15s;font-family:inherit}
+.filter-chip.active{background:#7f1d1d33;border-color:#f43f5e;color:#f87171}
+.filter-chip.active-warn{background:#78350f33;border-color:#f59e0b;color:#fbbf24}
+.view-toggle-btn{background:#1e2235;border:1px solid #334155;color:#64748b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;font-family:inherit}
+.view-toggle-btn.active{background:rgba(99,102,241,.2);border-color:#6366f1;color:#a5b4fc}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes toastIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+.fadein{animation:fadeUp .3s ease}
+.toast-wrap{position:fixed;top:24px;right:24px;z-index:300;animation:toastIn .3s ease;padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.toast-ok{background:#064e3b;border:1px solid #10b981;color:#6ee7b7}
+.toast-err{background:#7f1d1d;border:1px solid #f43f5e;color:#fca5a5}
+.dp-wrap{position:relative}
+.dp-input{background:#1e2235;border:1px solid #334155;color:#e2e8f0;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;transition:border-color .2s;width:100%}
+.dp-input.open{border-color:#6366f1}
+.dp-input .placeholder{color:#64748b}
+.dp-popup{position:absolute;top:calc(100% + 8px);left:0;z-index:500;background:#161927;border:1px solid #2d3748;border-radius:14px;padding:16px;box-shadow:0 16px 48px rgba(0,0,0,.6);min-width:280px}
+.dp-day{text-align:center;padding:7px 2px;border-radius:7px;font-size:13px;cursor:pointer;border:1px solid transparent;transition:background .12s}
+.dp-day:hover{background:#1e2a3a}
+.dp-day.selected{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700}
+.dp-day.today{background:#1e2235;border-color:#6366f155;font-weight:700}
+.dp-day.disabled{color:#374151;cursor:not-allowed}
+.dp-day.sun{color:#f87171}.dp-day.sat{color:#60a5fa}
+</style>
+</head>
+<body>
+
+<div id="sidebar" style="width:210px;flex-shrink:0;background:#0d0f1a;border-right:1px solid #1e2a3a;padding:24px 16px;display:flex;flex-direction:column;gap:4px">
+  <div style="padding:12px 8px 24px">
+    <div style="font-size:11px;letter-spacing:.15em;color:#6366f1;font-weight:700;text-transform:uppercase;margin-bottom:4px">HR System</div>
+    <div style="font-size:18px;font-weight:700;color:#e2e8f0">HRシステム</div>
+    <div style="font-size:11px;color:#475569;margin-top:2px">労基法準拠</div>
+  </div>
+  <div class="nav-item active" data-view="dashboard"><span>◈</span>休暇取得状況ダッシュボード</div>
+  <div class="nav-item" data-view="employees"><span>◉</span>社員一覧</div>
+  <div class="nav-item" data-view="calendar"><span>◫</span>取得カレンダー</div>
+  <div class="nav-item" data-view="rules"><span>◎</span>法令ガイド</div>
+  <div class="nav-item" data-view="retired"><span>◌</span>退職者</div>
+  <div style="margin-top:12px;padding:6px 8px 4px;font-size:10px;letter-spacing:.1em;color:#334155;font-weight:700;text-transform:uppercase">給与</div>
+  <div class="nav-item" data-view="salary"><span>¥</span>給与管理</div>
+  <div class="nav-item" data-view="monthly"><span>📅</span>月次台帳</div>
+  <div class="nav-item" data-view="bonus"><span>🎁</span>賞与台帳</div>
+  <div class="nav-item" data-view="roles"><span>◆</span>役職設定</div>
+  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #1e2235">
+    <div style="font-size:11px;color:#475569">今日</div>
+    <div id="today-label" style="font-size:12px;color:#94a3b8;font-family:'IBM Plex Mono',monospace;margin-top:2px"></div>
+  </div>
+</div>
+
+<div id="main" style="flex:1;overflow:auto;padding:32px"></div>
+<div id="toast" style="display:none"></div>
+<div id="modal-overlay" class="overlay" style="display:none">
+  <div id="modal-box" class="modal"></div>
+</div>
+
+<script>
+const LEAVE_TABLE={
+  full:[{m:6,d:10},{m:18,d:11},{m:30,d:12},{m:42,d:14},{m:54,d:16},{m:66,d:18},{m:78,d:20}],
+  part:{
+    4:[{m:6,d:7},{m:18,d:8},{m:30,d:9},{m:42,d:10},{m:54,d:12},{m:66,d:13},{m:78,d:15}],
+    3:[{m:6,d:5},{m:18,d:6},{m:30,d:6},{m:42,d:8},{m:54,d:9},{m:66,d:10},{m:78,d:11}],
+    2:[{m:6,d:3},{m:18,d:4},{m:30,d:4},{m:42,d:5},{m:54,d:6},{m:66,d:6},{m:78,d:7}],
+    1:[{m:6,d:1},{m:18,d:2},{m:30,d:2},{m:42,d:2},{m:54,d:3},{m:66,d:3},{m:78,d:3}],
+  }
+};
+const DAYS_JP=['日','月','火','水','木','金','土'];
+const MONTHS_JP=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const API='api/index.php';
+const AVAIL_WARN=20;
+
+let employees=[];
+let currentView='dashboard';
+let selectedEmpId=null;
+let listViewMode='table';
+let searchQuery='';
+let filterMandatory=false;
+let filterHighLeave=false;
+let sortKey='hire_date';
+let searchTimer=null;
+function handleSearch(val){
+  searchQuery=val;
+  clearTimeout(searchTimer);
+  searchTimer=setTimeout(()=>{
+    const sel=document.activeElement;
+    const selStart=sel?.selectionStart;
+    const selEnd=sel?.selectionEnd;
+    renderEmployeeList();
+    const inp=document.getElementById('emp-search');
+    if(inp){inp.focus();try{inp.setSelectionRange(selStart,selEnd);}catch(e){}}
+  },300);
+}
+let sortDir='asc';
+const TODAY=new Date().toISOString().split('T')[0];
+
+async function apiGet(action,params={}){
+  const q=new URLSearchParams({action,...params,_t:Date.now()});
+  const res=await fetch(`${API}?${q}`);
+  return res.json();
+}
+async function apiPost(body={}){
+  const fd=new FormData();
+  for(const[k,v]of Object.entries(body))fd.append(k,v);
+  const res=await fetch(API,{method:'POST',body:fd});
+  return res.json();
+}
+async function loadEmployees(){
+  const r=await apiGet('get_employees');
+  if(r.ok)employees=r.data;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 計算ロジック
+// ══════════════════════════════════════════════════════════════════
+function diffMonths(hireDate){
+  const h=new Date(hireDate),n=new Date();
+  let months=(n.getFullYear()-h.getFullYear())*12+(n.getMonth()-h.getMonth());
+  if(n.getDate()<h.getDate())months--;
+  return months;
+}
+function getTable(wdpw){
+  return wdpw>=5?LEAVE_TABLE.full:(LEAVE_TABLE.part[wdpw]||LEAVE_TABLE.part[1]);
+}
+function calcEntitled(hireDate,wdpw){
+  const dm=diffMonths(hireDate),tbl=getTable(wdpw);
+  let d=0;for(const r of[...tbl].reverse()){if(dm>=r.m){d=r.d;break;}}return d;
+}
+function calcGrants(hireDate,wdpw){
+  const hire=new Date(hireDate),dm=diffMonths(hireDate),tbl=getTable(wdpw);
+  return tbl.filter(r=>dm>=r.m).map(r=>{
+    const gd=new Date(hire);gd.setMonth(gd.getMonth()+r.m);
+    const ed=new Date(gd);ed.setFullYear(ed.getFullYear()+2);
+    return{days:r.d,grantDate:gd,expireDate:ed,months:r.m};
+  });
+}
+function calcAvail(hireDate,wdpw,leaves){
+  const now=new Date();now.setHours(0,0,0,0);
+  const batches=calcGrants(hireDate,wdpw).map(g=>{
+    const gd=new Date(g.grantDate);gd.setHours(0,0,0,0);
+    const ed=new Date(g.expireDate);ed.setHours(0,0,0,0);
+    return{remaining:g.days,grantDate:gd,expireDate:ed};
+  });
+  const sorted=[...leaves].sort((a,b)=>a.start_date.localeCompare(b.start_date));
+  for(const leaf of sorted){
+    let toConsume=parseFloat(leaf.days);
+    const leafDate=new Date(leaf.start_date);leafDate.setHours(0,0,0,0);
+    for(const b of batches){
+      if(toConsume<=0)break;
+      if(b.grantDate<=leafDate&&b.expireDate>leafDate&&b.remaining>0){
+        const consume=Math.min(b.remaining,toConsume);
+        b.remaining-=consume;toConsume-=consume;
+      }
+    }
+    if(toConsume>0){
+      for(const b of batches){
+        if(toConsume<=0)break;
+        if(b.expireDate>now&&b.remaining>0){
+          const consume=Math.min(b.remaining,toConsume);
+          b.remaining-=consume;toConsume-=consume;
+        }
+      }
+    }
+  }
+  return Math.max(0,batches.reduce((s,b)=>b.expireDate>now?s+b.remaining:s,0));
+}
+function calcUsedFY(leaves){
+  const{start,end}=currentFY();
+  return leaves.filter(l=>l.start_date>=start&&l.start_date<=end).reduce((s,l)=>s+parseFloat(l.days),0);
+}
+function calcUsedTotal(leaves){return leaves.reduce((s,l)=>s+parseFloat(l.days),0);}
+function countWorkdays(start,end){
+  let n=0,c=new Date(start),e=new Date(end);
+  while(c<=e){n++;c.setDate(c.getDate()+1);}
+  return n;
+}
+function getFiscalYear(dateStr){
+  const d=new Date(dateStr);
+  return d.getMonth()>=3?d.getFullYear():d.getFullYear()-1;
+}
+function currentFY(){
+  const fy=getFiscalYear(TODAY);
+  return{fy,start:`${fy}-04-01`,end:`${fy+1}-03-31`};
+}
+function getMandatory(emp){
+  if(calcEntitled(emp.hire_date,emp.work_days_per_week)<10)return null;
+  const grants=calcGrants(emp.hire_date,emp.work_days_per_week);
+  if(!grants.length)return null;
+  const firstFY=getFiscalYear(grants[0].grantDate.toISOString().split('T')[0]);
+  const{fy,start,end}=currentFY();
+  if(fy<=firstFY)return null;
+  const usedFY=emp.leaves.filter(l=>l.start_date>=start&&l.start_date<=end).reduce((s,l)=>s+parseFloat(l.days),0);
+  return{rem:Math.max(0,5-usedFY),used:usedFY,fy};
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 並び替え & フィルター
+// ══════════════════════════════════════════════════════════════════
+function sortedFiltered(){
+  let list=[...employees];
+  if(searchQuery.trim()){
+    const q=searchQuery.trim().toLowerCase().replace(/\s/g,'');
+    list=list.filter(e=>e.name.toLowerCase().replace(/\s/g,'').includes(q));
+  }
+  if(filterMandatory)list=list.filter(e=>{const m=getMandatory(e);return m&&m.rem>0;});
+  if(filterHighLeave)list=list.filter(e=>calcAvail(e.hire_date,e.work_days_per_week,e.leaves)>=AVAIL_WARN);
+  list.sort((a,b)=>{
+    let va,vb;
+    if(sortKey==='name')return sortDir==='asc'?a.name.localeCompare(b.name,'ja'):b.name.localeCompare(a.name,'ja');
+    if(sortKey==='hire_date'){va=a.hire_date;vb=b.hire_date;}
+    if(sortKey==='avail'){va=calcAvail(a.hire_date,a.work_days_per_week,a.leaves);vb=calcAvail(b.hire_date,b.work_days_per_week,b.leaves);}
+    return sortDir==='asc'?(va<vb?-1:va>vb?1:0):(va>vb?-1:va<vb?1:0);
+  });
+  return list;
+}
+function handleSort(key){
+  if(sortKey===key)sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortKey=key;sortDir='asc';}
+  renderEmployeeList();
+}
+function sortIcon(key){
+  if(sortKey!==key)return'<span style="color:#334155;margin-left:4px">↕</span>';
+  return`<span style="color:#a5b4fc;margin-left:4px">${sortDir==='asc'?'↑':'↓'}</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 残日数アラートタグ
+// ══════════════════════════════════════════════════════════════════
+function highLeaveTag(avail){
+  if(avail>=AVAIL_WARN)
+    return`<span class="tag" style="background:#78350f33;color:#fbbf24;margin-left:6px" title="残日数が${AVAIL_WARN}日以上です">⚠ 残多</span>`;
+  return'';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DatePicker
+// ══════════════════════════════════════════════════════════════════
+const dpState={};
+function dpCreate(id,value='',options={}){
+  dpState[id]={value,viewYear:value?+value.split('-')[0]:new Date().getFullYear(),viewMonth:value?+value.split('-')[1]-1:new Date().getMonth(),options,open:false};
+}
+function dpRender(id){
+  const s=dpState[id];if(!s)return'';
+  const{value,viewYear,viewMonth,open,options}=s;
+  const disp=value?`${value.split('-')[0]}年${+value.split('-')[1]}月${+value.split('-')[2]}日`:'';
+  return`<div class="dp-wrap" id="dpwrap-${id}">
+    ${options.label?`<label>${options.label}</label>`:''}
+    <div class="dp-input ${open?'open':''}" onclick="dpToggle('${id}')">
+      <span class="${disp?'':'placeholder'}">${disp||options.placeholder||'日付を選択'}</span>
+      <span style="color:#6366f1">📅</span>
+    </div>
+    ${open?dpPopup(id):''}
+  </div>`;
+}
+function dpPopup(id){
+  const s=dpState[id];
+  const{viewYear,viewMonth,value,options}=s;
+  const total=new Date(viewYear,viewMonth+1,0).getDate();
+  const first=new Date(viewYear,viewMonth,1).getDay();
+  const maxDate=options.max?new Date(options.max):null;
+  const minDate=options.min?new Date(options.min):null;
+  const years=Array.from({length:30},(_,i)=>new Date().getFullYear()-20+i);
+  let cells='';
+  for(let i=0;i<first;i++)cells+=`<div></div>`;
+  for(let d=1;d<=total;d++){
+    const dt=new Date(viewYear,viewMonth,d);
+    const val=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const sel=value===val,dis=(maxDate&&dt>maxDate)||(minDate&&dt<minDate);
+    const tod=val===TODAY;
+    const dow=(first+d-1)%7;
+    const cls=['dp-day',sel?'selected':tod?'today':'',dis?'disabled':'',dow===0?'sun':dow===6?'sat':''].filter(Boolean).join(' ');
+    cells+=`<div class="${cls}" ${dis?'':'onclick="dpSelect(\''+id+'\',\''+val+'\')"'}>${d}</div>`;
+  }
+  const yOpts=years.map(y=>`<option value="${y}" ${y===viewYear?'selected':''}>${y}年</option>`).join('');
+  const mOpts=MONTHS_JP.map((m,i)=>`<option value="${i}" ${i===viewMonth?'selected':''}>${m}</option>`).join('');
+  return`<div class="dp-popup">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <button onclick="dpNav('${id}',-1)" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:2px 8px">‹</button>
+      <div style="display:flex;gap:6px">
+        <select onchange="dpSetYear('${id}',this.value)" style="width:auto;padding:4px 8px;font-size:13px">${yOpts}</select>
+        <select onchange="dpSetMonth('${id}',this.value)" style="width:auto;padding:4px 8px;font-size:13px">${mOpts}</select>
+      </div>
+      <button onclick="dpNav('${id}',1)" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:18px;padding:2px 8px">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:4px">
+      ${DAYS_JP.map((d,i)=>`<div style="text-align:center;font-size:11px;font-weight:600;padding:4px 0;color:${i===0?'#f87171':i===6?'#60a5fa':'#64748b'}">${d}</div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${cells}</div>
+    <div style="margin-top:10px;border-top:1px solid #1e2a3a;padding-top:10px;text-align:center">
+      <button onclick="dpToday('${id}')" style="background:none;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer">今日</button>
+      ${s.value?`<button onclick="dpClear('${id}')" style="background:none;border:1px solid #334155;color:#f87171;border-radius:6px;padding:5px 16px;font-size:12px;cursor:pointer;margin-left:8px">クリア</button>`:''}
+    </div>
+  </div>`;
+}
+function dpRefresh(id){const wrap=document.getElementById('dpwrap-'+id);if(wrap)wrap.outerHTML=dpRender(id);}
+function dpToggle(id){dpState[id].open=!dpState[id].open;dpRefresh(id);}
+function dpSelect(id,val){dpState[id].value=val;dpState[id].open=false;dpRefresh(id);}
+function dpNav(id,dir){
+  const s=dpState[id];s.viewMonth+=dir;
+  if(s.viewMonth>11){s.viewMonth=0;s.viewYear++;}
+  if(s.viewMonth<0){s.viewMonth=11;s.viewYear--;}
+  dpRefresh(id);
+}
+function dpSetYear(id,y){dpState[id].viewYear=+y;dpRefresh(id);}
+function dpSetMonth(id,m){dpState[id].viewMonth=+m;dpRefresh(id);}
+function dpToday(id){
+  const s=dpState[id],o=s.options;
+  const max=o.max?new Date(o.max):null,min=o.min?new Date(o.min):null,t=new Date(TODAY);
+  if((!max||t<=max)&&(!min||t>=min)){s.value=TODAY;s.open=false;}
+  else{s.viewYear=t.getFullYear();s.viewMonth=t.getMonth();}
+  dpRefresh(id);
+}
+function dpClear(id){dpState[id].value='';dpState[id].open=false;dpRefresh(id);}
+function dpGet(id){return dpState[id]?.value||'';}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.dp-wrap')){
+    let changed=false;
+    for(const id in dpState){if(dpState[id].open){dpState[id].open=false;changed=true;}}
+    if(changed)Object.keys(dpState).forEach(id=>{const w=document.getElementById('dpwrap-'+id);if(w)w.outerHTML=dpRender(id);});
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// Toast / Modal
+// ══════════════════════════════════════════════════════════════════
+let toastTimer=null;
+function showToast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.className=`toast-wrap toast-${type}`;
+  el.textContent=(type==='err'?'⚠️ ':'✅ ')+msg;
+  el.style.display='block';
+  if(toastTimer)clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.style.display='none',3000);
+}
+function openModal(html){
+  document.getElementById('modal-box').innerHTML=html;
+  document.getElementById('modal-overlay').style.display='flex';
+}
+function closeModal(){document.getElementById('modal-overlay').style.display='none';}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+
+// ══════════════════════════════════════════════════════════════════
+// ダッシュボード
+// ══════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const{fy}=currentFY();
+  const totalUsedFY=employees.reduce((s,e)=>s+calcUsedFY(e.leaves),0);
+  const atRisk=employees.filter(e=>{const m=getMandatory(e);return m&&m.rem>0;}).length;
+  const atHighLeave=employees.filter(e=>calcAvail(e.hire_date,e.work_days_per_week,e.leaves)>=AVAIL_WARN).length;
+  const stats=[
+    {label:'総社員数',val:employees.length,unit:'名',color:'#6366f1',icon:'◉'},
+    {label:'年5日義務 未達成',val:atRisk,unit:'名',color:'#f43f5e',icon:'⚠'},
+    {label:`${fy}年度 累計取得`,val:totalUsedFY,unit:'日',color:'#10b981',icon:'✓'},
+    {label:`残${AVAIL_WARN}日以上`,val:atHighLeave,unit:'名',color:'#f59e0b',icon:'🔔'},
+  ];
+
+  const rows=[...employees].sort((a,b)=>a.hire_date.localeCompare(b.hire_date)).map(emp=>{
+    const entitled=calcEntitled(emp.hire_date,emp.work_days_per_week);
+    const usedFY=calcUsedFY(emp.leaves);
+    const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+    const m=getMandatory(emp);
+    const tenure=diffMonths(emp.hire_date);
+    const warnAvail=avail>=AVAIL_WARN;
+    return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#78350f11;':''}" onmouseenter="this.style.background='${warnAvail?'#78350f22':'#1a1d2e'}'" onmouseleave="this.style.background='${warnAvail?'#78350f11':''}'">
+      <td><div style="font-weight:600;color:#f1f5f9;display:flex;align-items:center">${emp.name}${highLeaveTag(avail)}</div><div style="font-size:12px;color:#64748b;margin-top:2px">週${emp.work_days_per_week}日</div></td>
+      <td style="color:#94a3b8;font-family:monospace;font-size:13px">${emp.hire_date}</td>
+      <td style="color:#94a3b8;font-size:13px">${tenure}ヶ月</td>
+      <td><span style="font-weight:700;color:#a5b4fc">${entitled}日</span></td>
+      <td><span style="font-weight:700;color:#f59e0b">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
+      <td><span style="font-weight:700;color:${warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981'}">${avail}日</span></td>
+      <td>${mandatoryTag(m)}</td>
+      <td onclick="event.stopPropagation()"><button class="btn-sm" onclick="openEditEmp(${emp.id})">✏</button></td>
+    </tr>`;
+  }).join('');
+
+  // 義務未達成バナー
+  const mandatoryEmps=employees.filter(e=>{const m=getMandatory(e);return m&&m.rem>0;});
+  const mandatoryBanner=mandatoryEmps.length
+    ? `<div style="background:#7f1d1d22;border:1px solid #f43f5e55;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">⚠️</span>
+        <div>
+          <div style="font-weight:600;color:#f87171;margin-bottom:6px">${fy}年度 年5日取得義務が未達成の社員がいます（${mandatoryEmps.length}名）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${mandatoryEmps.map(e=>{const m=getMandatory(e);return`<span onclick="goDetail(${e.id})" style="cursor:pointer;background:#7f1d1d33;border:1px solid #f43f5e55;color:#f87171;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}（あと${m.rem}日）</span>`;}).join('')}
+          </div>
+        </div>
+      </div>`
+    : '';
+
+  // 残多バナー
+  const warnEmps=employees.filter(e=>calcAvail(e.hire_date,e.work_days_per_week,e.leaves)>=AVAIL_WARN);
+  const warnBanner=warnEmps.length
+    ? `<div style="background:#78350f22;border:1px solid #f59e0b55;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+        <span style="font-size:20px;flex-shrink:0">🔔</span>
+        <div>
+          <div style="font-weight:600;color:#fbbf24;margin-bottom:6px">残日数${AVAIL_WARN}日以上の社員がいます（${warnEmps.length}名）</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${warnEmps.map(e=>`<span onclick="goDetail(${e.id})" style="cursor:pointer;background:#78350f33;border:1px solid #f59e0b55;color:#fbbf24;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}（残${calcAvail(e.hire_date,e.work_days_per_week,e.leaves)}日）</span>`).join('')}
+          </div>
+        </div>
+      </div>`
+    : '';
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="margin-bottom:28px">
+      <h1 style="font-size:26px;font-weight:700;color:#f1f5f9">ダッシュボード</h1>
+      <p style="color:#64748b;font-size:14px;margin-top:4px">有給取得状況の全体サマリー</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+      ${stats.map(s=>`<div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:16px;padding:24px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:12px;color:#64748b;font-weight:600">${s.label}</div>
+          <div style="font-size:20px;color:${s.color};opacity:.8">${s.icon}</div>
+        </div>
+        <div style="font-size:36px;font-weight:700;color:${s.color};font-family:'IBM Plex Mono',monospace;line-height:1">${s.val}</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">${s.unit}</div>
+      </div>`).join('')}
+    </div>
+    ${mandatoryBanner}${warnBanner}
+    <div class="card">
+      <div style="padding:18px 24px;border-bottom:1px solid #1e2235;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700;font-size:16px">社員別 有給状況</div>
+        <button class="btn btn-primary" onclick="openAddEmp()">＋ 社員を追加</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>氏名</th><th>入社日</th><th>勤続</th><th>付与</th><th>今年度取得</th><th>残</th><th>5日義務</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 共通パーツ
+// ══════════════════════════════════════════════════════════════════
+function mandatoryTag(m){
+  if(!m)return'<span style="color:#475569;font-size:12px">対象外</span>';
+  if(m.rem>0)return`<span class="tag" style="background:#7f1d1d33;color:#f87171">あと${m.rem}日</span>`;
+  return`<span class="tag" style="background:#06452033;color:#34d399">達成</span>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 社員一覧
+// ══════════════════════════════════════════════════════════════════
+function renderEmployeeList(){
+  const list=sortedFiltered();
+  const{fy}=currentFY();
+  const controls=`
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px">
+    <div style="position:relative;flex:1 1 200px;min-width:160px">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#475569;font-size:14px;pointer-events:none">🔍</span>
+      <input id="emp-search" style="padding-left:36px" placeholder="氏名で検索..." value="${searchQuery}" oninput="handleSearch(this.value)">
+    </div>
+    <button class="filter-chip ${filterMandatory?'active':''}" onclick="filterMandatory=!filterMandatory;renderEmployeeList()">⚠ 義務未達成のみ</button>
+    <button class="filter-chip ${filterHighLeave?'active-warn active':''}" onclick="filterHighLeave=!filterHighLeave;renderEmployeeList()">🔔 残${AVAIL_WARN}日以上</button>
+    <div style="font-size:13px;color:#475569;white-space:nowrap">${list.length}<span style="color:#334155">/${employees.length}</span> 名</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      ${listViewMode==='card'?`<select onchange="sortKey=this.value.split(':')[0];sortDir=this.value.split(':')[1];renderEmployeeList()" style="width:auto;padding:7px 12px;font-size:13px">
+        <option value="hire_date:asc" ${sortKey==='hire_date'&&sortDir==='asc'?'selected':''}>入社日 ↑</option>
+        <option value="hire_date:desc" ${sortKey==='hire_date'&&sortDir==='desc'?'selected':''}>入社日 ↓</option>
+        <option value="name:asc" ${sortKey==='name'&&sortDir==='asc'?'selected':''}>氏名 ↑</option>
+        <option value="name:desc" ${sortKey==='name'&&sortDir==='desc'?'selected':''}>氏名 ↓</option>
+        <option value="avail:asc" ${sortKey==='avail'&&sortDir==='asc'?'selected':''}>残日数 ↑</option>
+        <option value="avail:desc" ${sortKey==='avail'&&sortDir==='desc'?'selected':''}>残日数 ↓</option>
+      </select>`:''}
+      <button class="view-toggle-btn ${listViewMode==='table'?'active':''}" onclick="listViewMode='table';renderEmployeeList()">☰</button>
+      <button class="view-toggle-btn ${listViewMode==='card'?'active':''}" onclick="listViewMode='card';renderEmployeeList()">⊞</button>
+    </div>
+  </div>`;
+
+  let body='';
+  if(list.length===0){
+    body=`<div style="text-align:center;padding:60px 0;color:#475569">
+      <div style="font-size:32px;margin-bottom:12px">🔍</div>
+      <div style="font-size:15px">該当する社員が見つかりません</div>
+      <button class="btn btn-ghost" style="margin-top:16px;font-size:13px" onclick="searchQuery='';filterMandatory=false;filterHighLeave=false;clearTimeout(searchTimer);renderEmployeeList()">絞り込みをリセット</button>
+    </div>`;
+  } else if(listViewMode==='table'){
+    const rows=list.map(emp=>{
+      const entitled=calcEntitled(emp.hire_date,emp.work_days_per_week);
+      const usedFY=calcUsedFY(emp.leaves);
+      const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+      const m=getMandatory(emp);
+      const tenure=diffMonths(emp.hire_date);
+      const warnAvail=avail>=AVAIL_WARN;
+      return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#78350f11;':''}" onmouseenter="this.style.background='${warnAvail?'#78350f22':'#1a1d2e'}'" onmouseleave="this.style.background='${warnAvail?'#78350f11':''}'">
+        <td><div style="font-weight:600;color:#f1f5f9;display:flex;align-items:center">${emp.name}${highLeaveTag(avail)}</div><div style="font-size:12px;color:#64748b;margin-top:2px">週${emp.work_days_per_week}日勤務</div></td>
+        <td style="color:#94a3b8;font-family:monospace;font-size:13px">${emp.hire_date}</td>
+        <td style="color:#94a3b8;font-size:13px">${tenure}ヶ月</td>
+        <td><span style="font-weight:700;color:#a5b4fc">${entitled}日</span></td>
+        <td><span style="font-weight:700;color:#f59e0b">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
+        <td><span style="font-weight:700;color:${warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981'}">${avail}日</span></td>
+        <td>${mandatoryTag(m)}</td>
+        <td onclick="event.stopPropagation()">
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="openEditEmp(${emp.id})">✏</button>
+            <button class="btn-sm-danger" onclick="openDeleteEmp(${emp.id})">🗑</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    body=`<div class="card"><div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th class="${sortKey==='name'?'sort-active':''}" onclick="handleSort('name')">氏名 ${sortIcon('name')}</th>
+        <th class="${sortKey==='hire_date'?'sort-active':''}" onclick="handleSort('hire_date')">入社日 ${sortIcon('hire_date')}</th>
+        <th>勤続</th><th>付与</th><th>今年度取得</th>
+        <th class="${sortKey==='avail'?'sort-active':''}" onclick="handleSort('avail')">残 ${sortIcon('avail')}</th>
+        <th>5日義務</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+  } else {
+    const cards=list.map(emp=>{
+      const entitled=calcEntitled(emp.hire_date,emp.work_days_per_week);
+      const usedFY=calcUsedFY(emp.leaves);
+      const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+      const m=getMandatory(emp);
+      const warnAvail=avail>=AVAIL_WARN;
+      return`<div class="card" style="padding:18px;cursor:pointer;transition:all .2s;position:relative;${warnAvail?'border-color:#f59e0b44;background:#78350f0a;':''}"
+        onmouseenter="this.style.borderColor='${warnAvail?'#f59e0b':'#6366f1'}';this.style.transform='translateY(-2px)'"
+        onmouseleave="this.style.borderColor='${warnAvail?'#f59e0b44':'#1e2a3a'}';this.style.transform='none'"
+        onclick="goDetail(${emp.id})">
+        <div style="position:absolute;top:12px;right:12px;display:flex;gap:5px" onclick="event.stopPropagation()">
+          <button class="btn-sm" onclick="openEditEmp(${emp.id})">✏</button>
+          <button class="btn-sm-danger" onclick="openDeleteEmp(${emp.id})">🗑</button>
+        </div>
+        <div style="margin-bottom:12px;padding-right:72px">
+          <div style="font-weight:700;font-size:15px;color:#f1f5f9;display:flex;align-items:center;flex-wrap:wrap;gap:4px">${emp.name}${highLeaveTag(avail)}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:3px">週${emp.work_days_per_week}日勤務 · 入社 ${emp.hire_date}</div>
+          ${m&&m.rem>0?'<span class="tag" style="background:#7f1d1d33;color:#f87171;margin-top:6px;display:inline-flex">⚠ 義務未達</span>':''}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          ${[['付与',entitled+'日','#a5b4fc'],['今年度取得',usedFY+'日','#f59e0b'],['残',avail+'日',warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981']].map(([l,v,c])=>`
+          <div style="background:#0f1117;border:1px solid #1e2235;border-radius:8px;padding:8px 4px;text-align:center">
+            <div style="font-size:10px;color:#64748b">${l}</div>
+            <div style="font-weight:700;color:${c};font-family:monospace;font-size:13px;margin-top:3px">${v}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+    body=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px">${cards}</div>`;
+  }
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px">
+      <div><h1 style="font-size:26px;font-weight:700;color:#f1f5f9">社員一覧</h1><p style="color:#64748b;font-size:14px;margin-top:4px">社員をクリックして詳細・取得登録</p></div>
+      <button class="btn btn-primary" onclick="openAddEmp()">＋ 社員を追加</button>
+    </div>
+    ${controls}${body}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 社員詳細
+// ══════════════════════════════════════════════════════════════════
+function goDetail(id){selectedEmpId=id;setView('detail');}
+function renderDetail(){
+  const emp=employees.find(e=>e.id===selectedEmpId);
+  if(!emp){setView('employees');return;}
+  const{fy}=currentFY();
+  const entitled=calcEntitled(emp.hire_date,emp.work_days_per_week);
+  const usedFY=calcUsedFY(emp.leaves);
+  const usedTotal=calcUsedTotal(emp.leaves);
+  const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+  const m=getMandatory(emp);
+  const grants=calcGrants(emp.hire_date,emp.work_days_per_week);
+  const warnAvail=avail>=AVAIL_WARN;
+
+  const leaveRows=[...emp.leaves].sort((a,b)=>b.start_date.localeCompare(a.start_date)).map(l=>`
+    <tr>
+      <td style="font-family:monospace;font-size:13px;color:#e2e8f0">${l.start_date}${l.start_date!==l.end_date?' 〜 '+l.end_date:''}</td>
+      <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span></td>
+      <td><span class="tag" style="background:#1e2235;color:#94a3b8">${l.type==='half'?'半休':'全日'}</span></td>
+      <td style="color:#64748b;font-size:13px">${l.memo||'—'}</td>
+      <td style="color:#475569;font-size:12px;font-family:monospace">${l.registered_at}</td>
+      <td><button class="btn-sm-danger" onclick="openDeleteLeave(${l.id})">削除</button></td>
+    </tr>`).join('');
+
+  const grantRows=grants.map(g=>{
+    const expired=new Date()>g.expireDate;
+    return`<div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;opacity:${expired?.5:1}">
+      <div><span style="font-weight:600;color:#a5b4fc">${g.days}日付与</span><span style="font-size:12px;color:#64748b;margin-left:8px">入社後${g.months}ヶ月</span></div>
+      <div style="font-size:12px;color:#64748b;text-align:right">
+        <div>付与: <span style="font-family:monospace">${g.grantDate.toISOString().split('T')[0]}</span></div>
+        <div>時効: <span style="font-family:monospace;color:${expired?'#f43f5e':'#94a3b8'}">${g.expireDate.toISOString().split('T')[0]}${expired?' (失効)':''}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="padding:8px 14px" onclick="setView('employees')">← 戻る</button>
+      <div>
+        <h1 style="font-size:24px;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px">${emp.name}${highLeaveTag(avail)}</h1>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <span class="tag" style="background:#1e2235;color:#94a3b8">週${emp.work_days_per_week}日勤務</span>
+          <span class="tag" style="background:#1e2235;color:#94a3b8">入社: ${emp.hire_date}</span>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="openAddLeave()">＋ 取得を登録</button>
+        <button class="btn btn-ghost" onclick="openEditEmp(${emp.id})">✏ 編集</button>
+        <button class="btn" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:500" onclick="openRetireEmp(${emp.id})">退職処理</button>
+        <button class="btn" style="background:#7f1d1d33;color:#f87171;border:1px solid #7f1d1d;padding:10px 16px;border-radius:10px;cursor:pointer;font-size:14px;font-family:inherit" onclick="openDeleteEmp(${emp.id})">🗑 削除</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+      ${[
+        {label:'付与日数（最新）',val:entitled+'日',color:'#6366f1'},
+        {label:`今年度取得（${fy}年度）`,val:usedFY+'日',color:'#f59e0b'},
+        {label:'残日数',val:avail+'日',color:warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981'},
+        {label:'5日義務',val:m?(m.rem>0?'あと'+m.rem+'日':'達成 ✓'):'対象外',color:m&&m.rem>0?'#f43f5e':'#10b981'},
+      ].map(s=>`<div style="background:#161927;border:1px solid #1e2a3a;border-radius:12px;padding:16px;text-align:center">
+        <div style="font-size:11px;color:#64748b;margin-bottom:8px">${s.label}</div>
+        <div style="font-size:22px;font-weight:700;color:${s.color};font-family:monospace">${s.val}</div>
+      </div>`).join('')}
+    </div>
+    <div style="margin-bottom:24px">
+      <div style="background:#161927;border:1px solid #1e2a3a;border-radius:10px;padding:10px 16px;font-size:13px;color:#64748b;display:inline-block">
+        累計取得: <span style="color:#94a3b8;font-weight:600;font-family:monospace">${usedTotal}日</span>
+      </div>
+    </div>
+    ${warnAvail?`<div style="background:#78350f22;border:1px solid #f59e0b55;border-radius:12px;padding:16px;margin-bottom:24px;display:flex;gap:12px">
+      <span style="font-size:20px">🔔</span>
+      <div>
+        <div style="font-weight:600;color:#fbbf24;margin-bottom:4px">残日数が${AVAIL_WARN}日以上あります（現在 ${avail}日）</div>
+        <div style="font-size:13px;color:#fde68a">退職時に大量残が発生しないよう、計画的な取得を促してください。</div>
+      </div>
+    </div>`:''}
+    ${m&&m.rem>0?`<div style="background:#7f1d1d22;border:1px solid #7f1d1d;border-radius:12px;padding:16px;margin-bottom:24px;display:flex;gap:12px">
+      <span style="font-size:20px">⚠️</span>
+      <div>
+        <div style="font-weight:600;color:#f87171;margin-bottom:4px">${m.fy}年度 年5日取得義務 未達成</div>
+        <div style="font-size:13px;color:#fca5a5">今年度（${m.fy}/4/1 〜 ${m.fy+1}/3/31）の取得: <strong>${m.used}日</strong>　あと <strong>${m.rem}日</strong> 必要です。</div>
+      </div>
+    </div>`:''}
+    <div class="card" style="margin-bottom:20px">
+      <div style="padding:18px 24px;border-bottom:1px solid #1e2235;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:700;font-size:15px">取得記録 <span style="font-size:13px;color:#64748b;font-weight:400">（${emp.leaves.length}件・累計${usedTotal}日）</span></div>
+        <button class="btn btn-success" style="padding:8px 16px;font-size:13px" onclick="openAddLeave()">＋ 取得を登録</button>
+      </div>
+      ${emp.leaves.length===0
+        ?'<div style="padding:32px;text-align:center;color:#475569;font-size:14px">取得記録がまだありません</div>'
+        :`<div style="overflow-x:auto"><table>
+          <thead><tr><th>取得期間</th><th>日数</th><th>種別</th><th>メモ</th><th>登録日</th><th></th></tr></thead>
+          <tbody>${leaveRows}</tbody>
+        </table></div>`}
+    </div>
+    <div class="card">
+      <div style="padding:18px 24px;border-bottom:1px solid #1e2235;font-weight:700;font-size:15px">付与履歴</div>
+      <div style="padding:20px">
+        ${grants.length===0
+          ?'<p style="color:#64748b;font-size:14px">まだ付与なし（入社後6ヶ月で初回付与）</p>'
+          :`<div style="display:flex;flex-direction:column;gap:10px">${grantRows}</div>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 取得カレンダー
+// ══════════════════════════════════════════════════════════════════
+function renderCalendar(){
+  const all=employees.flatMap(e=>e.leaves.map(l=>({...l,empName:e.name})))
+    .sort((a,b)=>b.start_date.localeCompare(a.start_date));
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <h1 style="font-size:26px;font-weight:700;color:#f1f5f9;margin-bottom:8px">取得カレンダー</h1>
+    <p style="color:#64748b;font-size:14px;margin-bottom:28px">全社員の有給取得記録</p>
+    <div class="card" style="padding:28px">
+      ${all.length===0?'<p style="color:#64748b">取得記録がまだありません</p>'
+      :`<div style="display:flex;flex-direction:column;gap:10px">
+        ${all.map(l=>`
+        <div style="background:#0f1117;border-left:4px solid #6366f1;border:1px solid #6366f133;border-radius:0 10px 10px 0;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="font-weight:600;color:#f1f5f9;min-width:90px">${l.empName}</div>
+            <div style="font-size:13px;color:#94a3b8;font-family:monospace">${l.start_date}${l.start_date!==l.end_date?' 〜 '+l.end_date:''}</div>
+            ${l.memo?`<div style="font-size:12px;color:#64748b">📝 ${l.memo}</div>`:''}
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="tag" style="background:#1e2235;color:#94a3b8">${l.type==='half'?'半休':'全日'}</span>
+            <span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span>
+          </div>
+        </div>`).join('')}
+      </div>`}
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 法令ガイド
+// ══════════════════════════════════════════════════════════════════
+function renderRules(){
+  const sections=[
+    {title:'① 付与要件',icon:'◈',color:'#6366f1',items:['雇入れの日から6ヶ月継続勤務','全労働日の8割以上出勤','以降は1年ごとに付与']},
+    {title:'② 付与日数（週5日以上 or 週30時間以上）',icon:'◉',color:'#10b981',items:['6ヶ月: 10日','1年6ヶ月: 11日','2年6ヶ月: 12日','3年6ヶ月: 14日','4年6ヶ月: 16日','5年6ヶ月: 18日','6年6ヶ月以上: 20日（上限）']},
+    {title:'③ 比例付与（週4日以下の短時間労働者）',icon:'◫',color:'#f59e0b',items:['週4日勤務: 7日〜15日','週3日勤務: 5日〜11日','週2日勤務: 3日〜7日','週1日勤務: 1日〜3日']},
+    {title:'④ 年5日取得義務（2019年4月〜）',icon:'⚠',color:'#f43f5e',items:['年10日以上付与された社員が対象','使用者は年5日を確実に取得させる義務','【本システム】4月〜翌3月の年度単位で管理・初回付与年度は免除','違反した場合：30万円以下の罰金（労基法120条）']},
+    {title:'⑤ 時効・繰越',icon:'◎',color:'#8b5cf6',items:['有給休暇の時効：付与日から2年','当年度分＋前年度分（最大2年分）が繰越可能','3年目以降は古い分から順に失効']},
+  ];
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <h1 style="font-size:26px;font-weight:700;color:#f1f5f9;margin-bottom:8px">法令ガイド</h1>
+    <p style="color:#64748b;font-size:14px;margin-bottom:28px">労働基準法 第39条 に基づく有給休暇ルール</p>
+    ${sections.map(s=>`
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="color:${s.color};font-size:20px">${s.icon}</span>
+        <h3 style="font-size:16px;font-weight:700;color:#f1f5f9">${s.title}</h3>
+      </div>
+      <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
+        ${s.items.map(item=>`<li style="font-size:14px;color:#94a3b8;display:flex;gap:10px"><span style="color:${s.color};flex-shrink:0">—</span>${item}</li>`).join('')}
+      </ul>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// モーダル: 社員追加
+// ══════════════════════════════════════════════════════════════════
+function openAddEmp(){
+  dpCreate('addHire','',{label:'入社日 *',placeholder:'入社日を選択',max:TODAY});
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:24px;color:#f1f5f9">社員を追加</h2>
+  <div class="fg"><label>氏名 *</label><input id="add-name" placeholder="例：山田 太郎"></div>
+  <div class="fg">${dpRender('addHire')}</div>
+  <div class="fg"><label>週所定労働日数</label>
+    <select id="add-wdpw">
+      <option value="5">5日（フルタイム）</option><option value="4">4日</option>
+      <option value="3">3日</option><option value="2">2日</option><option value="1">1日</option>
+    </select>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitAddEmp()">登録する</button>
+  </div>`);
+}
+async function submitAddEmp(){
+  const name=document.getElementById('add-name').value.trim();
+  const hire=dpGet('addHire');
+  const wdpw=document.getElementById('add-wdpw').value;
+  if(!name||!hire){showToast('名前と入社日は必須です','err');return;}
+  const r=await apiPost({action:'add_employee',name,hire_date:hire,work_days_per_week:wdpw});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast(name+' さんを登録しました');
+  await loadEmployees();renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// モーダル: 社員編集
+// ══════════════════════════════════════════════════════════════════
+function openEditEmp(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  dpCreate('editHire',emp.hire_date,{label:'入社日 *',placeholder:'入社日を選択',max:TODAY});
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:24px;color:#f1f5f9">社員情報を編集</h2>
+  <div class="fg"><label>氏名 *</label><input id="edit-name" value="${emp.name}"></div>
+  <div class="fg">${dpRender('editHire')}</div>
+  <div class="fg"><label>週所定労働日数</label>
+    <select id="edit-wdpw">
+      ${[5,4,3,2,1].map(n=>`<option value="${n}" ${emp.work_days_per_week==n?'selected':''}>${n}日${n===5?' （フルタイム）':''}</option>`).join('')}
+    </select>
+  </div>
+  <input type="hidden" id="edit-id" value="${emp.id}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitEditEmp()">保存する</button>
+  </div>`);
+}
+async function submitEditEmp(){
+  const id=document.getElementById('edit-id').value;
+  const name=document.getElementById('edit-name').value.trim();
+  const hire=dpGet('editHire');
+  const wdpw=document.getElementById('edit-wdpw').value;
+  if(!name||!hire){showToast('名前と入社日は必須です','err');return;}
+  const r=await apiPost({action:'update_employee',id,name,hire_date:hire,work_days_per_week:wdpw});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast(name+' さんの情報を更新しました');
+  await loadEmployees();renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// モーダル: 社員削除
+// ══════════════════════════════════════════════════════════════════
+function openDeleteEmp(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  openModal(`
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px;margin-bottom:12px">🗑️</div>
+    <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:8px">社員を削除しますか？</h2>
+    <p style="font-size:14px;color:#94a3b8"><strong style="color:#f87171">${emp.name}</strong> さんのデータをすべて削除します。この操作は取り消せません。</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-danger" style="flex:1" onclick="submitDeleteEmp(${id})">削除する</button>
+  </div>`);
+}
+async function submitDeleteEmp(id){
+  const emp=employees.find(e=>e.id===id);
+  const r=await apiPost({action:'delete_employee',id});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast((emp?.name||'')+'さんを削除しました');
+  if(selectedEmpId===id){selectedEmpId=null;setView('employees');return;}
+  await loadEmployees();renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// モーダル: 取得登録
+// ══════════════════════════════════════════════════════════════════
+function openAddLeave(){
+  dpCreate('leaveStart','',{label:'取得日（開始日）',placeholder:'取得日を選択'});
+  dpCreate('leaveEnd','',{label:'終了日（連続取得の場合）',placeholder:'1日のみの場合は空欄'});
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:6px;color:#f1f5f9">有給取得を登録</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:24px" id="leave-avail-msg"></p>
+  <div class="fg"><label>種別</label>
+    <select id="leave-type" onchange="leaveTypeChange()">
+      <option value="full">全日</option><option value="half">半日（0.5日）</option>
+    </select>
+  </div>
+  <div class="fg">${dpRender('leaveStart')}</div>
+  <div class="fg" id="leave-end-wrap">${dpRender('leaveEnd')}</div>
+  <div class="fg"><label>メモ（任意）</label><input id="leave-memo" placeholder="例：夏季休暇、通院 など"></div>
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-success" style="flex:1" onclick="submitAddLeave()">登録する</button>
+  </div>`);
+  const emp=employees.find(e=>e.id===selectedEmpId);
+  if(emp){
+    const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+    document.getElementById('leave-avail-msg').innerHTML=`${emp.name} — 残 <strong style="color:#10b981">${avail}日</strong>`;
+  }
+}
+function leaveTypeChange(){
+  const t=document.getElementById('leave-type').value;
+  document.getElementById('leave-end-wrap').style.display=t==='half'?'none':'block';
+}
+async function submitAddLeave(){
+  const emp=employees.find(e=>e.id===selectedEmpId);if(!emp)return;
+  const type=document.getElementById('leave-type').value;
+  const start=dpGet('leaveStart');
+  const endRaw=type==='half'?start:dpGet('leaveEnd');
+  const end=endRaw||start;
+  const memo=document.getElementById('leave-memo').value.trim();
+  if(!start){showToast('取得日を入力してください','err');return;}
+  if(end<start){showToast('終了日は開始日以降にしてください','err');return;}
+  const days=type==='half'?0.5:countWorkdays(start,end);
+  if(days<=0){showToast('取得日数が0日です','err');return;}
+  const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+  if(days>avail){showToast(`残日数不足（残 ${avail} 日）`,'err');return;}
+  const r=await apiPost({action:'add_leave',employee_id:emp.id,start_date:start,end_date:end,days,type,memo});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast(`${days}日分の取得を登録しました`);
+  await loadEmployees();renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// モーダル: 取得記録削除
+// ══════════════════════════════════════════════════════════════════
+function openDeleteLeave(leaveId){
+  openModal(`
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px;margin-bottom:12px">🗑️</div>
+    <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:8px">取得記録を削除しますか？</h2>
+    <p style="font-size:14px;color:#94a3b8">削除すると残日数が元に戻ります。この操作は取り消せません。</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-danger" style="flex:1" onclick="submitDeleteLeave(${leaveId})">削除する</button>
+  </div>`);
+}
+async function submitDeleteLeave(leaveId){
+  const r=await apiPost({action:'delete_leave',id:leaveId,employee_id:selectedEmpId});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('取得記録を削除しました');
+  await loadEmployees();renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 退職処理モーダル
+// ══════════════════════════════════════════════════════════════════
+function openRetireEmp(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+  dpCreate('retireDate','',{label:'退職日 *',placeholder:'退職日を選択'});
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:8px;color:#f1f5f9">退職処理</h2>
+  <p style="font-size:13px;color:#64748b;margin-bottom:24px">${emp.name} さんを退職済みにします。データは保持されます。</p>
+  <div class="fg">${dpRender('retireDate')}</div>
+  <div class="fg">
+    <label>退職時の残日数</label>
+    <input type="number" id="retire-remaining" value="${avail}" min="0" step="0.5">
+    <div style="font-size:12px;color:#475569;margin-top:4px">現在の残日数: ${avail}日（自動入力済み・変更可）</div>
+  </div>
+  <input type="hidden" id="retire-id" value="${id}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn" style="flex:1;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit" onclick="submitRetireEmp()">退職処理する</button>
+  </div>`);
+}
+async function submitRetireEmp(){
+  const id=document.getElementById('retire-id').value;
+  const retire_date=dpGet('retireDate');
+  const retire_remaining=document.getElementById('retire-remaining').value;
+  if(!retire_date){showToast('退職日を入力してください','err');return;}
+  const r=await apiPost({action:'retire_employee',id,retire_date,retire_remaining});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('退職処理を完了しました');
+  selectedEmpId=null;
+  await loadEmployees();setView('employees');
+}
+async function submitUnretireEmp(id){
+  const r=await apiPost({action:'unretire_employee',id});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('在籍に戻しました');
+  await loadRetired();renderRetired();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ビュー: 退職者一覧
+// ══════════════════════════════════════════════════════════════════
+let retiredEmployees=[];
+async function loadRetired(){
+  const r=await apiGet('get_retired_employees');
+  if(r.ok)retiredEmployees=r.data;
+}
+function renderRetired(){
+  const list=retiredEmployees;
+  const rows=list.length===0
+    ?`<tr><td colspan="7" style="text-align:center;padding:40px;color:#475569">退職者はいません</td></tr>`
+    :list.map(emp=>{
+      const usedTotal=calcUsedTotal(emp.leaves);
+      const tenure=Math.floor((new Date(emp.retire_date)-new Date(emp.hire_date))/(1000*60*60*24*30.44));
+      return`<tr class="emp-row" onclick="openRetiredDetail(${emp.id})">
+        <td><div style="font-weight:600;color:#94a3b8">${emp.name}</div><div style="font-size:12px;color:#475569;margin-top:2px">週${emp.work_days_per_week}日</div></td>
+        <td style="color:#64748b;font-family:monospace;font-size:13px">${emp.hire_date}</td>
+        <td style="color:#64748b;font-family:monospace;font-size:13px">${emp.retire_date||'—'}</td>
+        <td style="color:#64748b;font-size:13px">${tenure}ヶ月</td>
+        <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${usedTotal}日</span></td>
+        <td><span style="font-weight:700;color:${emp.retire_remaining>0?'#f87171':'#64748b'};font-family:monospace">${emp.retire_remaining??'—'}日</span></td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn-sm" onclick="openUnretireConfirm(${emp.id},'${emp.name}')">在籍に戻す</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="margin-bottom:28px">
+      <h1 style="font-size:26px;font-weight:700;color:#f1f5f9">退職者</h1>
+      <p style="color:#64748b;font-size:14px;margin-top:4px">退職済み社員の記録（労基法により3年間保存）</p>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>氏名</th><th>入社日</th><th>退職日</th><th>勤続</th><th>累計取得</th><th>退職時残日数</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function openUnretireConfirm(id,name){
+  openModal(`
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px;margin-bottom:12px">↩️</div>
+    <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:8px">在籍に戻しますか？</h2>
+    <p style="font-size:14px;color:#94a3b8"><strong style="color:#a5b4fc">${name}</strong> さんを在籍社員に戻します。</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitUnretireEmp(${id})">在籍に戻す</button>
+  </div>`);
+}
+
+function openRetiredDetail(id){
+  const emp=retiredEmployees.find(e=>e.id===id);if(!emp)return;
+  const usedTotal=calcUsedTotal(emp.leaves);
+  const leaveRows=[...emp.leaves].sort((a,b)=>b.start_date.localeCompare(a.start_date)).map(l=>`
+    <tr>
+      <td style="font-family:monospace;font-size:13px;color:#94a3b8">${l.start_date}${l.start_date!==l.end_date?' 〜 '+l.end_date:''}</td>
+      <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span></td>
+      <td><span class="tag" style="background:#1e2235;color:#64748b">${l.type==='half'?'半休':'全日'}</span></td>
+      <td style="color:#64748b;font-size:13px">${l.memo||'—'}</td>
+    </tr>`).join('');
+
+  openModal(`
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+    <div>
+      <h2 style="font-size:18px;font-weight:700;color:#94a3b8">${emp.name}</h2>
+      <div style="font-size:12px;color:#475569;margin-top:4px">入社: ${emp.hire_date} ／ 退職: ${emp.retire_date||'—'}</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">
+    ${[['累計取得',usedTotal+'日','#f59e0b'],['退職時残日数',(emp.retire_remaining??'—')+'日',emp.retire_remaining>0?'#f87171':'#64748b']].map(([l,v,c])=>`
+    <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;text-align:center">
+      <div style="font-size:11px;color:#475569;margin-bottom:6px">${l}</div>
+      <div style="font-size:20px;font-weight:700;color:${c};font-family:monospace">${v}</div>
+    </div>`).join('')}
+  </div>
+  <div style="font-size:13px;font-weight:600;color:#64748b;margin-bottom:10px">取得記録（${emp.leaves.length}件）</div>
+  ${emp.leaves.length===0
+    ?'<p style="color:#475569;font-size:13px">記録なし</p>'
+    :`<div style="max-height:280px;overflow-y:auto"><table>
+      <thead><tr><th>取得期間</th><th>日数</th><th>種別</th><th>メモ</th></tr></thead>
+      <tbody>${leaveRows}</tbody>
+    </table></div>`}
+  <div style="margin-top:20px">
+    <button class="btn btn-ghost" style="width:100%" onclick="closeModal()">閉じる</button>
+  </div>`);
+}
+// ══════════════════════════════════════════════════════════════════
+// 給与管理
+// ══════════════════════════════════════════════════════════════════
+const REVIEW_MONTHS=[4,10]; // 審査月（4月・10月）
+let roles=[];
+
+async function loadRoles(){
+  const r=await apiGet('get_roles');
+  if(r.ok)roles=r.data;
+}
+
+function fmtYen(n){return Number(n||0).toLocaleString('ja-JP')+'円';}
+function fmtPeriod(p){if(!p)return'—';const[y,m]=p.split('-');return`${y}年${parseInt(m)}月`;}
+
+function getCurrentReviewPeriod(){
+  const now=new Date(),m=now.getMonth()+1,y=now.getFullYear();
+  const sorted=[...REVIEW_MONTHS].sort((a,b)=>b-a);
+  for(const rm of sorted){if(m>=rm)return`${y}-${String(rm).padStart(2,'0')}`;}
+  return`${y-1}-${String(sorted[0]).padStart(2,'0')}`;
+}
+function getNextReviewPeriod(){
+  const now=new Date(),m=now.getMonth()+1,y=now.getFullYear();
+  const sorted=[...REVIEW_MONTHS].sort((a,b)=>a-b);
+  for(const rm of sorted){if(m<rm)return`${y}-${String(rm).padStart(2,'0')}`;}
+  return`${y+1}-${String(sorted[0]).padStart(2,'0')}`;
+}
+function isReviewDue(emp){
+  if(!emp.base_salary&&!emp.role_id)return false;
+  return!emp.last_review_period||emp.last_review_period<getCurrentReviewPeriod();
+}
+
+// ── 給与管理ビュー ──────────────────────────────────
+function renderSalary(){
+  const currentPeriod=getCurrentReviewPeriod();
+  const nextPeriod=getNextReviewPeriod();
+  const dueEmps=employees.filter(e=>isReviewDue(e));
+  const capEmps=employees.filter(e=>e.role_id&&e.salary_cap>0&&e.base_salary>=e.salary_cap);
+  const totalCost=employees.reduce((s,e)=>s+(e.base_salary||0)+(e.business_allowance||0)+(e.duty_allowance||0)+(e.role_allowance||0)+(e.commute_allowance||0)+(e.housing_allowance||0)+(e.special_allowance||0),0);
+
+  const rows=employees.map(emp=>{
+    const total=(emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+(emp.commute_allowance||0)+(emp.housing_allowance||0)+(emp.special_allowance||0);
+    const bonusMonths=emp.role_id?(emp.bonus_months??2):2;
+    const annualBase=total-(emp.commute_allowance||0)-(emp.housing_allowance||0)-(emp.special_allowance||0);
+    const annualIncome=annualBase*(12+bonusMonths);
+    const due=isReviewDue(emp);
+    const atCap=emp.role_id&&emp.salary_cap>0&&emp.base_salary>=emp.salary_cap;
+    const noSetting=!emp.base_salary&&!emp.role_id;
+    let statusTag='';
+    if(noSetting)statusTag=`<span class="tag" style="background:#1e2235;color:#475569">未設定</span>`;
+    else if(atCap)statusTag=`<span class="tag" style="background:#78350f33;color:#fbbf24">上限到達</span>`;
+    else if(due)statusTag=`<span class="tag" style="background:#7c2d1233;color:#fb923c">審査待ち</span>`;
+    else statusTag=`<span class="tag" style="background:#064e3b33;color:#34d399">審査済</span>`;
+    const yen=v=>v?`<span style="font-family:monospace">${fmtYen(v)}</span>`:'<span style="color:#2d3748">—</span>';
+    return`<tr style="${due&&!noSetting?'background:#7c2d1211;':''}">
+      <td style="padding:9px 14px"><div style="font-weight:600;color:#f1f5f9">${emp.name}</div></td>
+      <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#1e2a3a;color:#94a3b8;font-size:11px">${emp.role_name}</span>`:'<span style="color:#334155">—</span>'}</td>
+      <td style="padding:9px 14px;color:#a5b4fc;font-family:monospace;font-weight:600">${emp.base_salary?fmtYen(emp.base_salary):'<span style="color:#334155">—</span>'}</td>
+      <td style="padding:9px 10px;font-size:12px">${yen(emp.business_allowance)}</td>
+      <td style="padding:9px 10px;font-size:12px">${yen(emp.duty_allowance)}</td>
+      <td style="padding:9px 10px;font-size:12px">${yen(emp.role_allowance)}</td>
+      <td style="padding:9px 10px;font-size:12px;border-left:1px solid #1e2235">${yen(emp.commute_allowance)}</td>
+      <td style="padding:9px 10px;font-size:12px">${yen(emp.housing_allowance)}</td>
+      <td style="padding:9px 10px;font-size:12px">${yen(emp.special_allowance)}</td>
+      <td style="padding:9px 14px;border-left:1px solid #1e2235"><span style="font-family:monospace;font-weight:700;color:#10b981">${total?fmtYen(total):'—'}</span></td>
+      <td style="padding:9px 14px"><span style="font-family:monospace;font-weight:600;color:#818cf8">${annualIncome?fmtYen(annualIncome):'—'}</span>${annualIncome?`<div style="font-size:10px;color:#475569">×${12+bonusMonths}ヶ月</div>`:''}</td>
+      <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:160px;white-space:normal">${emp.salary_note?`<span title="${emp.salary_note}">📌 ${emp.salary_note}</span>`:'—'}</td>
+      <td style="padding:9px 14px;border-left:1px solid #1e2235;color:#64748b;font-size:12px">${fmtPeriod(emp.last_review_period)}</td>
+      <td style="padding:9px 14px">${statusTag}</td>
+      <td style="padding:9px 14px" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:4px">
+          ${due&&!atCap&&!noSetting?`<button class="btn-sm" style="background:rgba(251,146,60,.15);border-color:#fb923c;color:#fb923c" onclick="openSalaryReview(${emp.id})">審査</button>`:''}
+          <button class="btn-sm" onclick="openSalaryHistory(${emp.id})">履歴</button>
+          <button class="btn-sm" onclick="openSalaryEdit(${emp.id})">設定</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const dueBanner=dueEmps.length?`<div style="background:#7c2d1222;border:1px solid #fb923c55;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+    <span style="font-size:20px;flex-shrink:0">📋</span>
+    <div>
+      <div style="font-weight:600;color:#fb923c;margin-bottom:6px">昇給審査待ちの社員がいます（${dueEmps.length}名）— 直近審査期間: ${fmtPeriod(currentPeriod)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${dueEmps.map(e=>`<span onclick="openSalaryReview(${e.id})" style="cursor:pointer;background:#7c2d1233;border:1px solid #fb923c55;color:#fb923c;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}</span>`).join('')}
+      </div>
+    </div>
+  </div>`:'';
+
+  const stats=[
+    {label:'月間総人件費',val:fmtYen(totalCost),color:'#6366f1',icon:'¥'},
+    {label:'昇給審査待ち',val:dueEmps.length+'名',color:'#fb923c',icon:'📋'},
+    {label:'上限到達',val:capEmps.length+'名',color:'#fbbf24',icon:'⬆'},
+  ];
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div>
+        <h1 style="font-size:24px;font-weight:700;color:#f1f5f9">給与管理</h1>
+        <p style="color:#64748b;font-size:13px;margin-top:3px">審査月: ${REVIEW_MONTHS.map(m=>m+'月').join('・')} ／ 次回: ${fmtPeriod(nextPeriod)}</p>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      ${stats.map(s=>`<div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">${s.label}</div>
+          <div style="font-size:24px;font-weight:700;color:${s.color};font-family:'IBM Plex Mono',monospace;line-height:1">${s.val}</div>
+        </div>
+        <div style="font-size:28px;color:${s.color};opacity:.3">${s.icon}</div>
+      </div>`).join('')}
+    </div>
+    ${dueBanner}
+    <div class="card" style="overflow:hidden">
+      <div style="overflow-x:auto">
+        <table style="white-space:nowrap;font-size:13px;width:100%">
+          <thead>
+            <tr style="border-bottom:none">
+              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">社員</th>
+              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#a5b4fc;border-bottom:2px solid #6366f133;text-transform:uppercase">基本給</th>
+              <th colspan="6" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;border-bottom:2px solid #1e2a3a;text-align:center;text-transform:uppercase">各種手当</th>
+              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#10b981;border-bottom:2px solid #10b98133;text-align:center;text-transform:uppercase">支給額</th>
+              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#475569;border-bottom:2px solid #1e2a3a;text-align:center;text-transform:uppercase">昇給審査</th>
+              <th style="border-bottom:2px solid transparent"></th>
+            </tr>
+            <tr>
+              <th style="padding:6px 14px 10px">氏名</th>
+              <th style="padding:6px 14px 10px">役職</th>
+              <th style="padding:6px 14px 10px;color:#a5b4fc">基本給</th>
+              <th style="padding:6px 10px 10px;font-size:11px">業務手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">職責手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">役職手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">通勤費手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">住宅手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">特別手当</th>
+              <th style="padding:6px 14px 10px;color:#10b981">月額合計</th>
+              <th style="padding:6px 14px 10px;color:#818cf8" title="（月額合計×12）＋賞与月数×賞与対象額">想定年収</th>
+              <th style="padding:6px 14px 10px">設定備考</th>
+              <th style="padding:6px 14px 10px">前回審査</th>
+              <th style="padding:6px 14px 10px">状態</th>
+              <th style="padding:6px 14px 10px"></th>
+            </tr>
+          </thead>
+          <tbody>${rows||'<tr><td colspan="14" style="text-align:center;padding:40px;color:#475569">社員が登録されていません</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 月次給与台帳
+// ══════════════════════════════════════════════════════════════════
+let currentMonthlyYM=TODAY.substring(0,7);
+let monthlyData=[];
+let currentBonusYM=TODAY.substring(0,7);
+let bonusData=[];
+
+async function loadMonthly(ym){
+  const r=await apiGet('get_monthly_salaries',{year_month:ym});
+  if(r.ok)monthlyData=r.data;
+}
+
+function renderMonthly(){
+  const[yr,mo]=currentMonthlyYM.split('-').map(Number);
+  const generatedCount=monthlyData.filter(e=>e.ms_id&&!e.ms_excluded).length;
+  const specialCount=monthlyData.filter(e=>e.ms_id&&!e.ms_excluded&&e.ms_special!==e.special_allowance).length;
+  const excludedCount=monthlyData.filter(e=>e.ms_excluded).length;
+  // 半年払い通勤費 — 今月が支給月の社員リスト
+  const semiPayTarget=monthlyData.filter(e=>{
+    if(e.commute_cycle!=='semi_annual'||!e.commute_months)return false;
+    return e.commute_months.split(',').map(Number).includes(mo);
+  });
+  const totalCost=monthlyData.reduce((s,e)=>{
+    if(e.ms_excluded)return s;
+    if(e.ms_id)return s+(e.ms_total||0);
+    const isSemi=e.commute_cycle==='semi_annual';
+    const isPay=isSemi&&e.commute_months&&e.commute_months.split(',').map(Number).includes(mo);
+    const com=isSemi&&!isPay?0:(e.commute_allowance||0);
+    return s+(e.base_salary||0)+(e.business_allowance||0)+(e.duty_allowance||0)+(e.role_allowance||0)+com+(e.housing_allowance||0)+(e.special_allowance||0);
+  },0);
+
+  const thisYear=new Date().getFullYear();
+  const yOpts=Array.from({length:4},(_,i)=>thisYear-2+i).map(y=>`<option value="${y}" ${y===yr?'selected':''}>${y}年</option>`).join('');
+  const mOpts=Array.from({length:12},(_,i)=>i+1).map(m=>{const mm=String(m).padStart(2,'0');return`<option value="${mm}" ${m===mo?'selected':''}>${m}月</option>`;}).join('');
+
+  const rows=monthlyData.map(emp=>{
+    const has=!!emp.ms_id;
+    const excl=!!emp.ms_excluded;
+    const sp=has?emp.ms_special:emp.special_allowance;
+    const isSemiPay=emp.commute_cycle==='semi_annual';
+    const isPayMonth=isSemiPay&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(mo);
+    // 実効通勤費: 生成済みなら月次レコードの値、未生成なら支給サイクルで判定
+    const commute=has&&emp.ms_commute!==null
+      ? emp.ms_commute
+      : (isSemiPay&&!isPayMonth ? 0 : (emp.commute_allowance||0));
+    const total=has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+(sp||0));
+    const spDiff=has&&!excl&&emp.ms_special!==emp.special_allowance;
+    let statusTag;
+    if(excl) statusTag='<span class="tag" style="background:#7f1d1d44;color:#f87171">除外</span>';
+    else if(has) statusTag='<span class="tag" style="background:#064e3b33;color:#34d399">生成済</span>';
+    else statusTag='<span class="tag" style="background:#1e2235;color:#475569">未生成</span>';
+    const rowOpacity=excl?'opacity:0.4;':'';
+    const totalColor=excl?'#475569':'#10b981';
+    const exclBtn=excl
+      ?`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},0)" style="border-color:#10b981;color:#34d399">復元</button>`
+      :`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},1)" style="border-color:#f87171;color:#f87171">除外</button>`;
+    return`<tr style="${rowOpacity}">
+      <td style="padding:9px 14px">
+        <div style="font-weight:600;color:#f1f5f9">${emp.name}</div>
+        ${emp.salary_note?`<div style="font-size:11px;color:#475569;margin-top:2px">📌 ${emp.salary_note}</div>`:''}
+      </td>
+      <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#1e2a3a;color:#94a3b8;font-size:11px">${emp.role_name}</span>`:'—'}</td>
+      <td style="padding:9px 14px;font-family:monospace;color:#a5b4fc">${fmtYen(emp.base_salary||0)}</td>
+      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.business_allowance||0)}</td>
+      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.duty_allowance||0)}</td>
+      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.role_allowance||0)}</td>
+      <td style="padding:9px 10px;font-size:12px;font-family:monospace;border-left:1px solid #1e2235;${isPayMonth?'color:#34d399;background:#064e3b22;':isSemiPay&&!isPayMonth?'color:#475569;':'color:#64748b;'}">
+        ${fmtYen(commute)}
+        ${isPayMonth?'<span style="display:block;font-size:10px;color:#34d399;font-family:sans-serif">🚌 支給月</span>':''}
+        ${isSemiPay&&!isPayMonth?'<span style="display:block;font-size:10px;color:#475569;font-family:sans-serif">半年払い(0円)</span>':''}
+      </td>
+      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.housing_allowance||0)}</td>
+      <td style="padding:9px 14px;border-left:1px solid #1e2235">
+        <div style="font-family:monospace;font-weight:600;color:${spDiff?'#fb923c':'#64748b'}">${fmtYen(sp||0)}</div>
+        ${spDiff?`<div style="font-size:10px;color:#475569">基本: ${fmtYen(emp.special_allowance)}</div>`:''}
+      </td>
+      <td style="padding:9px 14px;border-left:1px solid #1e2235"><span style="font-family:monospace;font-weight:700;color:${totalColor}">${excl?'—':fmtYen(total||0)}</span></td>
+      <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:150px;white-space:normal">${has&&emp.ms_note?`📝 ${emp.ms_note}`:'—'}</td>
+      <td style="padding:9px 14px">${statusTag}</td>
+      <td style="padding:9px 14px;display:flex;gap:6px" onclick="event.stopPropagation()">
+        ${!excl?`<button class="btn-sm" onclick="openMonthlyEdit(${emp.id})">編集</button>`:''}
+        ${exclBtn}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:24px;font-weight:700;color:#f1f5f9">月次給与台帳</h1>
+        <p style="color:#64748b;font-size:13px;margin-top:3px">月ごとの実支給額を管理 — 特別手当の臨時調整に対応</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select onchange="monthlyChangeYear(this.value)" style="width:auto;padding:8px 12px">${yOpts}</select>
+        <select onchange="monthlyChangeMonth(this.value)" style="width:auto;padding:8px 12px">${mOpts}</select>
+        <button class="btn btn-primary" onclick="generateMonthly()">一括生成</button>
+        <button class="btn btn-ghost" onclick="refreshMonthlyBase()" title="生成済みレコードの基本給・各手当を給与テーブルから再取得して上書き（特別手当・備考は保持）" style="border-color:#6366f1;color:#a5b4fc">基本給を最新に反映</button>
+        <button class="btn btn-ghost" onclick="exportMonthlyCsv()" style="border-color:#0891b2;color:#67e8f9">CSVダウンロード</button>
+        <button class="btn btn-ghost" onclick="deleteMonthlyAll()" style="border-color:#7f1d1d;color:#f87171">この月をリセット</button>
+      </div>
+    </div>
+    ${semiPayTarget.length>0?`
+    <div style="background:#064e3b33;border:1px solid #34d39955;border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <span style="font-size:22px">🚌</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#34d399">今月は半年払い交通費の支給月です</div>
+        <div style="font-size:12px;color:#6ee7b7;margin-top:2px">${semiPayTarget.map(e=>e.name).join('、')} — 支給を忘れずに確認してください</div>
+      </div>
+    </div>`:''}
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">月間総支給額</div><div style="font-size:24px;font-weight:700;color:#6366f1;font-family:'IBM Plex Mono',monospace">${fmtYen(totalCost)}</div></div>
+        <div style="font-size:28px;color:#6366f1;opacity:.3">¥</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#10b981;font-family:'IBM Plex Mono',monospace">${generatedCount} / ${monthlyData.length}名</div></div>
+        <div style="font-size:28px;color:#10b981;opacity:.3">✓</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">特別手当 調整あり</div>
+          <div style="font-size:24px;font-weight:700;color:#fb923c;font-family:'IBM Plex Mono',monospace">${specialCount}名</div>
+          ${excludedCount>0?`<div style="font-size:11px;color:#f87171;margin-top:4px">除外: ${excludedCount}名</div>`:''}
+        </div>
+        <div style="font-size:28px;color:#fb923c;opacity:.3">★</div>
+      </div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="overflow-x:auto">
+        <table style="white-space:nowrap;font-size:13px;width:100%">
+          <thead>
+            <tr style="border-bottom:none">
+              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">社員</th>
+              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#a5b4fc;border-bottom:2px solid #6366f133;text-transform:uppercase">基本給</th>
+              <th colspan="5" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#64748b;border-bottom:2px solid #1e2a3a;text-align:center;text-transform:uppercase">固定手当</th>
+              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#fb923c;border-bottom:2px solid #fb923c44;text-transform:uppercase">特別手当★</th>
+              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#10b981;border-bottom:2px solid #10b98133;text-align:center;text-transform:uppercase">合計・備考</th>
+              <th colspan="2" style="border-bottom:2px solid transparent"></th>
+            </tr>
+            <tr>
+              <th style="padding:6px 14px 10px">氏名</th>
+              <th style="padding:6px 14px 10px">役職</th>
+              <th style="padding:6px 14px 10px;color:#a5b4fc">基本給</th>
+              <th style="padding:6px 10px 10px;font-size:11px">業務手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">職責手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">役職手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">通勤費手当</th>
+              <th style="padding:6px 10px 10px;font-size:11px">住宅手当</th>
+              <th style="padding:6px 14px 10px;color:#fb923c">特別手当</th>
+              <th style="padding:6px 14px 10px;color:#10b981">月額合計</th>
+              <th style="padding:6px 14px 10px">月次備考</th>
+              <th style="padding:6px 14px 10px">状態</th>
+              <th style="padding:6px 14px 10px"></th>
+            </tr>
+          </thead>
+          <tbody>${rows||'<tr><td colspan="13" style="text-align:center;padding:40px;color:#475569">社員が登録されていません</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function monthlyChangeYear(y){
+  const[,m]=currentMonthlyYM.split('-');
+  currentMonthlyYM=`${y}-${m}`;
+  loadMonthly(currentMonthlyYM).then(()=>renderMonthly());
+}
+function monthlyChangeMonth(m){
+  const[y]=currentMonthlyYM.split('-');
+  currentMonthlyYM=`${y}-${m}`;
+  loadMonthly(currentMonthlyYM).then(()=>renderMonthly());
+}
+async function toggleMonthlyExclude(empId, excluded){
+  const emp=monthlyData.find(e=>e.id===empId);
+  const name=emp?emp.name:'この社員';
+  const label=excluded?'除外':'復元';
+  if(!confirm(`${name} を月次台帳から${label}しますか？`))return;
+  const data=await apiPost({action:'set_monthly_excluded',employee_id:empId,year_month:currentMonthlyYM,excluded});
+  if(!data.ok){showToast(data.error||'エラーが発生しました','err');return;}
+  showToast(`${name} を${label}しました`);
+  await loadMonthly(currentMonthlyYM);
+  renderMonthly();
+}
+function exportMonthlyCsv(){
+  if(!monthlyData||monthlyData.length===0){showToast('出力するデータがありません','err');return;}
+  const[yr,mo]=currentMonthlyYM.split('-');
+  const headers=['氏名','役職','基本給','業務手当','職責手当','役職手当','通勤費手当','住宅手当','特別手当','月額合計','月次備考','状態'];
+  const csvRows=[headers];
+  const[csvYr,csvMo]=currentMonthlyYM.split('-').map(Number);
+  monthlyData.forEach(emp=>{
+    const has=!!emp.ms_id;
+    const excl=!!emp.ms_excluded;
+    const sp=has?emp.ms_special:emp.special_allowance;
+    const isSemi=emp.commute_cycle==='semi_annual';
+    const isPay=isSemi&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(csvMo);
+    const commute=has&&emp.ms_commute!==null ? emp.ms_commute : (isSemi&&!isPay ? 0 : (emp.commute_allowance||0));
+    const total=has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+(sp||0));
+    const status=excl?'除外':has?'生成済':'未生成';
+    const note=has&&emp.ms_note?emp.ms_note:'';
+    csvRows.push([
+      emp.name,
+      emp.role_name||'',
+      excl?'':emp.base_salary||0,
+      excl?'':emp.business_allowance||0,
+      excl?'':emp.duty_allowance||0,
+      excl?'':emp.role_allowance||0,
+      excl?'':commute,
+      excl?'':emp.housing_allowance||0,
+      excl?'':sp||0,
+      excl?'':total||0,
+      note,
+      status
+    ]);
+  });
+  // 合計行（除外社員は含まない）
+  const totals=monthlyData.reduce((acc,emp)=>{
+    if(emp.ms_excluded)return acc;
+    const has=!!emp.ms_id;
+    const isSemi=emp.commute_cycle==='semi_annual';
+    const isPay=isSemi&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(csvMo);
+    const commute=has&&emp.ms_commute!==null ? emp.ms_commute : (isSemi&&!isPay ? 0 : (emp.commute_allowance||0));
+    const sp=(has?emp.ms_special:emp.special_allowance)||0;
+    acc[0]+=(has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+sp));
+    acc[1]+=(emp.base_salary||0);
+    acc[2]+=(emp.business_allowance||0);
+    acc[3]+=(emp.duty_allowance||0);
+    acc[4]+=(emp.role_allowance||0);
+    acc[5]+=commute;
+    acc[6]+=(emp.housing_allowance||0);
+    acc[7]+=sp;
+    return acc;
+  },[0,0,0,0,0,0,0,0]);
+  csvRows.push(['合計','',totals[1],totals[2],totals[3],totals[4],totals[5],totals[6],totals[7],totals[0],'','']);
+
+  const csvText=csvRows.map(row=>row.map(v=>{
+    const s=String(v);
+    return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;
+  }).join(',')).join('\r\n');
+
+  // BOM付きUTF-8（Excelで文字化けしないよう）
+  const bom='\uFEFF';
+  const blob=new Blob([bom+csvText],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`月次給与台帳_${yr}年${mo}月.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast(`${yr}年${mo}月のCSVをダウンロードしました`);
+}
+// ══════════════════════════════════════════════════════════════════
+// 賞与台帳
+// ══════════════════════════════════════════════════════════════════
+async function loadBonus(ym){
+  const r=await apiGet('get_bonus_salaries',{year_month:ym});
+  if(r.ok)bonusData=r.data;
+}
+function renderBonus(){
+  const[yr,mo]=currentBonusYM.split('-').map(Number);
+  const genCount=bonusData.filter(e=>e.bs_id&&!e.bs_excluded).length;
+  const adjCount=bonusData.filter(e=>e.bs_id&&!e.bs_excluded&&(e.bs_rate!==1||e.bs_adj!==0)).length;
+  const exclCount=bonusData.filter(e=>e.bs_excluded).length;
+  const totalCost=bonusData.reduce((s,e)=>e.bs_excluded?s:s+(e.bs_total||0),0);
+
+  const thisYear=new Date().getFullYear();
+  const yOpts=Array.from({length:4},(_,i)=>thisYear-2+i).map(y=>`<option value="${y}" ${y===yr?'selected':''}>${y}年</option>`).join('');
+  const mOpts=Array.from({length:12},(_,i)=>i+1).map(m=>{const mm=String(m).padStart(2,'0');return`<option value="${mm}" ${m===mo?'selected':''}>${m}月</option>`;}).join('');
+
+  const rows=bonusData.map(emp=>{
+    const has=!!emp.bs_id;
+    const excl=!!emp.bs_excluded;
+    const base=has?emp.bs_base:Math.round((emp.base_salary+emp.business_allowance+emp.duty_allowance+emp.role_allowance)*(emp.bonus_months/2));
+    const rate=has?(emp.bs_rate??1):1;
+    const adj=has?emp.bs_adj:0;
+    const total=has?emp.bs_total:base;
+    const hasRate=has&&rate!==1;
+    const hasAdj=has&&adj!==0;
+    let statusTag;
+    if(excl) statusTag='<span class="tag" style="background:#7f1d1d44;color:#f87171">除外</span>';
+    else if(has) statusTag='<span class="tag" style="background:#064e3b33;color:#34d399">生成済</span>';
+    else statusTag='<span class="tag" style="background:#1e2235;color:#475569">未生成</span>';
+    const exclBtn=excl
+      ?`<button class="btn-sm" onclick="toggleBonusExclude(${emp.id},0)" style="border-color:#10b981;color:#34d399">復元</button>`
+      :`<button class="btn-sm" onclick="toggleBonusExclude(${emp.id},1)" style="border-color:#f87171;color:#f87171">除外</button>`;
+    return`<tr style="${excl?'opacity:0.4;':''}">
+      <td style="padding:9px 14px"><div style="font-weight:600;color:#f1f5f9">${emp.name}</div></td>
+      <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#1e2a3a;color:#94a3b8;font-size:11px">${emp.role_name}</span>`:'—'}</td>
+      <td style="padding:9px 14px;font-size:12px;color:#64748b">${emp.bonus_months}ヶ月 → ×${(emp.bonus_months/2).toFixed(1)}</td>
+      <td style="padding:9px 14px;font-family:monospace;color:#a5b4fc">${fmtYen(base)}</td>
+      <td style="padding:9px 14px;font-family:monospace;${hasRate?'color:#fb923c;font-weight:600':'color:#64748b'}">×${rate.toFixed(2)}</td>
+      <td style="padding:9px 14px;font-family:monospace;${hasAdj?'color:#f59e0b;font-weight:600':'color:#64748b'}">${adj>=0?'+':''}${fmtYen(adj)}</td>
+      <td style="padding:9px 14px;font-family:monospace;font-weight:700;color:${excl?'#475569':'#10b981'}">${excl?'—':fmtYen(total)}</td>
+      <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:150px;white-space:normal">${has&&emp.bs_note?`📝 ${emp.bs_note}`:'—'}</td>
+      <td style="padding:9px 14px">${statusTag}</td>
+      <td style="padding:9px 14px;display:flex;gap:6px" onclick="event.stopPropagation()">
+        ${has&&!excl?`<button class="btn-sm" onclick="openBonusEdit(${emp.id})">編集</button>`:''}
+        ${exclBtn}
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px">
+      <div>
+        <h1 style="font-size:24px;font-weight:700;color:#f1f5f9">賞与台帳</h1>
+        <p style="color:#64748b;font-size:13px;margin-top:3px">算定基礎額（基本給+業務+職責+役職手当）× 賞与月数÷2　→　算定基礎賞与 × 掛け率 ＋ インセンティブ</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select onchange="bonusChangeYear(this.value)" style="width:auto;padding:8px 12px">${yOpts}</select>
+        <select onchange="bonusChangeMonth(this.value)" style="width:auto;padding:8px 12px">${mOpts}</select>
+        <button class="btn btn-primary" onclick="generateBonus()">一括生成</button>
+        <button class="btn btn-ghost" onclick="exportBonusCsv()" style="border-color:#0891b2;color:#67e8f9">CSVダウンロード</button>
+        <button class="btn btn-ghost" onclick="deleteBonusAll()" style="border-color:#7f1d1d;color:#f87171">この期をリセット</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px">
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">賞与総支給額</div><div style="font-size:24px;font-weight:700;color:#6366f1;font-family:'IBM Plex Mono',monospace">${fmtYen(totalCost)}</div></div>
+        <div style="font-size:28px;color:#6366f1;opacity:.3">¥</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#10b981;font-family:'IBM Plex Mono',monospace">${genCount} / ${bonusData.length}名</div></div>
+        <div style="font-size:28px;color:#10b981;opacity:.3">✓</div>
+      </div>
+      <div style="background:linear-gradient(135deg,#161927,#1a1d2e);border:1px solid #1e2a3a;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">インセンティブあり</div>
+          <div style="font-size:24px;font-weight:700;color:#fb923c;font-family:'IBM Plex Mono',monospace">${adjCount}名</div>
+          ${exclCount>0?`<div style="font-size:11px;color:#f87171;margin-top:4px">除外: ${exclCount}名</div>`:''}
+        </div>
+        <div style="font-size:28px;color:#fb923c;opacity:.3">★</div>
+      </div>
+    </div>
+    <div class="card" style="overflow:hidden">
+      <div style="overflow-x:auto">
+        <table style="white-space:nowrap;font-size:13px;width:100%">
+          <thead>
+            <tr>
+              <th style="padding:10px 14px">氏名</th>
+              <th style="padding:10px 14px">役職</th>
+              <th style="padding:10px 14px">賞与月数</th>
+              <th style="padding:10px 14px;color:#a5b4fc">算定基礎賞与</th>
+              <th style="padding:10px 14px;color:#fb923c">掛け率</th>
+              <th style="padding:10px 14px;color:#f59e0b">インセンティブ</th>
+              <th style="padding:10px 14px;color:#10b981">支給額</th>
+              <th style="padding:10px 14px">備考</th>
+              <th style="padding:10px 14px">状態</th>
+              <th style="padding:10px 14px"></th>
+            </tr>
+          </thead>
+          <tbody>${rows||'<tr><td colspan="10" style="text-align:center;padding:40px;color:#475569">社員が登録されていません</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+function bonusChangeYear(y){
+  const[,m]=currentBonusYM.split('-');
+  currentBonusYM=`${y}-${m}`;
+  loadBonus(currentBonusYM).then(()=>renderBonus());
+}
+function bonusChangeMonth(m){
+  const[y]=currentBonusYM.split('-');
+  currentBonusYM=`${y}-${m}`;
+  loadBonus(currentBonusYM).then(()=>renderBonus());
+}
+async function generateBonus(){
+  const[yr,mo]=currentBonusYM.split('-');
+  const multStr=prompt(`${yr}年${mo}月 賞与の計算倍率を入力してください\n（空白 = 役職設定の賞与月数÷2 を自動適用）`,'');
+  if(multStr===null)return;
+  const data=await apiPost({action:'generate_bonus',year_month:currentBonusYM,multiplier:multStr.trim()});
+  if(!data.ok){showToast(data.error||'生成に失敗しました','err');return;}
+  showToast(`${data.data.generated}件生成しました（計${data.data.total}名）`);
+  await loadBonus(currentBonusYM);renderBonus();
+}
+function openBonusEdit(empId){
+  const emp=bonusData.find(e=>e.id===empId);if(!emp||!emp.bs_id)return;
+  const currentRate=emp.bs_rate??1;
+  const currentAdj=emp.bs_adj??0;
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">賞与査定編集</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name} — ${currentBonusYM}</p>
+  <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;color:#64748b;margin-bottom:4px">算定基礎賞与</div>
+    <div style="font-size:22px;font-weight:700;color:#a5b4fc;font-family:monospace">${fmtYen(emp.bs_base)}</div>
+  </div>
+  <div class="fg"><label>掛け率　例：0.70 / 1.00 / 1.20</label>
+    <input id="be-rate" type="number" step="0.01" min="0" value="${currentRate.toFixed(2)}" placeholder="例：1.00" oninput="bonusCalcTotal(${emp.bs_base||0})">
+  </div>
+  <div class="fg"><label>インセンティブ（円・手打ち）　マイナス可</label>
+    <input id="be-adj" type="number" value="${currentAdj}" placeholder="例：+50000 または -30000" oninput="bonusCalcTotal(${emp.bs_base||0})">
+  </div>
+  <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;color:#64748b;margin-bottom:4px">支給額（算定基礎 × 掛け率 ＋ インセンティブ）</div>
+    <div id="be-total-val" style="font-size:22px;font-weight:700;color:#10b981;font-family:monospace">${fmtYen(emp.bs_total||emp.bs_base||0)}</div>
+  </div>
+  <div class="fg"><label>備考（任意）</label><input id="be-note" value="${emp.bs_note||''}" placeholder="例：査定A、特別加算 など"></div>
+  <input type="hidden" id="be-id" value="${empId}">
+  <input type="hidden" id="be-base" value="${emp.bs_base||0}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitBonusEdit()">保存する</button>
+  </div>`);
+  bonusCalcTotal(emp.bs_base||0);
+}
+function bonusCalcTotal(base){
+  const rate=parseFloat(document.getElementById('be-rate')?.value||1)||1;
+  const adj=parseInt(document.getElementById('be-adj')?.value||0)||0;
+  const el=document.getElementById('be-total-val');
+  if(el)el.textContent=fmtYen(Math.round(base*rate)+adj);
+}
+async function submitBonusEdit(){
+  const empId=parseInt(document.getElementById('be-id').value);
+  const base=parseInt(document.getElementById('be-base').value)||0;
+  const bonus_rate=parseFloat(document.getElementById('be-rate').value)||1;
+  const adjustment=parseInt(document.getElementById('be-adj').value)||0;
+  const note=document.getElementById('be-note').value.trim();
+  const data=await apiPost({action:'save_bonus_salary',employee_id:empId,year_month:currentBonusYM,bonus_rate,adjustment,note});
+  if(!data.ok){showToast(data.error,'err');return;}
+  closeModal();showToast('賞与を保存しました');
+  await loadBonus(currentBonusYM);renderBonus();
+}
+async function toggleBonusExclude(empId,excluded){
+  const emp=bonusData.find(e=>e.id===empId);
+  const name=emp?emp.name:'この社員';
+  const label=excluded?'除外':'復元';
+  if(!confirm(`${name} を賞与台帳から${label}しますか？`))return;
+  const data=await apiPost({action:'set_bonus_excluded',employee_id:empId,year_month:currentBonusYM,excluded});
+  if(!data.ok){showToast(data.error||'エラーが発生しました','err');return;}
+  showToast(`${name} を${label}しました`);
+  await loadBonus(currentBonusYM);renderBonus();
+}
+async function deleteBonusAll(){
+  const[yr,mo]=currentBonusYM.split('-');
+  const generated=bonusData.filter(e=>e.bs_id).length;
+  if(generated===0){showToast('この期の生成済みデータはありません','err');return;}
+  if(!confirm(`${yr}年${mo}月の賞与データ（${generated}件）をすべて削除しますか？`))return;
+  const data=await apiPost({action:'delete_bonus_all',year_month:currentBonusYM});
+  if(!data.ok){showToast(data.error||'削除に失敗しました','err');return;}
+  showToast(`${data.data.deleted}件削除しました`);
+  await loadBonus(currentBonusYM);renderBonus();
+}
+function exportBonusCsv(){
+  if(!bonusData||bonusData.length===0){showToast('出力するデータがありません','err');return;}
+  const[yr,mo]=currentBonusYM.split('-');
+  const headers=['氏名','役職','賞与月数','算定基礎賞与','掛け率','インセンティブ','支給額','備考','状態'];
+  const csvRows=[headers];
+  bonusData.forEach(emp=>{
+    const has=!!emp.bs_id;
+    const excl=!!emp.bs_excluded;
+    const base=has?emp.bs_base:Math.round((emp.base_salary+emp.business_allowance+emp.duty_allowance+emp.role_allowance)*(emp.bonus_months/2));
+    const rate=has?(emp.bs_rate??1):1;
+    const adj=has?emp.bs_adj:0;
+    const total=has?emp.bs_total:base;
+    csvRows.push([
+      emp.name, emp.role_name||'',
+      excl?'':(emp.bonus_months/2).toFixed(1),
+      excl?'':base, excl?'':rate.toFixed(2), excl?'':adj, excl?'':total,
+      has&&emp.bs_note?emp.bs_note:'',
+      excl?'除外':has?'生成済':'未生成'
+    ]);
+  });
+  const active=bonusData.filter(e=>!e.bs_excluded&&e.bs_id);
+  const sumBase=active.reduce((s,e)=>s+(e.bs_base||0),0);
+  const sumAdj=active.reduce((s,e)=>s+(e.bs_adj||0),0);
+  const sumTotal=active.reduce((s,e)=>s+(e.bs_total||0),0);
+  csvRows.push(['合計','','',sumBase,'',sumAdj,sumTotal,'','']);
+  const csvText=csvRows.map(row=>row.map(v=>{
+    const s=String(v);
+    return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;
+  }).join(',')).join('\r\n');
+  const bom='\uFEFF';
+  const blob=new Blob([bom+csvText],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`賞与台帳_${yr}年${mo}月.csv`;
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showToast(`${yr}年${mo}月の賞与CSVをダウンロードしました`);
+}
+async function deleteMonthlyAll(){
+  const[yr,mo]=currentMonthlyYM.split('-');
+  const generated=monthlyData.filter(e=>e.ms_id).length;
+  if(generated===0){showToast('この月の生成済みデータはありません','err');return;}
+  if(!confirm(`${yr}年${parseInt(mo)}月の台帳データ（${generated}名分）をすべて削除します。\nこの操作は取り消せません。よろしいですか？`))return;
+  const r=await apiPost({action:'delete_monthly_all',year_month:currentMonthlyYM});
+  if(!r.ok){showToast(r.error,'err');return;}
+  showToast(`${r.data.deleted}名分のデータを削除しました`);
+  await loadMonthly(currentMonthlyYM);renderMonthly();
+}
+async function refreshMonthlyBase(){
+  const generated=monthlyData.filter(e=>e.ms_id).length;
+  if(generated===0){showToast('この月はまだ生成済みレコードがありません','err');return;}
+  const[yr,mo]=currentMonthlyYM.split('-');
+  if(!confirm(`${yr}年${parseInt(mo)}月の生成済み${generated}名分を給与テーブルの現在値で上書きします。\n特別手当・月次備考は保持されます。\nよろしいですか？`))return;
+  const r=await apiPost({action:'refresh_monthly_base',year_month:currentMonthlyYM});
+  if(!r.ok){showToast(r.error,'err');return;}
+  showToast(`${r.data.updated}名の基本給情報を最新に更新しました`);
+  await loadMonthly(currentMonthlyYM);renderMonthly();
+}
+async function generateMonthly(){
+  const r=await apiPost({action:'generate_monthly',year_month:currentMonthlyYM});
+  if(!r.ok){showToast(r.error,'err');return;}
+  const{generated,total}=r.data;
+  showToast(generated>0?`${generated}名分のデータを生成しました`:`全${total}名はすでに生成済みです`);
+  await loadMonthly(currentMonthlyYM);renderMonthly();
+}
+function openMonthlyEdit(empId){
+  const emp=monthlyData.find(e=>e.id===empId);if(!emp)return;
+  const has=!!emp.ms_id;
+  const curSpecial=has?emp.ms_special:emp.special_allowance;
+  const curNote=has?(emp.ms_note||''):'';
+  const[yr,mo]=currentMonthlyYM.split('-');
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">月次 特別手当・備考</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name} — ${parseInt(mo)}月分（${yr}年）</p>
+  <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:11px;color:#64748b;margin-bottom:4px">給与設定の特別手当（基本値）</div>
+    <div style="font-size:18px;font-weight:600;color:#64748b;font-family:monospace">${fmtYen(emp.special_allowance||0)}</div>
+  </div>
+  <div class="fg"><label>今月の特別手当（円）</label>
+    <input id="me-special" type="number" value="${curSpecial||0}" min="0">
+  </div>
+  <div class="fg"><label>月次備考</label>
+    <input id="me-note" value="${curNote}" placeholder="例：〇〇案件対応 +3万円">
+  </div>
+  <input type="hidden" id="me-empid" value="${empId}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-success" style="flex:1" onclick="submitMonthlyEdit()">保存する</button>
+  </div>`);
+}
+async function submitMonthlyEdit(){
+  const employee_id=document.getElementById('me-empid').value;
+  const special_allowance=document.getElementById('me-special').value||0;
+  const note=document.getElementById('me-note').value.trim();
+  const r=await apiPost({action:'save_monthly_salary',employee_id,year_month:currentMonthlyYM,special_allowance,note});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('月次データを保存しました');
+  await loadMonthly(currentMonthlyYM);renderMonthly();
+}
+
+// ── 役職設定ビュー ──────────────────────────────────
+function renderRoles(){
+  const rows=roles.map(role=>`
+    <tr>
+      <td><span style="font-weight:600;color:#f1f5f9">${role.name}</span></td>
+      <td style="font-family:monospace;color:#a5b4fc">${fmtYen(role.role_allowance)}</td>
+      <td style="font-family:monospace;color:#94a3b8">${fmtYen(role.raise_min)} 〜 ${fmtYen(role.raise_max)}</td>
+      <td style="font-family:monospace;color:#fbbf24">${role.salary_cap?fmtYen(role.salary_cap):'<span style="color:#475569">上限なし</span>'}</td>
+      <td style="color:#94a3b8;text-align:center">${role.bonus_months}ヶ月<div style="font-size:11px;color:#475569">×${12+role.bonus_months}</div></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn-sm" onclick="openEditRole(${role.id})" style="margin-right:4px">✏</button>
+        <button class="btn-sm-danger" onclick="openDeleteRole(${role.id})">削除</button>
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('main').innerHTML=`
+  <div class="fadein" style="width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px">
+      <div>
+        <h1 style="font-size:26px;font-weight:700;color:#f1f5f9">役職設定</h1>
+        <p style="color:#64748b;font-size:14px;margin-top:4px">役職ごとの手当・昇給幅・基本給上限を管理</p>
+      </div>
+      <button class="btn btn-primary" onclick="openAddRole()">+ 役職を追加</button>
+    </div>
+    ${roles.length===0
+      ?`<div class="card" style="padding:48px;text-align:center;color:#475569">
+          <div style="font-size:32px;margin-bottom:12px">◆</div>
+          役職がまだ登録されていません<br><br>
+          <button class="btn btn-primary" onclick="openAddRole()">最初の役職を追加</button>
+        </div>`
+      :`<div class="card"><div style="overflow-x:auto"><table>
+          <thead><tr><th>役職名</th><th>役職手当</th><th>昇給幅（円/月）</th><th>基本給上限</th><th>賞与月数</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div></div>`}
+  </div>`;
+}
+
+// ── 給与設定モーダル ──────────────────────────────────
+function openSalaryEdit(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  const roleOpts=roles.map(r=>`<option value="${r.id}" ${emp.role_id===r.id?'selected':''}>${r.name}</option>`).join('');
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">給与設定</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name}</p>
+  <div class="fg"><label>役職</label>
+    <select id="se-role" onchange="salaryEditRoleChange()">
+      <option value="">— 役職なし —</option>${roleOpts}
+    </select>
+  </div>
+  <div id="se-role-info" style="display:none;background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#64748b"></div>
+  <div class="fg"><label>基本給（円/月）</label><input id="se-base" type="number" value="${emp.base_salary||''}" placeholder="例：220000" min="0"></div>
+  <div class="fg"><label>業務手当（円/月）　みなし残業代</label><input id="se-business" type="number" value="${emp.business_allowance||''}" placeholder="例：30000" min="0"></div>
+  <div class="fg"><label>職責手当（円/月）</label><input id="se-duty" type="number" value="${emp.duty_allowance||''}" placeholder="例：15000" min="0"></div>
+  <div class="fg"><label>通勤費手当（支給額）</label><input id="se-commute" type="number" value="${emp.commute_allowance||''}" placeholder="毎月払い: 15000 / 半年払い: 120000" min="0"></div>
+  <div class="fg">
+    <label>通勤費 支給サイクル</label>
+    <select id="se-commute-cycle" onchange="seCommuteCycleChange()">
+      <option value="monthly" ${(!emp.commute_cycle||emp.commute_cycle==='monthly')?'selected':''}>毎月支給</option>
+      <option value="semi_annual" ${emp.commute_cycle==='semi_annual'?'selected':''}>半年ごと（定期代等）</option>
+    </select>
+  </div>
+  <div id="se-commute-months-wrap" style="display:none;background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px">支給月を選択（複数可）</div>
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">
+      ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>{
+        const payMonths=(emp.commute_months||'').split(',').map(Number);
+        const chk=payMonths.includes(m)?'checked':'';
+        return`<label style="display:flex;align-items:center;gap:4px;font-size:13px;color:#94a3b8;cursor:pointer"><input type="checkbox" class="se-cm" value="${m}" ${chk}> ${m}月</label>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="fg"><label>住宅手当（円/月）</label><input id="se-housing" type="number" value="${emp.housing_allowance||''}" placeholder="例：20000" min="0"></div>
+  <div class="fg"><label>特別手当（円/月）</label><input id="se-special" type="number" value="${emp.special_allowance||''}" placeholder="例：10000" min="0"></div>
+  <div class="fg"><label>設定備考（固定メモ）</label><input id="se-note" value="${emp.salary_note||''}" placeholder="例：昇給保留中、試用期間中 など"></div>
+  <input type="hidden" id="se-id" value="${id}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitSalaryEdit()">保存する</button>
+  </div>`);
+  salaryEditRoleChange();
+  seCommuteCycleChange();
+}
+function seCommuteCycleChange(){
+  const cycle=document.getElementById('se-commute-cycle')?.value;
+  const wrap=document.getElementById('se-commute-months-wrap');
+  if(wrap)wrap.style.display=cycle==='semi_annual'?'block':'none';
+}
+function salaryEditRoleChange(){
+  const sel=document.getElementById('se-role');
+  const info=document.getElementById('se-role-info');
+  if(!sel||!info)return;
+  const rid=parseInt(sel.value);
+  const role=roles.find(r=>r.id===rid);
+  if(role){
+    info.style.display='block';
+    info.innerHTML=`役職手当: <strong style="color:#a5b4fc">${fmtYen(role.role_allowance)}</strong> ／ 昇給幅: <strong style="color:#94a3b8">${fmtYen(role.raise_min)}〜${fmtYen(role.raise_max)}</strong> ／ 上限: <strong style="color:#fbbf24">${role.salary_cap?fmtYen(role.salary_cap):'なし'}</strong>`;
+  }else{info.style.display='none';}
+}
+async function submitSalaryEdit(){
+  const id=document.getElementById('se-id').value;
+  const role_id=document.getElementById('se-role').value;
+  const base_salary=document.getElementById('se-base').value||0;
+  const business_allowance=document.getElementById('se-business').value||0;
+  const duty_allowance=document.getElementById('se-duty').value||0;
+  const commute_allowance=document.getElementById('se-commute').value||0;
+  const housing_allowance=document.getElementById('se-housing').value||0;
+  const special_allowance=document.getElementById('se-special').value||0;
+  const salary_note=document.getElementById('se-note').value.trim();
+  const commute_cycle=document.getElementById('se-commute-cycle').value;
+  const commute_months=[...document.querySelectorAll('.se-cm:checked')].map(c=>c.value).join(',');
+  const r=await apiPost({action:'update_employee_salary',id,role_id:role_id||0,base_salary,business_allowance,duty_allowance,commute_allowance,housing_allowance,special_allowance,salary_note,commute_cycle,commute_months});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('給与設定を保存しました');
+  await loadEmployees();renderCurrent();
+}
+
+// ── 昇給審査モーダル ──────────────────────────────────
+function openSalaryReview(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  const currentPeriod=getCurrentReviewPeriod();
+  const[py,pm]=currentPeriod.split('-');
+  const roleInfo=emp.role_id?`
+    <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px">役職: ${emp.role_name}</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:#475569">昇給幅</div><div style="font-size:13px;font-weight:600;color:#94a3b8;font-family:monospace">${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div></div>
+        <div><div style="font-size:11px;color:#475569">基本給上限</div><div style="font-size:13px;font-weight:600;color:#fbbf24;font-family:monospace">${emp.salary_cap?fmtYen(emp.salary_cap):'上限なし'}</div></div>
+      </div>
+    </div>`:'';
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#f1f5f9">昇給審査</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name} — ${parseInt(pm)}月審査（${py}年）</p>
+  ${roleInfo}
+  <div style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;color:#64748b;margin-bottom:4px">現在の基本給</div>
+    <div style="font-size:24px;font-weight:700;color:#a5b4fc;font-family:monospace">${fmtYen(emp.base_salary)}</div>
+  </div>
+  <div class="fg"><label>審査結果</label>
+    <select id="rv-approved" onchange="reviewToggleRaise()">
+      <option value="1">昇給する</option>
+      <option value="0">見送り</option>
+    </select>
+  </div>
+  <div class="fg" id="rv-raise-wrap"><label>昇給額（円/月）</label>
+    <input id="rv-raise" type="number" placeholder="例：5000" min="0" value="${emp.raise_min||''}"
+      oninput="reviewCalcAfter(${emp.base_salary||0},${emp.salary_cap||0})">
+    ${emp.raise_min||emp.raise_max?`<div style="font-size:12px;color:#475569;margin-top:4px">推奨幅: ${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div>`:''}
+  </div>
+  <div id="rv-after-wrap" style="background:#0f1117;border:1px solid #1e2235;border-radius:10px;padding:14px;margin-bottom:16px">
+    <div style="font-size:12px;color:#64748b;margin-bottom:4px">昇給後の基本給</div>
+    <div id="rv-after-val" style="font-size:22px;font-weight:700;color:#10b981;font-family:monospace">—</div>
+  </div>
+  <div class="fg"><label>メモ（任意）</label><input id="rv-note" placeholder="例：査定A、業績貢献 など"></div>
+  <input type="hidden" id="rv-id" value="${id}">
+  <input type="hidden" id="rv-period" value="${currentPeriod}">
+  <input type="hidden" id="rv-before" value="${emp.base_salary||0}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-success" style="flex:1" onclick="submitSalaryReview()">審査を記録</button>
+  </div>`);
+  reviewCalcAfter(emp.base_salary||0,emp.salary_cap||0);
+}
+function reviewToggleRaise(){
+  const v=document.getElementById('rv-approved').value;
+  document.getElementById('rv-raise-wrap').style.display=v==='1'?'block':'none';
+  document.getElementById('rv-after-wrap').style.display=v==='1'?'block':'none';
+}
+function reviewCalcAfter(before,cap){
+  const raiseEl=document.getElementById('rv-raise');
+  const afterEl=document.getElementById('rv-after-val');
+  if(!raiseEl||!afterEl)return;
+  const raise=parseInt(raiseEl.value)||0;
+  const after=before+raise;
+  if(cap>0&&after>cap){
+    afterEl.textContent=fmtYen(after)+' ⚠ 上限超過';
+    afterEl.style.color='#f43f5e';
+  }else{
+    afterEl.textContent=fmtYen(after);
+    afterEl.style.color='#10b981';
+  }
+}
+async function submitSalaryReview(){
+  const employee_id=document.getElementById('rv-id').value;
+  const review_period=document.getElementById('rv-period').value;
+  const approved=document.getElementById('rv-approved').value;
+  const raise_amount=approved==='1'?(parseInt(document.getElementById('rv-raise').value)||0):0;
+  const salary_before=parseInt(document.getElementById('rv-before').value)||0;
+  const salary_after=approved==='1'?salary_before+raise_amount:salary_before;
+  const note=document.getElementById('rv-note').value.trim();
+  const emp=employees.find(e=>e.id==employee_id);
+  if(emp&&emp.salary_cap>0&&salary_after>emp.salary_cap){
+    showToast(`上限（${fmtYen(emp.salary_cap)}）を超えています`,'err');return;
+  }
+  const r=await apiPost({action:'add_salary_review',employee_id,review_period,approved,raise_amount,salary_before,salary_after,note});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();
+  showToast(`審査を記録しました${approved==='1'?'（昇給 +'+fmtYen(raise_amount)+'）':'（見送り）'}`);
+  await loadEmployees();renderCurrent();
+}
+
+// ── 昇給履歴モーダル ──────────────────────────────────
+async function openSalaryHistory(id){
+  const emp=employees.find(e=>e.id===id);if(!emp)return;
+  const r=await apiGet('get_salary_reviews',{employee_id:id});
+  if(!r.ok){showToast(r.error,'err');return;}
+  const reviews=r.data;
+  const rows=reviews.map(rv=>`
+    <tr>
+      <td style="font-family:monospace;color:#94a3b8;white-space:nowrap">${fmtPeriod(rv.review_period)}</td>
+      <td>${rv.approved?'<span class="tag" style="background:#064e3b33;color:#34d399">昇給</span>':'<span class="tag" style="background:#1e2235;color:#64748b">見送り</span>'}</td>
+      <td style="font-family:monospace;color:#a5b4fc">${rv.approved&&rv.raise_amount?'+'+fmtYen(rv.raise_amount):'—'}</td>
+      <td style="font-family:monospace;color:#64748b">${fmtYen(rv.salary_before)}</td>
+      <td style="font-family:monospace;font-weight:600;color:#10b981">${fmtYen(rv.salary_after)}</td>
+      <td style="font-size:12px;color:#64748b">${rv.note||'—'}</td>
+    </tr>`).join('');
+  openModal(`
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+    <div>
+      <h2 style="font-size:18px;font-weight:700;color:#f1f5f9">昇給審査履歴</h2>
+      <p style="font-size:13px;color:#64748b;margin-top:2px">${emp.name}</p>
+    </div>
+    <span style="font-size:12px;color:#475569;padding-top:4px">${reviews.length}件</span>
+  </div>
+  ${reviews.length===0
+    ?'<p style="color:#475569;text-align:center;padding:24px">審査記録がありません</p>'
+    :`<div style="max-height:380px;overflow-y:auto"><table>
+        <thead><tr><th>審査期間</th><th>結果</th><th>昇給額</th><th>審査前</th><th>審査後</th><th>メモ</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`}
+  <div style="margin-top:16px">
+    <button class="btn btn-ghost" style="width:100%" onclick="closeModal()">閉じる</button>
+  </div>`);
+}
+
+// ── 役職追加モーダル ──────────────────────────────────
+function openAddRole(){
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:24px;color:#f1f5f9">役職を追加</h2>
+  <div class="fg"><label>役職名 *</label><input id="ar-name" placeholder="例：主任、マネージャー、部長"></div>
+  <div class="fg"><label>役職手当（円/月）</label><input id="ar-allowance" type="number" placeholder="例：30000" min="0" value="0"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="fg"><label>昇給幅 最小（円/月）</label><input id="ar-min" type="number" placeholder="例：3000" min="0" value="0"></div>
+    <div class="fg"><label>昇給幅 最大（円/月）</label><input id="ar-max" type="number" placeholder="例：10000" min="0" value="0"></div>
+  </div>
+  <div class="fg"><label>基本給 上限（円/月）　※0=上限なし</label><input id="ar-cap" type="number" placeholder="例：350000" min="0" value="0"></div>
+  <div class="fg"><label>賞与月数　※想定年収 = （基本給等）×（12＋賞与月数）</label>
+    <select id="ar-bonus">
+      <option value="2" selected>2ヶ月（夏1＋冬1）→ ×14</option>
+      <option value="1">1ヶ月 → ×13</option>
+      <option value="0">0ヶ月（賞与なし）→ ×12</option>
+      <option value="3">3ヶ月 → ×15</option>
+      <option value="4">4ヶ月 → ×16</option>
+    </select>
+  </div>
+  <div class="fg"><label>表示順</label><input id="ar-order" type="number" placeholder="0" min="0" value="${roles.length}"></div>
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitAddRole()">追加する</button>
+  </div>`);
+}
+async function submitAddRole(){
+  const name=document.getElementById('ar-name').value.trim();
+  if(!name){showToast('役職名は必須です','err');return;}
+  const r=await apiPost({action:'add_role',name,
+    role_allowance:document.getElementById('ar-allowance').value||0,
+    raise_min:document.getElementById('ar-min').value||0,
+    raise_max:document.getElementById('ar-max').value||0,
+    salary_cap:document.getElementById('ar-cap').value||0,
+    bonus_months:document.getElementById('ar-bonus').value,
+    sort_order:document.getElementById('ar-order').value||0
+  });
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast(name+' を追加しました');
+  await loadRoles();renderCurrent();
+}
+
+// ── 役職編集モーダル ──────────────────────────────────
+function openEditRole(id){
+  const role=roles.find(r=>r.id===id);if(!role)return;
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:24px;color:#f1f5f9">役職を編集</h2>
+  <div class="fg"><label>役職名 *</label><input id="er-name" value="${role.name}"></div>
+  <div class="fg"><label>役職手当（円/月）</label><input id="er-allowance" type="number" value="${role.role_allowance||0}" min="0"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+    <div class="fg"><label>昇給幅 最小（円/月）</label><input id="er-min" type="number" value="${role.raise_min||0}" min="0"></div>
+    <div class="fg"><label>昇給幅 最大（円/月）</label><input id="er-max" type="number" value="${role.raise_max||0}" min="0"></div>
+  </div>
+  <div class="fg"><label>基本給 上限（円/月）　※0=上限なし</label><input id="er-cap" type="number" value="${role.salary_cap||0}" min="0"></div>
+  <div class="fg"><label>賞与月数　※想定年収 = （基本給等）×（12＋賞与月数）</label>
+    <select id="er-bonus">
+      ${[0,1,2,3,4].map(n=>`<option value="${n}" ${(role.bonus_months??2)===n?'selected':''}>${n}ヶ月${n===2?' （夏1＋冬1）':''} → ×${12+n}</option>`).join('')}
+    </select>
+  </div>
+  <div class="fg"><label>表示順</label><input id="er-order" type="number" value="${role.sort_order||0}" min="0"></div>
+  <input type="hidden" id="er-id" value="${id}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-primary" style="flex:1" onclick="submitEditRole()">保存する</button>
+  </div>`);
+}
+async function submitEditRole(){
+  const id=document.getElementById('er-id').value;
+  const name=document.getElementById('er-name').value.trim();
+  if(!name){showToast('役職名は必須です','err');return;}
+  const r=await apiPost({action:'update_role',id,name,
+    role_allowance:document.getElementById('er-allowance').value||0,
+    raise_min:document.getElementById('er-min').value||0,
+    raise_max:document.getElementById('er-max').value||0,
+    salary_cap:document.getElementById('er-cap').value||0,
+    bonus_months:document.getElementById('er-bonus').value,
+    sort_order:document.getElementById('er-order').value||0
+  });
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast(name+' を更新しました');
+  await Promise.all([loadRoles(),loadEmployees()]);renderCurrent();
+}
+
+// ── 役職削除モーダル ──────────────────────────────────
+function openDeleteRole(id){
+  const role=roles.find(r=>r.id===id);if(!role)return;
+  openModal(`
+  <div style="text-align:center;margin-bottom:24px">
+    <div style="font-size:40px;margin-bottom:12px">🗑️</div>
+    <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:8px">役職を削除しますか？</h2>
+    <p style="font-size:14px;color:#94a3b8"><strong style="color:#f87171">${role.name}</strong> を削除します。この操作は取り消せません。<br>割り当て中の社員がいる場合は削除できません。</p>
+  </div>
+  <div style="display:flex;gap:12px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-danger" style="flex:1" onclick="submitDeleteRole(${id})">削除する</button>
+  </div>`);
+}
+async function submitDeleteRole(id){
+  const r=await apiPost({action:'delete_role',id});
+  if(!r.ok){showToast(r.error,'err');return;}
+  closeModal();showToast('役職を削除しました');
+  await Promise.all([loadRoles(),loadEmployees()]);renderCurrent();
+}
+
+// ══════════════════════════════════════════════════════════════════
+function setView(v){
+  currentView=v;
+  document.querySelectorAll('.nav-item').forEach(el=>{
+    el.classList.toggle('active',el.dataset.view===v);
+  });
+  renderCurrent();
+}
+function renderCurrent(){
+  if(currentView==='dashboard')renderDashboard();
+  else if(currentView==='employees')renderEmployeeList();
+  else if(currentView==='detail')renderDetail();
+  else if(currentView==='calendar')renderCalendar();
+  else if(currentView==='rules')renderRules();
+  else if(currentView==='retired'){loadRetired().then(()=>renderRetired());}
+  else if(currentView==='salary')renderSalary();
+  else if(currentView==='monthly'){loadMonthly(currentMonthlyYM).then(()=>renderMonthly());}
+  else if(currentView==='bonus'){loadBonus(currentBonusYM).then(()=>renderBonus());}
+  else if(currentView==='roles')renderRoles();
+}
+document.querySelectorAll('.nav-item').forEach(el=>{
+  el.addEventListener('click',()=>{selectedEmpId=null;setView(el.dataset.view);});
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 初期化
+// ══════════════════════════════════════════════════════════════════
+document.getElementById('today-label').textContent=TODAY;
+(async()=>{await Promise.all([loadEmployees(),loadRoles()]);renderDashboard();})();
+</script>
+</body>
+</html>

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>座席キャパシティ シミュレーター | まんてん個別プラス</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;color:#e4e4e7;font-family:'Helvetica Neue',sans-serif}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{opacity:1}
+input[type=range]{-webkit-appearance:none;appearance:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:#6366f1;border:3px solid #312e81;margin-top:-7px;
+  box-shadow:0 2px 8px rgba(99,102,241,0.4)
+}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px}
+.fade-in{animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback, useEffect, useRef } = React;
+
+// ===================== 定数 =====================
+const TIMES_NORMAL    = ["16:00","17:00","18:00","19:00","20:00","21:00"];
+const TIMES_INTENSIVE = ["13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
+const DAYS_PER_WEEK   = 5;
+const COLORS_POOL     = ["#22c55e","#3b82f6","#6366f1","#f59e0b","#ef4444","#ec4899","#14b8a6","#f97316"];
+const CARD_COLORS     = ["#3b82f6","#10b981","#8b5cf6","#f59e0b","#ef4444","#06b6d4","#ec4899","#84cc16"];
+
+const makeDefaultStudents = (times) => [
+  { id:1,label:"小学生",  ratio:15,weeklySlots:3, color:"#22c55e",slots:Object.fromEntries(times.slice(0,3).map((_,i)=>[i,i===2?2:1])) },
+  { id:2,label:"中1・2年",ratio:30,weeklySlots:6, color:"#3b82f6",slots:Object.fromEntries([[2,2],[3,3],[4,3]]) },
+  { id:3,label:"中3年",   ratio:30,weeklySlots:10,color:"#6366f1",slots:Object.fromEntries([[2,2],[3,3],[4,3]]) },
+  { id:4,label:"高1・2年",ratio:20,weeklySlots:6, color:"#f59e0b",slots:Object.fromEntries([[2,2],[3,3],[4,3],[5,2]]) },
+  { id:5,label:"高3年",   ratio:5, weeklySlots:15,color:"#ef4444",slots:Object.fromEntries([[2,2],[3,3],[4,3],[5,2]]) },
+];
+const makeDefaultBuffers = (times, val=90) =>
+  Object.fromEntries(times.map((_,i)=>[i,val]));
+const makeDefaultState = (times) => ({
+  seats: 10,
+  defaultBuffer: 90,
+  slotBuffers: makeDefaultBuffers(times),
+  students: makeDefaultStudents(times),
+});
+
+// ===================== API =====================
+const API = 'api/index.php';
+async function apiFetch(method, params) {
+  if (method === 'GET') {
+    const q = new URLSearchParams({ ...params, _t: Date.now() });
+    const r = await fetch(`${API}?${q}`, { credentials:'include' });
+    return r.json();
+  }
+  const r = await fetch(API, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  return r.json();
+}
+
+// ===================== 共通UI =====================
+function Toast({ msg, ok }) {
+  return (
+    <div style={{
+      position:'fixed',top:20,left:'50%',transform:'translateX(-50%)',zIndex:9999,
+      background:ok?'#166534':'#7f1d1d',
+      border:`1px solid ${ok?'#22c55e':'#ef4444'}`,
+      color:'#fff',padding:'10px 20px',borderRadius:12,fontSize:13,fontWeight:600,
+      boxShadow:'0 4px 24px rgba(0,0,0,0.5)',
+      display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap',
+    }}>
+      {ok?'✓':'✕'} {msg}
+    </div>
+  );
+}
+
+function Spinner() {
+  return (
+    <div style={{display:'flex',justifyContent:'center',padding:60}}>
+      <div style={{width:32,height:32,border:'3px solid #27272a',borderTop:'3px solid #6366f1',borderRadius:'50%',animation:'spin .7s linear infinite'}} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  );
+}
+
+function NumBox({ value, onChange, min=0, max=999, width=48 }) {
+  return (
+    <input type="number" value={value} min={min} max={max}
+      onChange={e=>{ const v=e.target.value; if(v==='') onChange(0); else onChange(Math.max(min,Math.min(max,Number(v)))); }}
+      style={{width,background:'#27272a',border:'1px solid #3f3f46',borderRadius:8,color:'#fff',
+        fontSize:14,fontWeight:600,padding:'6px 4px',textAlign:'center',outline:'none',
+        fontVariantNumeric:'tabular-nums',fontFamily:'inherit'}}
+    />
+  );
+}
+
+function SectionCard({ title, children, badge, headerRight }) {
+  return (
+    <div style={{background:'#18181b',borderRadius:16,padding:'24px 20px 20px',marginBottom:20,border:'1px solid #27272a'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18,flexWrap:'wrap',gap:8}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <h2 style={{fontSize:15,fontWeight:700,color:'#fff',margin:0}}>{title}</h2>
+          {badge&&<span style={{fontSize:11,fontWeight:600,color:badge.color,background:badge.bg,padding:'2px 10px',borderRadius:20,whiteSpace:'nowrap'}}>{badge.text}</span>}
+        </div>
+        {headerRight}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ===================== シミュレーターパネル =====================
+function SimulatorPanel({ state, onChange }) {
+  const { times, seats, defaultBuffer, slotBuffers, students } = state;
+  const [innerTab,    setInnerTab]    = useState('result');
+  const [expandedGrp, setExpandedGrp] = useState(null);
+
+  const set = (key, val) => onChange({ ...state, [key]: val });
+  const totalRatio = students.reduce((s,m)=>s+m.ratio, 0);
+
+  const handleDefaultBuffer = v =>
+    onChange({ ...state, defaultBuffer: v, slotBuffers: makeDefaultBuffers(times, v) });
+
+  const updateSlotBuffer = (idx, v)   => set('slotBuffers', { ...slotBuffers, [idx]: v });
+  const updateStudent    = (id, f, v) => set('students', students.map(s=>s.id===id?{...s,[f]:v}:s));
+  const toggleSlot = (id, idx) => set('students', students.map(s=>{
+    if (s.id!==id) return s;
+    const n={...s.slots};
+    if (idx in n) delete n[idx]; else n[idx]=1;
+    return {...s, slots:n};
+  }));
+  const setSlotWeight = (id, idx, w) =>
+    set('students', students.map(s=>s.id!==id?s:{...s,slots:{...s.slots,[idx]:w}}));
+  const addStudent = () => {
+    const maxId = Math.max(0, ...students.map(s=>s.id));
+    const allSlots = Object.fromEntries(times.map((_,i)=>[i,1]));
+    set('students', [...students, {
+      id:maxId+1, label:'新規', ratio:0, weeklySlots:3,
+      color:COLORS_POOL[students.length%COLORS_POOL.length], slots:allSlots,
+    }]);
+  };
+  const removeStudent = id => set('students', students.filter(s=>s.id!==id));
+
+  const results = useMemo(()=>{
+    if (totalRatio===0) return null;
+    const wAvg = students.reduce((s,m)=>s+(m.ratio/100)*m.weeklySlots, 0);
+    const gd   = students.map(s=>({
+      ...s,
+      aws: Object.values(s.slots).reduce((a,b)=>a+b, 0),
+      ds:  s.weeklySlots / DAYS_PER_WEEK,
+    }));
+    const slotLoads = times.map((time,ti)=>{
+      const eff = seats*(slotBuffers[ti]/100);
+      let load=0; const gc=[];
+      gd.forEach(g=>{
+        if (ti in g.slots && g.aws>0) {
+          const c = (g.ratio/100)*g.ds*(g.slots[ti]/g.aws);
+          load += c;
+          gc.push({ label:g.label, color:g.color, contrib:c });
+        }
+      });
+      return { time, ti, loadPerStudent:load, gc, eff, bufferRate:slotBuffers[ti] };
+    });
+    const peakSlot = slotLoads.reduce((w,sl)=>{
+      const r=sl.eff>0?sl.loadPerStudent/sl.eff:0;
+      const wr=w.eff>0?w.loadPerStudent/w.eff:0;
+      return r>wr?sl:w;
+    }, slotLoads[0]);
+    const maxByPeak  = peakSlot.loadPerStudent>0 ? Math.floor(peakSlot.eff/peakSlot.loadPerStudent) : 9999;
+    const totalCap   = seats*times.length*DAYS_PER_WEEK;
+    const avgBuf     = times.reduce((s,_,i)=>s+slotBuffers[i],0)/times.length;
+    const maxByTotal = wAvg>0 ? Math.floor((totalCap*(avgBuf/100))/wAvg) : 9999;
+    const finalMax   = Math.min(maxByPeak, maxByTotal);
+    const slotBreakdown = slotLoads.map(sl=>{
+      const exp  = Math.round(sl.loadPerStudent*finalMax*10)/10;
+      const util = seats>0 ? Math.round((exp/seats)*100) : 0;
+      const gdet = sl.gc.map(g=>({...g, expected:Math.round(g.contrib*finalMax*10)/10}));
+      return { ...sl, expected:exp, utilization:util, groupDetails:gdet };
+    });
+    const studentBreakdown = students.map(m=>{
+      const c = Math.round(finalMax*(m.ratio/100));
+      return { ...m, count:c, totalSlots:c*m.weeklySlots };
+    });
+    const used = finalMax*wAvg;
+    const overallUtil = totalCap>0 ? Math.round((used/totalCap)*100) : 0;
+    return {
+      weightedAvg:wAvg, maxStudents:finalMax,
+      bindingConstraint: maxByPeak<=maxByTotal ? 'peak' : 'total',
+      slotBreakdown, studentBreakdown, totalCap,
+      totalWeeklyUsed: Math.round(used), overallUtil, peakSlot,
+    };
+  }, [seats, slotBuffers, students, totalRatio, times]);
+
+  const allSame = times.every((_,i)=>slotBuffers[i]===defaultBuffer);
+
+  return (
+    <div>
+      {/* 基本設定 */}
+      <SectionCard title="基本設定">
+        <div style={{marginBottom:28}}>
+          {(()=>{ const pct=((seats-1)/39)*100; return (
+            <div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
+                <span style={{fontSize:13,color:'#a1a1aa'}}>座席数</span>
+                <div style={{display:'flex',alignItems:'baseline',gap:4}}>
+                  <span style={{fontSize:32,fontWeight:900,color:'#fff',lineHeight:1}}>{seats}</span>
+                  <span style={{fontSize:12,color:'#71717a'}}>席</span>
+                </div>
+              </div>
+              <input type="range" min={1} max={40} value={seats}
+                onChange={e=>set('seats',Number(e.target.value))}
+                style={{width:'100%',height:6,background:`linear-gradient(to right,#6366f1 ${pct}%,#27272a ${pct}%)`,borderRadius:3}} />
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#52525b',marginTop:3}}>
+                <span>1</span><span>40</span>
+              </div>
+            </div>
+          );})()}
+        </div>
+
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <span style={{fontSize:13,color:'#a1a1aa'}}>稼働率上限（時間帯別）</span>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <span style={{fontSize:11,color:'#52525b'}}>一括:</span>
+              {(()=>{ const pct=((defaultBuffer-50)/50)*100; return (
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <input type="range" min={50} max={100} value={defaultBuffer}
+                    onChange={e=>handleDefaultBuffer(Number(e.target.value))}
+                    style={{width:80,height:5,background:`linear-gradient(to right,#6366f1 ${pct}%,#27272a ${pct}%)`,borderRadius:3}} />
+                  <span style={{fontSize:14,fontWeight:700,color:'#fff',width:36,textAlign:'right'}}>{defaultBuffer}%</span>
+                </div>
+              );})()}
+            </div>
+          </div>
+          <div style={{background:'#111113',borderRadius:12,border:'1px solid #1e1e22',padding:'12px 16px',display:'flex',flexDirection:'column',gap:10}}>
+            {times.map((t,idx)=>{
+              const v=slotBuffers[idx], pct=((v-50)/50)*100;
+              const isC=v!==defaultBuffer;
+              const bc=v>=90?'#22c55e':v>=70?'#f59e0b':'#ef4444';
+              return (
+                <div key={idx} style={{display:'flex',alignItems:'center',gap:10}}>
+                  <span style={{fontSize:13,fontWeight:600,color:isC?'#c7d2fe':'#a1a1aa',width:48,flexShrink:0}}>{t}</span>
+                  <input type="range" min={50} max={100} value={v}
+                    onChange={e=>updateSlotBuffer(idx,Number(e.target.value))}
+                    style={{flex:1,height:5,background:`linear-gradient(to right,${bc} ${pct}%,#27272a ${pct}%)`,borderRadius:3}} />
+                  <span style={{width:36,textAlign:'right',fontSize:14,fontWeight:700,color:isC?'#c7d2fe':'#fff',flexShrink:0}}>{v}%</span>
+                  {isC
+                    ? <button onClick={()=>updateSlotBuffer(idx,defaultBuffer)}
+                        style={{background:'transparent',border:'none',color:'#6366f1',fontSize:13,cursor:'pointer',padding:'0 2px',flexShrink:0}}>↺</button>
+                    : <span style={{width:18,flexShrink:0}} />}
+                </div>
+              );
+            })}
+          </div>
+          {!allSame&&(
+            <div style={{marginTop:8,display:'flex',justifyContent:'flex-end'}}>
+              <button onClick={()=>set('slotBuffers',makeDefaultBuffers(times,defaultBuffer))}
+                style={{background:'transparent',border:'1px solid #3f3f46',borderRadius:8,color:'#a1a1aa',fontSize:11,fontWeight:600,padding:'4px 12px',cursor:'pointer',fontFamily:'inherit'}}>
+                すべてリセット
+              </button>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* 内部タブ */}
+      <div style={{display:'flex',gap:4,marginBottom:20,background:'#18181b',borderRadius:12,padding:4,border:'1px solid #27272a'}}>
+        {[{k:'result',l:'結果'},{k:'students',l:'生徒構成'}].map(({k,l})=>(
+          <button key={k} onClick={()=>setInnerTab(k)}
+            style={{flex:1,padding:'10px 0',borderRadius:10,border:'none',fontSize:13,fontWeight:600,
+              cursor:'pointer',fontFamily:'inherit',transition:'all 0.2s',
+              background:innerTab===k?'#6366f1':'transparent',
+              color:innerTab===k?'#fff':'#71717a'}}>{l}</button>
+        ))}
+      </div>
+
+      {/* 生徒構成タブ */}
+      {innerTab==='students'&&(
+        <SectionCard title="生徒構成 設定"
+          badge={totalRatio!==100
+            ?{text:`合計 ${totalRatio}%（要100%）`,color:'#fbbf24',bg:'rgba(251,191,36,0.12)'}
+            :{text:'合計 100%',color:'#22c55e',bg:'rgba(34,197,94,0.1)'}}
+          headerRight={
+            <button onClick={addStudent}
+              style={{background:'#27272a',border:'1px solid #3f3f46',borderRadius:8,color:'#a1a1aa',fontSize:12,fontWeight:600,padding:'6px 14px',cursor:'pointer',fontFamily:'inherit'}}>
+              ＋ 追加
+            </button>}
+        >
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {students.map(s=>{
+              const isExp=expandedGrp===s.id;
+              const swSum=Object.values(s.slots).reduce((a,b)=>a+b,0);
+              return (
+                <div key={s.id} style={{background:'#111113',borderRadius:12,border:`1px solid ${isExp?'#3f3f46':'#1e1e22'}`}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 72px 82px 32px',gap:8,alignItems:'center',padding:'14px 16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{width:10,height:10,borderRadius:3,background:s.color,flexShrink:0}} />
+                      <input type="text" value={s.label} onChange={e=>updateStudent(s.id,'label',e.target.value)}
+                        style={{background:'transparent',border:'none',color:'#d4d4d8',fontSize:14,fontWeight:600,outline:'none',width:'100%',padding:'2px 0',fontFamily:'inherit'}} />
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:3}}>
+                      <NumBox value={s.ratio} onChange={v=>updateStudent(s.id,'ratio',v)} max={100} width={42} />
+                      <span style={{fontSize:11,color:'#71717a'}}>%</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:3}}>
+                      <NumBox value={s.weeklySlots} onChange={v=>updateStudent(s.id,'weeklySlots',v)} max={35} width={42} />
+                      <span style={{fontSize:11,color:'#71717a'}}>コマ</span>
+                    </div>
+                    <button onClick={()=>removeStudent(s.id)} disabled={students.length<=1}
+                      style={{background:'transparent',border:'none',color:students.length<=1?'#27272a':'#52525b',fontSize:15,cursor:students.length<=1?'default':'pointer',padding:2,lineHeight:1}}>✕</button>
+                  </div>
+                  <div style={{padding:'0 16px 10px',display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
+                    <span style={{fontSize:11,color:'#52525b',marginRight:2}}>時間帯:</span>
+                    {times.map((t,idx)=>{
+                      const active=idx in s.slots;
+                      return (
+                        <button key={idx} onClick={()=>toggleSlot(s.id,idx)}
+                          style={{padding:'3px 8px',borderRadius:6,border:'none',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit',
+                            background:active?'#4338ca':'#27272a',color:active?'#c7d2fe':'#52525b'}}>{t}</button>
+                      );
+                    })}
+                    <button onClick={()=>setExpandedGrp(isExp?null:s.id)}
+                      style={{marginLeft:'auto',padding:'3px 10px',borderRadius:6,border:'1px solid #3f3f46',fontSize:11,cursor:'pointer',fontFamily:'inherit',background:'transparent',color:'#a1a1aa'}}>
+                      {isExp?'▲ 閉じる':'▼ 需要比率'}
+                    </button>
+                  </div>
+                  {isExp&&(
+                    <div style={{padding:'0 16px 16px'}}>
+                      <div style={{background:'#0f1117',borderRadius:10,padding:14,border:'1px solid #27272a'}}>
+                        <div style={{fontSize:11,color:'#71717a',marginBottom:10}}>受講可能な時間帯の需要比率を設定。数字が大きいほどその時間帯に集中します。</div>
+                        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                          {times.map((t,idx)=>{
+                            if (!(idx in s.slots)) return null;
+                            const w=s.slots[idx];
+                            const pct=swSum>0?Math.round((w/swSum)*100):0;
+                            return (
+                              <div key={idx} style={{display:'flex',alignItems:'center',gap:10}}>
+                                <span style={{fontSize:13,fontWeight:600,color:'#a1a1aa',width:48}}>{t}</span>
+                                <input type="range" min={0} max={10} value={w}
+                                  onChange={e=>setSlotWeight(s.id,idx,Number(e.target.value))}
+                                  style={{flex:1,height:5,background:`linear-gradient(to right,${s.color} ${w*10}%,#27272a ${w*10}%)`,borderRadius:3}} />
+                                <span style={{width:28,textAlign:'center',fontSize:16,fontWeight:800,color:'#fff'}}>{w}</span>
+                                <span style={{width:42,textAlign:'right',fontSize:11,color:'#71717a'}}>{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* 結果タブ */}
+      {innerTab==='result'&&results&&(
+        <>
+          <div style={{background:'linear-gradient(135deg,#312e81,#1e1b4b)',borderRadius:16,padding:32,marginBottom:20,textAlign:'center',border:'1px solid #4338ca',position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',top:-40,right:-40,width:120,height:120,borderRadius:'50%',background:'rgba(99,102,241,0.15)'}} />
+            <div style={{fontSize:13,color:'#a5b4fc',marginBottom:8,fontWeight:500}}>受入可能 生徒数上限</div>
+            <div style={{fontSize:64,fontWeight:900,color:'#fff',lineHeight:1,marginBottom:4}}>{results.maxStudents}</div>
+            <div style={{fontSize:16,color:'#c7d2fe'}}>名</div>
+            <div style={{marginTop:16,fontSize:12,color:'#818cf8',background:'rgba(99,102,241,0.15)',display:'inline-block',padding:'4px 14px',borderRadius:20}}>
+              {results.bindingConstraint==='peak'
+                ? `ボトルネック: ${results.peakSlot.time}（稼働率${results.peakSlot.bufferRate}%）`
+                : '総コマ数が制約'}
+            </div>
+            {totalRatio!==100&&(
+              <div style={{marginTop:12,fontSize:12,color:'#fbbf24',background:'rgba(251,191,36,0.1)',display:'block',padding:'4px 14px',borderRadius:20}}>
+                ⚠ 生徒割合の合計が{totalRatio}%です
+              </div>
+            )}
+          </div>
+
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
+            {[
+              {label:'加重平均',value:results.weightedAvg.toFixed(1),unit:'コマ/週'},
+              {label:'週間総稼働',value:results.totalWeeklyUsed,unit:`/ ${results.totalCap}`},
+              {label:'全体稼働率',value:results.overallUtil,unit:'%'},
+            ].map((s,i)=>(
+              <div key={i} style={{background:'#18181b',borderRadius:12,padding:'16px 12px',border:'1px solid #27272a',textAlign:'center'}}>
+                <div style={{fontSize:10,color:'#71717a',marginBottom:6}}>{s.label}</div>
+                <div style={{fontSize:20,fontWeight:700,color:'#fff'}}>
+                  {s.value}<span style={{fontSize:11,color:'#52525b',fontWeight:400}}>{s.unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <SectionCard title="時間帯別 予想着席数（学年別内訳）">
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              {results.slotBreakdown.map((slot,i)=>{
+                const isOver=slot.expected>seats;
+                const isPeak=slot.time===results.peakSlot.time;
+                return (
+                  <div key={i}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:3,alignItems:'center'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <span style={{fontSize:13,color:'#a1a1aa',fontWeight:500}}>{slot.time}</span>
+                        <span style={{fontSize:10,color:'#71717a',background:'#27272a',padding:'1px 6px',borderRadius:4}}>稼働率 {slot.bufferRate}%</span>
+                        {isPeak&&<span style={{fontSize:10,color:'#6366f1',background:'rgba(99,102,241,0.15)',padding:'1px 6px',borderRadius:4}}>★ピーク</span>}
+                      </div>
+                      <span style={{fontSize:13,color:isOver?'#ef4444':'#fff',fontWeight:600}}>{slot.expected}人 / {slot.utilization}%</span>
+                    </div>
+                    <div style={{height:24,background:'#27272a',borderRadius:6,overflow:'hidden',display:'flex',position:'relative'}}>
+                      {slot.groupDetails.map((gd,gi)=>(
+                        <div key={gi} title={`${gd.label}: ${gd.expected}人`}
+                          style={{height:'100%',width:`${seats>0?(gd.expected/seats)*100:0}%`,background:gd.color,
+                            opacity:isOver?0.7:0.85,
+                            borderRight:gi<slot.groupDetails.length-1?'1px solid rgba(0,0,0,0.3)':'none'}} />
+                      ))}
+                      {slot.bufferRate<100&&(
+                        <div style={{position:'absolute',top:0,bottom:0,left:`${slot.bufferRate}%`,width:2,background:'rgba(255,255,255,0.3)',borderRadius:1}} />
+                      )}
+                    </div>
+                    {slot.groupDetails.length>0&&(
+                      <div style={{display:'flex',gap:10,marginTop:3,flexWrap:'wrap'}}>
+                        {slot.groupDetails.map((gd,gi)=>(
+                          <span key={gi} style={{fontSize:10,color:'#71717a',display:'flex',alignItems:'center',gap:3}}>
+                            <span style={{width:6,height:6,borderRadius:2,background:gd.color,display:'inline-block'}} />
+                            {gd.label} {gd.expected}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="生徒構成 内訳">
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              {results.studentBreakdown.map((s,i)=>(
+                <div key={i} style={{display:'grid',gridTemplateColumns:'90px 1fr 55px 75px',alignItems:'center',gap:10,padding:'8px 0',borderBottom:i<results.studentBreakdown.length-1?'1px solid #27272a':'none'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}} />
+                    <span style={{fontSize:13,fontWeight:500,color:'#d4d4d8'}}>{s.label}</span>
+                  </div>
+                  <div style={{height:5,background:'#27272a',borderRadius:3,overflow:'hidden'}}>
+                    <div style={{height:'100%',width:`${results.maxStudents>0?(s.count/results.maxStudents)*100:0}%`,background:s.color,borderRadius:3}} />
+                  </div>
+                  <span style={{fontSize:14,fontWeight:700,color:'#fff',textAlign:'right'}}>{s.count}名</span>
+                  <span style={{fontSize:11,color:'#71717a',textAlign:'right'}}>{s.totalSlots}コマ/週</span>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ===================== 教室ページ =====================
+function SchoolPage({ schoolId, onBack, showToast }) {
+  const [school,  setSchool]  = useState(null);
+  const [season,  setSeason]  = useState('normal');
+  const [states,  setStates]  = useState({});
+  const [saving,  setSaving]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [editOpen,setEditOpen]= useState(false);
+  const saveTimer = useRef(null);
+
+  useEffect(()=>{
+    (async()=>{
+      const res = await apiFetch('GET',{action:'school',id:schoolId});
+      if (!res.ok) { showToast(res.error,false); onBack(); return; }
+      setSchool(res.data);
+      const db = res.data.states || {};
+      setStates({
+        normal:    { ...makeDefaultState(TIMES_NORMAL),    ...(db.normal    ||{}), times:TIMES_NORMAL    },
+        intensive: { ...makeDefaultState(TIMES_INTENSIVE), ...(db.intensive ||{}), times:TIMES_INTENSIVE },
+      });
+      setLoading(false);
+    })();
+  },[schoolId]);
+
+  const handleChange = (seasonKey, newState) => {
+    setStates(prev=>({...prev,[seasonKey]:newState}));
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(()=>doSave(seasonKey, newState), 1500);
+  };
+
+  const doSave = async (seasonKey, st) => {
+    setSaving(true);
+    const res = await apiFetch('POST',{
+      action:'save_simulator',
+      school_id:schoolId, season:seasonKey,
+      seats:st.seats, default_buffer:st.defaultBuffer,
+      slot_buffers:st.slotBuffers, students:st.students,
+    });
+    setSaving(false);
+    if (!res.ok) showToast(res.error,false);
+  };
+
+  if (loading) return <div style={{minHeight:'100vh',background:'#0f1117'}}><Spinner /></div>;
+
+  return (
+    <div style={{minHeight:'100vh',background:'#0f1117',color:'#e4e4e7',fontFamily:"'Helvetica Neue',sans-serif"}}>
+      {/* ヘッダー */}
+      <div style={{background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0c4a6e 100%)',
+        padding:'10px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap',
+        position:'sticky',top:0,zIndex:100}}>
+        <button onClick={onBack}
+          style={{padding:'6px 14px',border:'none',cursor:'pointer',borderRadius:8,fontSize:12,fontWeight:700,background:'rgba(255,255,255,0.15)',color:'white'}}>
+          ← 教室一覧
+        </button>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:28,height:28,borderRadius:7,background:'linear-gradient(135deg,#38bdf8,#818cf8)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:900,color:'white'}}>M</div>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:'white'}}>{school.name} 教室</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.5)'}}>
+              {school.open_date&&<span style={{marginRight:8}}>📅 {school.open_date}</span>}
+              {school.staff_name&&<span>👤 {school.staff_name}</span>}
+            </div>
+          </div>
+        </div>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:11,color:saving?'#fbbf24':'rgba(255,255,255,0.35)',transition:'color 0.3s'}}>
+            {saving?'💾 保存中…':'✓ 変更は自動保存'}
+          </span>
+          <button onClick={()=>setEditOpen(true)}
+            style={{padding:'6px 12px',border:'1px solid rgba(255,255,255,0.2)',cursor:'pointer',borderRadius:8,
+              fontSize:11,fontWeight:600,background:'transparent',color:'rgba(255,255,255,0.7)'}}>
+            ✎ 編集
+          </button>
+        </div>
+      </div>
+
+      <div style={{padding:'24px 16px',maxWidth:760,margin:'0 auto'}}>
+        {/* シーズンタブ */}
+        <div style={{display:'flex',gap:4,marginBottom:24,background:'#18181b',borderRadius:14,padding:4,border:'1px solid #27272a'}}>
+          {[{k:'normal',l:'通常期',s:'16:00〜21:00'},{k:'intensive',l:'講習期',s:'13:00〜21:00'}].map(({k,l,s})=>{
+            const active=season===k;
+            return (
+              <button key={k} onClick={()=>setSeason(k)}
+                style={{flex:1,padding:'12px 0',borderRadius:11,border:'none',cursor:'pointer',fontFamily:'inherit',
+                  transition:'all 0.2s',
+                  background:active?'linear-gradient(135deg,#4338ca,#6366f1)':'transparent',
+                  boxShadow:active?'0 2px 12px rgba(99,102,241,0.35)':'none'}}>
+                <div style={{fontSize:14,fontWeight:700,color:active?'#fff':'#71717a'}}>{l}</div>
+                <div style={{fontSize:10,color:active?'#c7d2fe':'#52525b',marginTop:2}}>{s}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {states.normal&&(
+          <div style={{display:season==='normal'?'block':'none'}}>
+            <SimulatorPanel state={states.normal} onChange={s=>handleChange('normal',s)} />
+          </div>
+        )}
+        {states.intensive&&(
+          <div style={{display:season==='intensive'?'block':'none'}}>
+            <SimulatorPanel state={states.intensive} onChange={s=>handleChange('intensive',s)} />
+          </div>
+        )}
+
+        <div style={{fontSize:11,color:'#3f3f46',textAlign:'center',padding:'12px 0'}}>
+          まんてん個別プラス 座席シミュレーター v6.1
+        </div>
+      </div>
+
+      {editOpen&&(
+        <SchoolModal
+          school={school}
+          onSave={async(name,open_date,staff_name)=>{
+            const res=await apiFetch('POST',{action:'update_school',id:school.id,name,open_date,staff_name});
+            if (!res.ok) { showToast(res.error,false); return; }
+            setSchool(p=>({...p,name,open_date,staff_name}));
+            setEditOpen(false);
+            showToast('教室情報を更新しました');
+          }}
+          onClose={()=>setEditOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ===================== 教室モーダル（追加 / 編集 兼用） =====================
+function SchoolModal({ school=null, onSave, onClose }) {
+  const isEdit = !!school;
+  const [name,  setName]  = useState(school?.name       || '');
+  const [open,  setOpen]  = useState(school?.open_date  || '');
+  const [staff, setStaff] = useState(school?.staff_name || '');
+
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:1000,
+      display:'flex',alignItems:'center',justifyContent:'center',padding:16}}
+      onClick={onClose}>
+      <div style={{background:'#18181b',borderRadius:20,padding:'28px',maxWidth:400,width:'100%',
+        border:'1px solid #27272a'}}
+        onClick={e=>e.stopPropagation()} className="fade-in">
+        <div style={{fontSize:16,fontWeight:700,color:'#fff',marginBottom:20}}>
+          {isEdit?'教室情報を編集':'教室を追加'}
+        </div>
+        {[
+          ['教室名',    name,  setName,  '例：渋谷',    true],
+          ['開校予定',  open,  setOpen,  '例：2025年4月',false],
+          ['担当者名',  staff, setStaff, '担当社員名',  false],
+        ].map(([l,v,s,p,r],i)=>(
+          <div key={i} style={{marginBottom:14}}>
+            <label style={{display:'block',fontSize:12,fontWeight:600,color:'#a1a1aa',marginBottom:5}}>
+              {l}{r&&<span style={{color:'#ef4444',marginLeft:2}}>*</span>}
+            </label>
+            <input value={v} onChange={e=>s(e.target.value)} placeholder={p}
+              style={{width:'100%',padding:'10px 14px',borderRadius:10,border:'1px solid #3f3f46',
+                background:'#111113',color:'#fff',fontSize:14,outline:'none',fontFamily:'inherit'}}
+              onFocus={e=>e.target.style.borderColor='#6366f1'}
+              onBlur={e=>e.target.style.borderColor='#3f3f46'} />
+          </div>
+        ))}
+        <div style={{display:'flex',gap:10,marginTop:20}}>
+          <button onClick={onClose}
+            style={{flex:1,padding:'11px 0',border:'none',cursor:'pointer',borderRadius:10,
+              fontSize:13,fontWeight:600,background:'#27272a',color:'#a1a1aa',fontFamily:'inherit'}}>
+            キャンセル
+          </button>
+          <button onClick={()=>name.trim()&&onSave(name.trim(),open,staff)}
+            disabled={!name.trim()}
+            style={{flex:2,padding:'11px 0',border:'none',
+              cursor:name.trim()?'pointer':'default',borderRadius:10,fontSize:13,fontWeight:700,
+              background:name.trim()?'linear-gradient(135deg,#4338ca,#6366f1)':'#27272a',
+              color:name.trim()?'#fff':'#52525b',fontFamily:'inherit'}}>
+            {isEdit?'保存':'＋ 作成'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================== 教室一覧ページ =====================
+function TopPage({ onSelect, showToast }) {
+  const [schools, setSchools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const res = await apiFetch('GET',{action:'schools'});
+    if (res.ok) setSchools(res.data);
+    setLoading(false);
+  };
+  useEffect(()=>{ load(); },[]);
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`「${name} 教室」を削除しますか？\nシミュレーターデータもすべて削除されます。`)) return;
+    const res = await apiFetch('POST',{action:'delete_school',id});
+    if (!res.ok) { showToast(res.error,false); return; }
+    showToast('削除しました');
+    setSchools(p=>p.filter(s=>s.id!==id));
+  };
+
+  const calcMax = (sc) => {
+    if (!sc.normal_students || !sc.normal_slot_buffers) return null;
+    const seats=sc.normal_seats;
+    const gd=sc.normal_students.map(s=>({
+      ...s,
+      aws: Object.values(s.slots||{}).reduce((a,b)=>a+b,0),
+      ds:  s.weeklySlots/DAYS_PER_WEEK,
+    }));
+    const loads=TIMES_NORMAL.map((_,ti)=>{
+      let l=0;
+      gd.forEach(g=>{
+        if (ti in (g.slots||{}) && g.aws>0)
+          l += (g.ratio/100)*g.ds*(g.slots[ti]/g.aws);
+      });
+      const buf = sc.normal_slot_buffers[ti] ?? sc.normal_default_buffer ?? 90;
+      return { l, eff: seats*(buf/100) };
+    });
+    const peak=loads.reduce((w,sl)=>{
+      const r=sl.eff>0?sl.l/sl.eff:0, wr=w.eff>0?w.l/w.eff:0;
+      return r>wr?sl:w;
+    }, loads[0]);
+    return peak.l>0 ? Math.floor(peak.eff/peak.l) : 0;
+  };
+
+  return (
+    <div style={{minHeight:'100vh',background:'#0f1117',fontFamily:"'Helvetica Neue',sans-serif",color:'#e4e4e7'}}>
+      {/* ヘッダー */}
+      <div style={{background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0c4a6e 100%)',
+        padding:'16px 24px',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:40,height:40,borderRadius:9,background:'linear-gradient(135deg,#38bdf8,#818cf8)',
+            display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,color:'white'}}>M</div>
+          <div>
+            <div style={{fontSize:16,fontWeight:700,color:'white'}}>まんてん個別プラス</div>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.5)'}}>座席キャパシティ シミュレーター</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:'28px 20px',maxWidth:1100,margin:'0 auto'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:700,color:'#fff'}}>教室一覧</div>
+            <div style={{fontSize:12,color:'#71717a',marginTop:3}}>教室を選択してシミュレーターを開きます</div>
+          </div>
+          <button onClick={()=>setShowAdd(true)}
+            style={{padding:'10px 20px',border:'none',cursor:'pointer',borderRadius:8,fontSize:13,fontWeight:700,
+              background:'linear-gradient(135deg,#3b82f6,#8b5cf6)',color:'white',
+              boxShadow:'0 2px 8px rgba(59,130,246,0.3)',fontFamily:'inherit'}}>
+            ＋ 教室を追加
+          </button>
+        </div>
+
+        {loading ? <Spinner /> : schools.length===0 ? (
+          <div style={{textAlign:'center',padding:'80px 20px',background:'#18181b',borderRadius:16,border:'2px dashed #27272a'}} className="fade-in">
+            <div style={{fontSize:48,marginBottom:16}}>🏫</div>
+            <div style={{fontSize:16,fontWeight:600,color:'#a1a1aa',marginBottom:8}}>まだ教室が登録されていません</div>
+            <div style={{fontSize:13,color:'#52525b',marginBottom:20}}>「教室を追加」から最初の教室を作成してください</div>
+            <button onClick={()=>setShowAdd(true)}
+              style={{padding:'12px 24px',border:'none',cursor:'pointer',borderRadius:8,fontSize:13,fontWeight:700,background:'#6366f1',color:'white',fontFamily:'inherit'}}>
+              ＋ 最初の教室を追加
+            </button>
+          </div>
+        ) : (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(270px,1fr))',gap:16}} className="fade-in">
+            {schools.map((sc,idx)=>{
+              const color=CARD_COLORS[idx%CARD_COLORS.length];
+              const maxN=calcMax(sc);
+              return (
+                <div key={sc.id}
+                  style={{background:'#18181b',borderRadius:14,overflow:'hidden',border:'1px solid #27272a',transition:'transform 0.15s,border-color 0.15s'}}
+                  onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.borderColor='#3f3f46';}}
+                  onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.borderColor='#27272a';}}>
+                  <div style={{background:color,height:5}} />
+                  <div style={{padding:'18px'}}>
+                    <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:10}}>
+                      <div>
+                        <div style={{fontSize:17,fontWeight:700,color:'#fff'}}>{sc.name} 教室</div>
+                        <div style={{fontSize:11,color:'#71717a',marginTop:3}}>
+                          {sc.open_date&&<span style={{marginRight:8}}>📅 {sc.open_date}開校予定</span>}
+                          {sc.staff_name&&<span>👤 {sc.staff_name}</span>}
+                        </div>
+                      </div>
+                      <button onClick={e=>{e.stopPropagation();handleDelete(sc.id,sc.name);}}
+                        style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:6,
+                          padding:'3px 8px',fontSize:11,color:'#f87171',cursor:'pointer',fontWeight:600,flexShrink:0}}>
+                        削除
+                      </button>
+                    </div>
+                    <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+                      <span style={{background:'#27272a',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#a1a1aa'}}>通常期 {sc.normal_seats}席</span>
+                      {maxN!==null&&<span style={{background:'rgba(99,102,241,0.15)',borderRadius:6,padding:'3px 8px',fontSize:11,color:'#a5b4fc'}}>上限 {maxN}名</span>}
+                    </div>
+                    <button onClick={()=>onSelect(sc.id)}
+                      style={{width:'100%',padding:'10px',border:'none',cursor:'pointer',borderRadius:8,
+                        fontSize:13,fontWeight:700,background:color,color:'white',fontFamily:'inherit'}}>
+                      シミュレーターを開く →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {showAdd&&(
+        <SchoolModal
+          onSave={async(name,open_date,staff_name)=>{
+            const res=await apiFetch('POST',{action:'create_school',name,open_date,staff_name});
+            if (!res.ok) { showToast(res.error,false); return; }
+            showToast('教室を作成しました');
+            await load();
+            setShowAdd(false);
+          }}
+          onClose={()=>setShowAdd(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ===================== ルート App =====================
+function App() {
+  const [selectedId, setSelectedId] = useState(null);
+  const [toast,      setToast]      = useState(null);
+
+  const showToast = (msg, ok=true) => {
+    setToast({msg,ok});
+    setTimeout(()=>setToast(null), 3000);
+  };
+
+  return (
+    <>
+      {toast&&<Toast msg={toast.msg} ok={toast.ok} />}
+      {selectedId
+        ? <SchoolPage schoolId={selectedId} onBack={()=>setSelectedId(null)} showToast={showToast} />
+        : <TopPage onSelect={setSelectedId} showToast={showToast} />
+      }
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

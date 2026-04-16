@@ -1,0 +1,42 @@
+# ============================================================
+# まんてん個別プラス シミュレーター — URL設定
+# ============================================================
+
+Options -Indexes
+
+# --- index.html をデフォルトドキュメントに ---
+DirectoryIndex index.html
+
+# --- api/ 以外のリクエストは index.html へ ---
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # api/ へのアクセスはそのまま通す
+    RewriteRule ^api/ - [L]
+
+    # 実在ファイル・ディレクトリはそのまま
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # それ以外は index.html へ
+    RewriteRule ^ index.html [L]
+</IfModule>
+
+# --- キャッシュ制御 ---
+<IfModule mod_headers.c>
+    # HTMLはキャッシュしない
+    <FilesMatch "\.(html)$">
+        Header set Cache-Control "no-store, no-cache, must-revalidate"
+        Header set Pragma "no-cache"
+    </FilesMatch>
+    # JS/CSS は短期キャッシュ
+    <FilesMatch "\.(js|css)$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+</IfModule>
+
+# --- PHPファイルへの直接アクセスを制限（api/index.php 以外）---
+<FilesMatch "^(config)\.php$">
+    Require all denied
+</FilesMatch>

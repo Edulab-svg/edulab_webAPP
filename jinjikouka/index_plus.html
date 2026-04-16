@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026年度 人事考課（まんてん個別プラス）</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f0f2f7;
+  --surface: #ffffff;
+  --surface2: #f5f7fb;
+  --border: #e0e4ef;
+  --border2: #c8cfe0;
+  --text: #1a1e2e;
+  --text2: #5a6380;
+  --text3: #9aa0b8;
+  --accent: #e07830;
+  --accent2: #c45e18;
+  --accent-light: #fff4ed;
+  --accent-border: #f0c0a0;
+  --green: #0fad7a;
+  --yellow: #c89a10;
+  --red: #e03e3e;
+  --A: #0fad7a;
+  --B: #e07830;
+  --C: #e03e3e;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+  --shadow2: 0 2px 12px rgba(0,0,0,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+.header { background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+.header-inner { max-width: 1400px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 24px; }
+.header-title { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 900; font-size: 18px; letter-spacing: 0.04em; white-space: nowrap; }
+.header-title span { color: var(--accent); }
+.plus-badge { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.05em; margin-left: 6px; vertical-align: middle; }
+.header-nav { display: flex; gap: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 4px; }
+.nav-btn { background: none; border: none; color: var(--text2); font-family: 'Noto Sans JP', sans-serif; font-size: 13px; padding: 6px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.nav-btn.active { background: var(--accent); color: #fff; font-weight: 500; }
+.nav-btn:hover:not(.active) { background: var(--border); color: var(--text); }
+
+.main { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+.view { display: none; }
+.view.active { display: block; }
+
+.staff-section { margin-bottom: 24px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; }
+.section-title::before { content: ''; display: inline-block; width: 3px; height: 15px; background: var(--accent); border-radius: 2px; margin-right: 10px; vertical-align: middle; }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; border: none; font-family: 'Noto Sans JP', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); }
+.btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--border); color: var(--text); }
+
+.staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.staff-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: all 0.2s; position: relative; box-shadow: var(--shadow); }
+.staff-card:hover { border-color: var(--accent); box-shadow: var(--shadow2); transform: translateY(-1px); }
+.staff-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(224,120,48,0.15); }
+.staff-card-name { font-weight: 700; font-size: 15px; margin-bottom: 3px; }
+.staff-card-meta { color: var(--text2); font-size: 12px; margin-bottom: 8px; }
+.staff-score-badge { display: inline-block; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.staff-score-badge.good { color: var(--green); border-color: #a0ddc8; background: #edfaf5; }
+.staff-score-badge.warn { color: var(--yellow); border-color: #e8d080; background: #fdf8dc; }
+.staff-score-badge.bad  { color: var(--red); border-color: #f0b0b0; background: #fff0f0; }
+
+.add-staff-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-label { font-size: 11px; color: var(--text2); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 600; }
+.form-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; padding: 7px 12px; outline: none; transition: border-color 0.15s; min-width: 150px; }
+.form-input:focus { border-color: var(--accent); background: #fff; }
+.form-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Noto Sans JP', sans-serif; font-size: 14px; padding: 7px 12px; outline: none; cursor: pointer; }
+.form-select:focus { border-color: var(--accent); }
+
+.eval-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; margin-bottom: 18px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; box-shadow: var(--shadow); }
+.eval-header-info { flex: 1; }
+.eval-header-name { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 900; font-size: 20px; margin-bottom: 3px; }
+.eval-header-meta { color: var(--text2); font-size: 12px; }
+.score-display { text-align: center; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 18px; min-width: 110px; }
+.score-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; font-weight: 600; }
+.score-value { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 900; font-size: 28px; }
+.score-value.good { color: var(--green); }
+.score-value.warn { color: var(--yellow); }
+.score-value.bad  { color: var(--red); }
+.score-line { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+.period-tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.period-tab { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; cursor: pointer; transition: all 0.2s; text-align: center; box-shadow: var(--shadow); }
+.period-tab.active { background: var(--accent); border-color: var(--accent); }
+.period-tab-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+.period-tab.active .period-tab-label { color: rgba(255,255,255,0.75); }
+.period-tab-name { font-weight: 700; font-size: 12px; color: var(--text); }
+.period-tab.active .period-tab-name { color: #fff; }
+
+.eval-category { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; overflow: hidden; box-shadow: var(--shadow); }
+.eval-category-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 9px 18px; display: flex; align-items: center; justify-content: space-between; }
+.eval-category-header.ai-cat { background: #f5f0ff; }
+.eval-category-name { font-weight: 700; font-size: 13px; }
+.eval-category-score { font-size: 12px; color: var(--text2); }
+.eval-category-score span { font-weight: 700; color: var(--accent); font-size: 14px; }
+.eval-item { border-bottom: 1px solid var(--border); padding: 11px 18px; display: grid; grid-template-columns: 1fr auto auto auto auto; align-items: center; gap: 14px; }
+.eval-item.no-self { grid-template-columns: 1fr auto auto auto; }
+.self-divider { width: 1px; height: 30px; background: var(--border); align-self: center; }
+.eval-item:last-child { border-bottom: none; }
+.eval-item:hover { background: var(--surface2); }
+.eval-item-name { font-size: 13px; font-weight: 500; line-height: 1.4; }
+.eval-item-criteria { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.eval-item-rate { font-size: 11px; color: var(--text3); text-align: center; white-space: nowrap; }
+.eval-item-rate span { color: var(--text2); font-weight: 700; }
+.eval-type-label { font-size: 10px; color: var(--text3); text-align: center; margin-bottom: 3px; }
+.abc-selector { display: flex; gap: 3px; align-items: center; }
+.abc-btn { width: 34px; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.15s; font-family: 'Noto Sans JP', sans-serif; }
+.abc-btn:hover { border-color: var(--border2); background: var(--border); color: var(--text); }
+.abc-btn.selected-A { background: #edfaf5; border-color: var(--A); color: var(--A); }
+.abc-btn.selected-B { background: #fff4ed; border-color: var(--B); color: var(--B); }
+.abc-btn.selected-C { background: #fff0f0; border-color: var(--C); color: var(--C); }
+.abc-btn.selected-評価なし { background: var(--surface2); border-color: var(--border2); color: var(--text3); }
+.eval-item-score { min-width: 46px; text-align: right; }
+.item-score-value { font-size: 16px; font-weight: 700; font-family: 'Zen Kaku Gothic New', sans-serif; }
+.item-score-value.pos { color: var(--accent); }
+.item-score-value.zero { color: var(--text3); }
+
+.eval-staff-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.eval-staff-chip { display: flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-size: 13px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.eval-staff-chip:hover { border-color: var(--accent); color: var(--text); }
+.eval-staff-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.eval-staff-chip.active .chip-score { color: rgba(255,255,255,0.8); }
+.chip-score { font-size: 11px; color: var(--text3); }
+.eval-add-btn { display: flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; border: 1px dashed var(--border2); background: none; color: var(--text3); font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; transition: all 0.15s; }
+.eval-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.dashboard-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.kpi-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; font-weight: 600; }
+.kpi-value { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 900; font-size: 30px; line-height: 1; margin-bottom: 2px; }
+.kpi-sub { font-size: 11px; color: var(--text3); }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.chart-card-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; font-weight: 600; }
+
+.data-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; box-shadow: var(--shadow); }
+.data-table table { width: 100%; border-collapse: collapse; }
+.data-table th { background: var(--surface2); border-bottom: 2px solid var(--border); padding: 9px 13px; text-align: left; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; white-space: nowrap; }
+.data-table th.accent-head { background: var(--accent-light); color: var(--accent); }
+.data-table td { padding: 10px 13px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: var(--surface2); }
+.rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.rank-1 { background: #fff8d0; color: #a87800; border: 1px solid #e8c840; }
+.rank-2 { background: #f5f5f5; color: #777; border: 1px solid #ddd; }
+.rank-3 { background: #fff0e4; color: #b05820; border: 1px solid #e8b880; }
+.rank-n { background: var(--surface2); color: var(--text3); border: 1px solid var(--border); }
+.progress-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.progress-bar { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; min-width: 70px; }
+.progress-fill { height: 100%; border-radius: 3px; }
+.progress-fill.good { background: var(--green); }
+.progress-fill.warn { background: var(--yellow); }
+.progress-fill.bad  { background: var(--red); }
+.progress-pct { font-size: 12px; white-space: nowrap; }
+.badge-ok  { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; background: #edfaf5; color: var(--green); border: 1px solid #a0ddc8; }
+.badge-ng  { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; background: #fff0f0; color: var(--red); border: 1px solid #f0b0b0; }
+.sc-good { color: var(--green); font-weight: 700; font-family: 'Zen Kaku Gothic New', sans-serif; }
+.sc-warn { color: var(--yellow); font-weight: 700; font-family: 'Zen Kaku Gothic New', sans-serif; }
+.sc-bad  { color: var(--red);   font-weight: 700; font-family: 'Zen Kaku Gothic New', sans-serif; }
+.sc-none { color: var(--text3); }
+/* 評価基準インライン表示 */
+.criteria-inline { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.ci-a { font-size: 10px; color: var(--A); font-weight: 600; }
+.ci-b { font-size: 10px; color: var(--B); font-weight: 600; }
+.ci-c { font-size: 10px; color: var(--C); font-weight: 600; }
+/* 編集モーダル */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 400; display: none; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 14px; padding: 28px; width: 420px; max-width: 92vw; box-shadow: var(--shadow2); }
+.modal-title { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 17px; margin-bottom: 20px; }
+.modal-field { margin-bottom: 14px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
+/* マスタ編集テーブル */
+.master-table { width: 100%; border-collapse: collapse; }
+.master-table th { background: var(--surface2); border-bottom: 2px solid var(--border); padding: 8px 10px; text-align: left; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; white-space: nowrap; }
+.master-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+.master-table tr:last-child td { border-bottom: none; }
+.master-table tr:hover td { background: #fafbff; }
+.master-input { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-family: 'Noto Sans JP',sans-serif; font-size: 12px; padding: 4px 7px; outline: none; width: 100%; box-sizing: border-box; }
+.master-input:focus { border-color: var(--accent); background: #fff; }
+.rate-input { width: 54px !important; text-align: center; }
+.master-cat-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; background: var(--accent-light); color: var(--accent); border: 1px solid var(--accent-border); }
+.master-cat-badge.ai { background: #f5f0ff; color: #7040c0; border-color: #d0b0f0; }
+.master-del-btn { background: #fff0f0; border: 1px solid #f0b0b0; color: var(--red); border-radius: 5px; width: 26px; height: 26px; cursor: pointer; font-size: 12px; }
+.master-del-btn:hover { background: #ffe0e0; }
+/* エリアカードグリッド */
+.area-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.area-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow); }
+.area-card:hover { border-color: var(--accent); box-shadow: var(--shadow2); transform: translateY(-2px); }
+.area-card-name { font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 10px; color: var(--text); }
+.area-group-count { font-size: 12px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; }
+
+.notif { position: fixed; bottom: 22px; right: 22px; background: var(--surface); border: 1px solid var(--green); color: var(--green); padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 999; opacity: 0; transform: translateY(6px); transition: all 0.25s; pointer-events: none; box-shadow: var(--shadow2); }
+.notif.show { opacity: 1; transform: translateY(0); }
+.empty-state { text-align: center; padding: 56px 32px; color: var(--text3); }
+.empty-icon { font-size: 42px; margin-bottom: 12px; }
+.empty-title { font-size: 15px; font-weight: 700; color: var(--text2); margin-bottom: 5px; }
+.empty-sub { font-size: 13px; }
+/* 上半期/下半期ノート */
+.half-note { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; font-weight: 700; }
+.half-upper { background: #e8f0ff; color: #2050b0; border: 1px solid #b0c8f8; }
+.half-lower { background: #fff0e0; color: var(--accent2); border: 1px solid var(--accent-border); }
+@media (max-width: 768px) {
+  .main { padding: 14px; }
+  .eval-item, .eval-item.no-self { grid-template-columns: 1fr; gap: 8px; }
+  .self-divider { display: none; }
+  .charts-grid { grid-template-columns: 1fr; }
+  .header-inner { flex-wrap: wrap; height: auto; padding: 10px 0; }
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-inner">
+    <div class="header-title">2026年度　<span>人事考課（まんてん個別</span><span class="plus-badge">PLUS</span><span>）</span></div>
+    <div class="header-nav">
+      <button class="nav-btn active" onclick="showView('staff',this)">👥 スタッフ管理</button>
+      <button class="nav-btn" onclick="showView('eval',this)" id="evalNavBtn">📋 評価入力</button>
+      <button class="nav-btn" onclick="showView('master',this)">⚙️ 評価シートマスタ</button>
+      <button class="nav-btn" onclick="showView('dashboard',this)">📊 ダッシュボード</button>
+    </div>
+  </div>
+</div>
+<div class="main">
+  <!-- スタッフ管理 -->
+  <div class="view active" id="view-staff">
+    <div class="staff-section">
+      <div class="section-header">
+        <div class="section-title">スタッフ一覧</div>
+        <button class="btn btn-primary" onclick="toggleAddForm()">＋ スタッフ追加</button>
+      </div>
+      <div class="add-staff-form" id="addStaffForm" style="display:none">
+        <div class="form-row">
+          <div class="form-group"><div class="form-label">氏名</div><input class="form-input" id="newName" placeholder="例：山田 太郎"/></div>
+          <div class="form-group"><div class="form-label">教室名</div><input class="form-input" id="newRoom" placeholder="例：〇〇教室"/></div>
+          <div class="form-group"><div class="form-label">エリア</div>
+            <select class="form-select" id="newArea">
+              <option value="">エリア未設定</option>
+              <option value="神戸東エリア">神戸東エリア</option>
+              <option value="神戸エリア">神戸エリア</option>
+              <option value="神戸北エリア">神戸北エリア</option>
+              <option value="垂水エリア">垂水エリア</option>
+              <option value="明石エリア">明石エリア</option>
+              <option value="加古川エリア">加古川エリア</option>
+              <option value="本部">本部</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="addStaff()">追加する</button>
+          <button class="btn btn-ghost" onclick="toggleAddForm()">キャンセル</button>
+        </div>
+      </div>
+      <div class="empty-state" id="staffEmpty" style="display:none">
+        <div class="empty-icon">👤</div><div class="empty-title">スタッフが登録されていません</div>
+        <div class="empty-sub">「スタッフ追加」ボタンから登録してください</div>
+      </div>
+      <div id="staffGrid"></div>
+    </div>
+  </div>
+
+  <!-- 評価入力 -->
+  <div class="view" id="view-eval">
+    <div class="eval-staff-bar" id="evalStaffBar"></div>
+    <div id="evalContent">
+      <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">スタッフを選択してください</div><div class="empty-sub">上のバーからスタッフを選ぶか「＋ 追加」で新規登録してください</div></div>
+    </div>
+  </div>
+
+  <!-- ダッシュボード -->
+  <div class="view" id="view-dashboard">
+    <div id="dashboardContent">
+      <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">データがありません</div><div class="empty-sub">スタッフを追加して評価を入力するとグラフが表示されます</div></div>
+    </div>
+  </div>
+
+  <!-- マスタ管理 -->
+  <div class="view" id="view-master">
+    <div class="section-header">
+      <div class="section-title">評価シートマスタ <span style="font-size:11px;color:var(--text3);font-weight:400">（まんてん個別プラス専用）</span></div>
+    </div>
+    <div class="add-staff-form" style="margin-bottom:16px">
+      <div class="form-row" style="align-items:flex-end;gap:16px">
+        <div class="form-group">
+          <div class="form-label">対象回</div>
+          <select class="form-select" id="masterPeriod" onchange="loadMaster()">
+            <option value="0">第1回（4月〜6月）</option>
+            <option value="1">第2回（上期全体）</option>
+            <option value="2">第3回（10月〜12月）</option>
+            <option value="3">第4回（通期全体）</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">昇給ライン（点）</div>
+          <input class="form-input" id="masterRaiseLine" type="number" min="0" max="999" style="width:100px" />
+        </div>
+        <button class="btn btn-primary" onclick="saveMaster()" style="margin-left:auto">💾 この回の設定を保存</button>
+      </div>
+    </div>
+    <div class="data-table" id="masterTable">
+      <div class="empty-state"><div class="empty-icon">⚙️</div><div class="empty-title">読み込み中...</div></div>
+    </div>
+    <div class="add-staff-form" style="margin-top:12px" id="addItemForm">
+      <div style="font-size:13px;font-weight:700;color:var(--accent);margin-bottom:10px">＋ 評価項目を追加</div>
+      <div class="form-row">
+        <div class="form-group"><div class="form-label">項目ID（英数字）</div><input class="form-input" id="newItemId" placeholder="例: x01" style="width:110px"/></div>
+        <div class="form-group"><div class="form-label">項目名</div><input class="form-input" id="newItemName" placeholder="例: 新規項目" style="width:200px"/></div>
+        <div class="form-group"><div class="form-label">カテゴリ</div>
+          <select class="form-select" id="newItemCat">
+            <option value="集計">集計</option>
+            <option value="教務">教務</option>
+            <option value="AIツールの活用">AIツールの活用</option>
+            <option value="教室運営">教室運営</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="addMasterItem()">追加する</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="notif" id="notif"></div>
+
+<!-- 編集モーダル -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ スタッフ情報を編集</div>
+    <input type="hidden" id="editStaffId" />
+    <div class="modal-field">
+      <div class="form-label">氏名</div>
+      <div id="editStaffName" style="font-weight:700;font-size:15px;padding:6px 0;color:var(--text)"></div>
+    </div>
+    <div class="modal-field">
+      <div class="form-label" style="margin-bottom:5px">教室名</div>
+      <input class="form-input" id="editRoom" style="width:100%" placeholder="例：〇〇教室" />
+    </div>
+    <div class="modal-field">
+      <div class="form-label" style="margin-bottom:5px">エリア</div>
+      <select class="form-select" id="editArea" style="width:100%">
+        <option value="">エリア未設定</option>
+        <option value="神戸東エリア">神戸東エリア</option>
+        <option value="神戸エリア">神戸エリア</option>
+        <option value="神戸北エリア">神戸北エリア</option>
+        <option value="垂水エリア">垂水エリア</option>
+        <option value="明石エリア">明石エリア</option>
+        <option value="加古川エリア">加古川エリア</option>
+        <option value="本部">本部</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveStaffEdit()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- エリア管理モーダル -->
+<div class="modal-overlay" id="areaModal">
+  <div class="modal" style="width:480px">
+    <div class="modal-title">⚙️ エリアを管理</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">エリアの追加・削除・並び替えができます</div>
+    <div id="areaList" style="max-height:300px;overflow-y:auto;margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px;align-items:center;padding-top:12px;border-top:1px solid var(--border)">
+      <input class="form-input" id="newAreaName" placeholder="新しいエリア名" style="flex:1" onkeydown="if(event.key==='Enter')addArea()"/>
+      <button class="btn btn-primary" onclick="addArea()">＋ 追加</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeAreaModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+'use strict';
+var API = 'api/index_plus.php';
+
+// ============================================================
+// プラス用 評価項目定義
+// 上半期（第1回・第2回）と下半期（第3回・第4回）で項目が異なる
+// ============================================================
+
+// 上半期共通 items（第1回・第2回）
+var ITEMS_UPPER = [
+  // 集計
+  {id:'c01',cat:'集計',name:'問体験率（塾ナビ除く）',rate:2,note:'集計表・半期',cA:'90%以上',cB:'80%以上',cC:'80%未満'},
+  {id:'c02',cat:'集計',name:'体験成功率',rate:2,note:'',cA:'90%以上',cB:'80%以上',cC:'80%未満'},
+  {id:'c03',cat:'集計',name:'不満退塾率',rate:3,note:'第1回は6月・第2回は9月の数値',cA:'10%未満',cB:'15%未満',cC:'15%以上'},
+  {id:'c04',cat:'集計',name:'退会率',rate:2,note:'',cA:'3.0%未満',cB:'3.5%未満',cC:'3.5%以上'},
+  {id:'c05',cat:'集計',name:'授業料単価（税込）',rate:4,note:'1年目B:25000円以上 / 2年目以降B:28000円以上',cA:'上期：27,000円以上',cB:'上期：25,000円以上',cC:'上期：25,000円未満'},
+  {id:'c06',cat:'集計',name:'入金率',rate:1,note:'',cA:'評価なし',cB:'未入金なし',cC:'未入金あり'},
+  {id:'c07',cat:'集計',name:'目標達成率',rate:3,note:'A/B評価で＋5点ボーナス（上期達成）',cA:'110%以上',cB:'100%以上',cC:'100%未満'},
+  {id:'c08',cat:'集計',name:'高校生継続',rate:4,note:'7月在籍生徒をカウント',cA:'40%以上',cB:'25%以上',cC:'25%未満'},
+  // 教務
+  {id:'e01',cat:'教務',name:'次回定期テストまでのスケジュール作成（進行表）',rate:2,note:'',cA:'評価なし',cB:'100%できている',cC:'100%未満'},
+  {id:'e02',cat:'教務',name:'進行表の運用確認（月次）',rate:3,note:'',cA:'90%以上記入',cB:'80%以上記入',cC:'80%未満'},
+  {id:'e03',cat:'教務',name:'確認テスト2回目の履行',rate:3,note:'',cA:'90%以上記入',cB:'80%以上記入',cC:'80%未満'},
+  {id:'e04',cat:'教務',name:'講習会のスケジュール作成',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e05',cat:'教務',name:'講習会のスケジュール履行',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e06',cat:'教務',name:'年3回の3者面談',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e07',cat:'教務',name:'テスト対策の実施',rate:1,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e08',cat:'教務',name:'成績回収率',rate:1,note:'1学期期末',cA:'95%以上',cB:'90%以上',cC:'90%未満'},
+  {id:'e09',cat:'教務',name:'入塾半年以内 点数アップ率',rate:2,note:'',cA:'50%以上',cB:'40%以上',cC:'40%未満'},
+  {id:'e10',cat:'教務',name:'点数アップ写真',rate:2,note:'マスクなし・顔出しが対象',cA:'定期試験ごとに4枚以上',cB:'定期試験ごとに3枚',cC:'定期試験ごとに2枚以下'},
+  {id:'e11',cat:'教務',name:'第一志望合格率',rate:2,note:'第四回のみ査定',cA:'（第四回のみ）',cB:'90%以上',cC:'90%未満'},
+  // 教室運営
+  {id:'r01',cat:'教室運営',name:'服装',rate:1,note:'監査確認・3ヵ月ごと',cA:'評価なし',cB:'適切な服装',cC:'不適切な服装'},
+  {id:'r02',cat:'教室運営',name:'遅刻・欠勤',rate:1,note:'',cA:'評価なし',cB:'遅刻・欠勤・打刻忘れなし',cC:'遅刻・欠勤・打刻忘れあり'},
+  {id:'r03',cat:'教室運営',name:'日報',rate:1,note:'',cA:'評価なし',cB:'提出忘れなし',cC:'提出忘れあり'},
+  {id:'r04',cat:'教室運営',name:'教室環境の整備',rate:1,note:'MGチェックシート参照',cA:'優れている',cB:'可',cC:'不備'},
+  {id:'r05',cat:'教室運営',name:'月次業務の期限内の遂行',rate:1,note:'締め作業・教室コラム・看板（完答）',cA:'評価なし',cB:'出来ている',cC:'出来ていない'},
+];
+
+// 下半期（第3回・第4回）— AIツールカテゴリ追加
+var ITEMS_LOWER = [
+  // 集計
+  {id:'c01',cat:'集計',name:'問体験率（塾ナビ除く）',rate:2,note:'集計表・半期',cA:'90%以上',cB:'80%以上',cC:'80%未満'},
+  {id:'c02',cat:'集計',name:'体験成功率',rate:2,note:'',cA:'90%以上',cB:'80%以上',cC:'80%未満'},
+  {id:'c03',cat:'集計',name:'不満退塾率',rate:4,note:'第3回は12月・第4回は3月の数値',cA:'10%未満',cB:'15%未満',cC:'15%以上'},
+  {id:'c04',cat:'集計',name:'退会率',rate:2,note:'',cA:'3.0%未満',cB:'3.5%未満',cC:'3.5%以上'},
+  {id:'c05',cat:'集計',name:'授業料単価（税込）',rate:4,note:'1年目B:25000円以上 / 2年目以降B:28000円以上',cA:'上期：27,000円以上',cB:'上期：25,000円以上',cC:'上期：25,000円未満'},
+  {id:'c06',cat:'集計',name:'入金率',rate:1,note:'',cA:'評価なし',cB:'未入金なし',cC:'未入金あり'},
+  {id:'c07',cat:'集計',name:'目標達成率',rate:3,note:'A/B評価で＋5点ボーナス（下期達成）',cA:'110%以上',cB:'100%以上',cC:'100%未満'},
+  {id:'c08',cat:'集計',name:'高校生継続',rate:4,note:'4月在籍生徒をカウント',cA:'40%以上',cB:'25%以上',cC:'25%未満'},
+  // 教務
+  {id:'e01',cat:'教務',name:'次回定期テストまでのスケジュール作成（進行表）',rate:2,note:'',cA:'評価なし',cB:'100%できている',cC:'100%未満'},
+  {id:'e02',cat:'教務',name:'進行表の運用確認（月次）',rate:3,note:'',cA:'90%以上記入',cB:'80%以上記入',cC:'80%未満'},
+  {id:'e03',cat:'教務',name:'確認テスト2回目の履行',rate:3,note:'',cA:'90%以上記入',cB:'80%以上記入',cC:'80%未満'},
+  {id:'e04',cat:'教務',name:'講習会のスケジュール作成',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e05',cat:'教務',name:'講習会のスケジュール履行',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e06',cat:'教務',name:'年3回の3者面談',rate:2,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e07',cat:'教務',name:'テスト対策の実施',rate:1,note:'',cA:'評価なし',cB:'履行',cC:'履行なし'},
+  {id:'e08',cat:'教務',name:'成績回収率',rate:1,note:'',cA:'95%以上',cB:'90%以上',cC:'90%未満'},
+  {id:'e09',cat:'教務',name:'入塾半年以内 点数アップ率',rate:2,note:'',cA:'50%以上',cB:'40%以上',cC:'40%未満'},
+  {id:'e10',cat:'教務',name:'点数アップコンテンツ',rate:2,note:'マスクなし・顔出しが対象',cA:'定期試験ごとに4枚以上',cB:'定期試験ごとに3枚',cC:'定期試験ごとに2枚以下'},
+  {id:'e11',cat:'教務',name:'第一志望合格率',rate:2,note:'第四回のみ査定',cA:'（第四回のみ）',cB:'90%以上',cC:'90%未満'},
+  // AIツールの活用（下半期追加）
+  {id:'a01',cat:'AIツールの活用',name:'定期試験回収率',rate:1,note:'',cA:'100%',cB:'95%以上',cC:'95%未満'},
+  {id:'a02',cat:'AIツールの活用',name:'AIツールの活用',rate:1,note:'',cA:'評価なし',cB:'出来ている',cC:'出来ていない'},
+  // 教室運営
+  {id:'r01',cat:'教室運営',name:'服装',rate:1,note:'監査確認・3ヵ月ごと',cA:'評価なし',cB:'適切な服装',cC:'不適切な服装'},
+  {id:'r02',cat:'教室運営',name:'遅刻・欠勤',rate:1,note:'',cA:'評価なし',cB:'遅刻・欠勤・打刻忘れなし',cC:'遅刻・欠勤・打刻忘れあり'},
+  {id:'r03',cat:'教室運営',name:'日報',rate:1,note:'',cA:'評価なし',cB:'提出忘れなし',cC:'提出忘れあり'},
+  {id:'r04',cat:'教室運営',name:'教室環境の整備',rate:1,note:'MGチェックシート参照',cA:'優れている',cB:'可',cC:'不備'},
+  {id:'r05',cat:'教室運営',name:'月次業務の期限内の遂行',rate:1,note:'締め作業・教室コラム・看板（完答）',cA:'評価なし',cB:'出来ている',cC:'出来ていない'},
+];
+
+// 期別カテゴリリスト
+var CATEGORIES_UPPER = ['集計','教務','教室運営'];
+var CATEGORIES_LOWER = ['集計','教務','AIツールの活用','教室運営'];
+
+// 昇給ライン（上半期94点・下半期102点）
+var RAISE_LINE_UPPER = 94;
+var RAISE_LINE_LOWER = 102;
+
+var PERIODS = ['第1回（4月〜6月）','第2回（上期全体）','第3回（10月〜12月）','第4回（通期全体）'];
+var AREAS = ['神戸東エリア','神戸エリア','神戸北エリア','垂水エリア','明石エリア','加古川エリア','本部'];
+
+// エリアリストをselectに動的反映
+function rebuildAreaSelects() {
+  ['newArea','editArea'].forEach(function(id){
+    var sel = document.getElementById(id); if(!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">エリア未設定</option>'
+      + AREAS.map(function(a){ return '<option value="'+escHtml(a)+'">'+escHtml(a)+'</option>'; }).join('');
+    sel.value = cur;
+  });
+}
+
+// 上半期か下半期か
+function isLowerPeriod(period) { return period >= 2; }
+function getItemsByPeriod(period) { return isLowerPeriod(period) ? ITEMS_LOWER : ITEMS_UPPER; }
+function getCategoriesByPeriod(period) { return isLowerPeriod(period) ? CATEGORIES_LOWER : CATEGORIES_UPPER; }
+function getRaiseLineByPeriod(period) { return isLowerPeriod(period) ? RAISE_LINE_LOWER : RAISE_LINE_UPPER; }
+
+// マスタ優先
+function getMasterItems(period) {
+  if (app.masterData && app.masterData[period]) {
+    return app.masterData[period].items.map(function(r){
+      return {id:r.item_id, cat:r.item_cat, name:r.item_name, rate:r.rate!==null?parseInt(r.rate):null, cA:r.c_a, cB:r.c_b, cC:r.c_c};
+    });
+  }
+  return getItemsByPeriod(period);
+}
+function getMasterRaiseLine(period) {
+  if (app.masterData && app.masterData[period]) return parseInt(app.masterData[period].raise_line) || getRaiseLineByPeriod(period);
+  return getRaiseLineByPeriod(period);
+}
+
+// ============================================================
+// アプリ状態
+// ============================================================
+var app = {staff:[], evals:{}, masterData:{}, currentStaffId:null, currentPeriod:0, selectedArea:null};
+
+// ============================================================
+// API
+// ============================================================
+async function apiGet(action, params) {
+  var qs = new URLSearchParams(Object.assign({action, _t:Date.now()}, params||{}));
+  var res = await fetch(API+'?'+qs);
+  var json = await res.json();
+  if (!json.ok) throw new Error(json.error);
+  return json.data;
+}
+async function apiPost(body) {
+  var res = await fetch(API+'?_t='+Date.now(), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  var json = await res.json();
+  if (!json.ok) throw new Error(json.error);
+  return json.data;
+}
+
+// ============================================================
+// スコア計算
+// ============================================================
+function getEval(sid, period, iid) { return (app.evals[sid]&&app.evals[sid][period]&&app.evals[sid][period][iid])||''; }
+function calcScore(ev, rate) { if(!ev||!rate) return 0; var pts=ev==='A'?3:ev==='B'?2:ev==='C'?1:0; return pts*rate; }
+function getTotalScore(sid, period) {
+  var items = getMasterItems(period);
+  var total = items.reduce(function(sum,item){ return sum+calcScore(getEval(sid,period,item.id),item.rate); },0);
+  var m = getEval(sid,period,'c07'); if(m==='A'||m==='B') total+=5;
+  return total;
+}
+function getRaiseLine(sid, period) {
+  var p = period !== undefined ? period : (app.currentPeriod||0);
+  return getMasterRaiseLine(p);
+}
+
+function showNotif(msg, isErr) {
+  var el = document.getElementById('notif');
+  el.textContent=msg;
+  el.style.borderColor=isErr?'var(--red)':'var(--green)';
+  el.style.color=isErr?'var(--red)':'var(--green)';
+  el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show');},2500);
+}
+
+function scCol(score, period) {
+  var l = getMasterRaiseLine(period||0);
+  return score>=l?'var(--green)':score>=l*0.7?'var(--yellow)':'var(--red)';
+}
+
+// ============================================================
+// 起動
+// ============================================================
+// ============================================================
+// エリア管理
+// ============================================================
+function openAreaModal() {
+  renderAreaList();
+  document.getElementById('areaModal').classList.add('open');
+}
+function closeAreaModal() {
+  document.getElementById('areaModal').classList.remove('open');
+}
+function renderAreaList() {
+  var list = document.getElementById('areaList');
+  if (!AREAS.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">エリアが登録されていません</div>';
+    return;
+  }
+  list.innerHTML = AREAS.map(function(a, i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="flex:1;font-size:13px">'+escHtml(a)+'</span>'
+      +'<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="moveArea('+i+',-1)" '+(i===0?'disabled':'')+'title="上へ">↑</button>'
+      +'<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="moveArea('+i+',1)" '+(i===AREAS.length-1?'disabled':'')+'title="下へ">↓</button>'
+      +'<button style="background:#fff0f0;border:1px solid #f0b0b0;color:var(--red);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer" onclick="deleteArea('+i+')" title="削除">削除</button>'
+    +'</div>';
+  }).join('');
+}
+function addArea() {
+  var inp = document.getElementById('newAreaName');
+  var name = inp.value.trim();
+  if (!name) { alert('エリア名を入力してください'); return; }
+  if (AREAS.indexOf(name) >= 0) { alert('同じ名前のエリアがすでに存在します'); return; }
+  AREAS.push(name);
+  inp.value = '';
+  renderAreaList();
+  rebuildAreaSelects();
+  showNotif('✓ エリアを追加しました');
+}
+function deleteArea(i) {
+  var name = AREAS[i];
+  var inUse = app.staff.some(function(s){ return s.area === name; });
+  if (inUse) {
+    if (!confirm('「'+name+'」はスタッフに設定されています。削除するとそのスタッフのエリアが「未設定」になります。削除しますか？')) return;
+    app.staff.forEach(function(s){ if(s.area===name) s.area=''; });
+  } else {
+    if (!confirm('「'+name+'」を削除しますか？')) return;
+  }
+  AREAS.splice(i, 1);
+  renderAreaList();
+  rebuildAreaSelects();
+  renderStaffGrid();
+  showNotif('✓ 削除しました');
+}
+function moveArea(i, dir) {
+  var j = i + dir;
+  if (j < 0 || j >= AREAS.length) return;
+  var tmp = AREAS[i]; AREAS[i] = AREAS[j]; AREAS[j] = tmp;
+  renderAreaList();
+  rebuildAreaSelects();
+}
+
+async function boot() {
+  try {
+    var results = await Promise.all([
+      apiGet('get_staff'),
+      apiGet('get_evals'),
+      apiGet('get_master_all')
+    ]);
+    app.staff = results[0];
+    var raw = results[1];
+    app.evals = {};
+    Object.entries(raw).forEach(function(e){
+      var sid=e[0], periods=e[1];
+      app.evals[sid]={};
+      Object.entries(periods).forEach(function(f){app.evals[sid][f[0]]=f[1];});
+    });
+    app.masterData = results[2];
+    rebuildAreaSelects();
+    renderStaffGrid();
+  } catch(e) { showNotif('サーバーに接続できません: '+e.message, true); }
+}
+
+// ============================================================
+// マスタ管理
+// ============================================================
+async function loadMaster() {
+  var period = parseInt(document.getElementById('masterPeriod').value);
+  var tbl = document.getElementById('masterTable');
+  tbl.innerHTML = '<div class="empty-state"><div class="empty-icon">⚙️</div><div class="empty-title">読み込み中...</div></div>';
+  try {
+    var data = await apiGet('get_master', {period: period});
+    document.getElementById('masterRaiseLine').value = data.raise_line;
+    renderMasterTable(data.items);
+  } catch(e) { showNotif('読み込み失敗: '+e.message, true); }
+}
+
+function renderMasterTable(items) {
+  var tbl = document.getElementById('masterTable');
+  if (!items.length) {
+    tbl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">評価項目がありません</div></div>';
+    return;
+  }
+  var rows = items.map(function(item, idx) {
+    var rateVal = item.rate !== null && item.rate !== '' ? item.rate : '';
+    var isAI = item.item_cat === 'AIツールの活用';
+    var badgeCls = isAI ? 'master-cat-badge ai' : 'master-cat-badge';
+    return '<tr>' +
+      '<td><span class="'+badgeCls+'">'+item.item_cat+'</span></td>' +
+      '<td style="color:var(--text3);font-size:11px;white-space:nowrap">'+item.item_id+'</td>' +
+      '<td><input class="master-input" value="'+escHtml(item.item_name)+'" onchange="markDirty()" data-field="item_name" data-idx="'+idx+'" /></td>' +
+      '<td><input class="master-input rate-input" type="number" min="0" max="99" value="'+rateVal+'" placeholder="—" onchange="markDirty()" data-field="rate" data-idx="'+idx+'" /></td>' +
+      '<td><input class="master-input" value="'+escHtml(item.c_a)+'" onchange="markDirty()" data-field="c_a" data-idx="'+idx+'" /></td>' +
+      '<td><input class="master-input" value="'+escHtml(item.c_b)+'" onchange="markDirty()" data-field="c_b" data-idx="'+idx+'" /></td>' +
+      '<td><input class="master-input" value="'+escHtml(item.c_c)+'" onchange="markDirty()" data-field="c_c" data-idx="'+idx+'" /></td>' +
+      '<td><button class="master-del-btn" onclick="deleteMasterItem(\''+item.item_id+'\')" title="削除">🗑</button></td>' +
+    '</tr>';
+  }).join('');
+  tbl.innerHTML = '<table class="master-table"><thead><tr>' +
+    '<th>カテゴリ</th><th>ID</th><th>項目名</th><th>掛け率</th><th>A（3点）基準</th><th>B（2点）基準</th><th>C（1点）基準</th><th></th>' +
+    '</tr></thead><tbody>'+rows+'</tbody></table>';
+  tbl._items = items;
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function markDirty() {}
+
+async function saveMaster() {
+  var period = parseInt(document.getElementById('masterPeriod').value);
+  var rl = parseInt(document.getElementById('masterRaiseLine').value) || getRaiseLineByPeriod(period);
+  var tbl = document.getElementById('masterTable');
+  var baseItems = tbl._items || [];
+  var items = baseItems.map(function(item, idx) {
+    var nameEl = tbl.querySelector('[data-field="item_name"][data-idx="'+idx+'"]');
+    var rateEl = tbl.querySelector('[data-field="rate"][data-idx="'+idx+'"]');
+    var caEl = tbl.querySelector('[data-field="c_a"][data-idx="'+idx+'"]');
+    var cbEl = tbl.querySelector('[data-field="c_b"][data-idx="'+idx+'"]');
+    var ccEl = tbl.querySelector('[data-field="c_c"][data-idx="'+idx+'"]');
+    return {
+      item_id: item.item_id,
+      item_name: nameEl ? nameEl.value : item.item_name,
+      item_cat: item.item_cat,
+      rate: rateEl && rateEl.value !== '' ? rateEl.value : null,
+      c_a: caEl ? caEl.value : item.c_a,
+      c_b: cbEl ? cbEl.value : item.c_b,
+      c_c: ccEl ? ccEl.value : item.c_c,
+    };
+  });
+  try {
+    await apiPost({action:'save_master', period, items, raise_line: rl});
+    var updated = await apiGet('get_master_all');
+    app.masterData = updated;
+    showNotif('✓ 第'+(period+1)+'回のマスタを保存しました');
+    await loadMaster();
+  } catch(e) { showNotif('保存失敗: '+e.message, true); }
+}
+
+async function addMasterItem() {
+  var period = parseInt(document.getElementById('masterPeriod').value);
+  var iid = document.getElementById('newItemId').value.trim();
+  var name = document.getElementById('newItemName').value.trim();
+  var cat = document.getElementById('newItemCat').value;
+  if (!iid || !name) { alert('項目IDと項目名を入力してください'); return; }
+  try {
+    await apiPost({action:'add_master_item', period, item_id:iid, item_name:name, item_cat:cat});
+    document.getElementById('newItemId').value='';
+    document.getElementById('newItemName').value='';
+    showNotif('✓ 項目を追加しました');
+    await loadMaster();
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+
+async function deleteMasterItem(itemId) {
+  if (!confirm('「'+itemId+'」を削除しますか？')) return;
+  var period = parseInt(document.getElementById('masterPeriod').value);
+  try {
+    await apiPost({action:'del_master_item', period, item_id:itemId});
+    showNotif('✓ 削除しました');
+    await loadMaster();
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+
+// ============================================================
+// スタッフ管理
+// ============================================================
+function showView(v, btn) {
+  document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('view-'+v).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (v==='staff') app.selectedArea=null;
+  if (v==='eval') { renderEvalStaffBar(); renderEval(); }
+  if (v==='dashboard') renderDashboard();
+  if (v==='master') loadMaster();
+}
+
+function toggleAddForm() { var f=document.getElementById('addStaffForm'); f.style.display=f.style.display==='none'?'block':'none'; }
+
+async function addStaff() {
+  var name=document.getElementById('newName').value.trim();
+  var room=document.getElementById('newRoom').value.trim();
+  var area=document.getElementById('newArea').value;
+  if (!name) { alert('氏名を入力してください'); return; }
+  try {
+    var ns = await apiPost({action:'add_staff', name, room, area});
+    app.staff.push(ns); app.evals[ns.id]={};
+    renderStaffGrid();
+    document.getElementById('newName').value='';
+    document.getElementById('newRoom').value='';
+    document.getElementById('addStaffForm').style.display='none';
+    showNotif('✓ '+name+' を追加しました');
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+
+async function deleteStaff(id) {
+  if (!confirm('このスタッフを削除しますか？')) return;
+  try {
+    await apiPost({action:'delete_staff', id});
+    app.staff = app.staff.filter(function(s){return s.id!=id;});
+    delete app.evals[id];
+    if (app.currentStaffId==id) app.currentStaffId=null;
+    renderStaffGrid();
+    showNotif('✓ 削除しました');
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+
+function renderStaffGrid() {
+  var grid = document.getElementById('staffGrid');
+  var empty = document.getElementById('staffEmpty');
+  if (!app.staff.length) {
+    grid.innerHTML='';
+    if (empty) empty.style.display='block';
+    return;
+  }
+  if (empty) empty.style.display='none';
+
+  if (app.selectedArea === null) {
+    // エリア一覧ビュー
+    var areaKeys = AREAS.slice();
+    if (app.staff.some(function(s){return !s.area;})) areaKeys.push('');
+    var cards = areaKeys.map(function(area){
+      var members = app.staff.filter(function(s){return (s.area||'')===area;});
+      if (!members.length) return '';
+      var label = area||'エリア未設定';
+      return '<div class="area-card" onclick="selectArea(\''+escHtml(area)+'\')">'+
+        '<div class="area-card-name">📍 '+escHtml(label)+'</div>'+
+        '<div><span style="font-size:22px;font-weight:900;font-family:\'Zen Kaku Gothic New\',sans-serif;color:var(--accent)">'+members.length+'</span> <span style="font-size:12px;color:var(--text2)">名</span></div>'+
+      '</div>';
+    }).join('');
+    grid.innerHTML=
+      '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">'
+        +'<button class="btn btn-ghost" style="font-size:12px" onclick="openAreaModal()">⚙️ エリアを管理</button>'
+      +'</div>'
+      +'<div class="area-card-grid">'+cards+'</div>';
+  } else {
+    // エリア内メンバー
+    var members = app.staff.filter(function(s){return (s.area||'')===app.selectedArea;});
+    function renderCard(s) {
+      var sel = s.id==app.currentStaffId?'selected':'';
+      var scores = [0,1,2,3].map(function(p){ return getTotalScore(s.id,p); });
+      var line2 = getMasterRaiseLine(2);
+      var sc2 = scores[2]>=line2?'good':scores[2]>=line2*0.7?'warn':'bad';
+      return '<div class="staff-card '+sel+'">'+
+        '<div style="position:absolute;top:10px;right:10px;display:flex;gap:5px">'+
+          '<button style="background:var(--accent-light);border:1px solid var(--accent-border);color:var(--accent);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px" onclick="openEditModal('+s.id+')" title="編集">✏️</button>'+
+          '<button style="background:#fff0f0;border:1px solid #f0b0b0;color:var(--red);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:13px" onclick="deleteStaff('+s.id+')" title="削除">🗑</button>'+
+        '</div>'+
+        '<div style="cursor:pointer;padding-right:68px" onclick="selectStaff('+s.id+')">'+
+          '<div class="staff-card-name">'+s.name+'</div>'+
+          '<div class="staff-card-meta">'+(s.room||'教室未設定')+'</div>'+
+          '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:7px">'+
+            '<div class="staff-score-badge" style="color:var(--text3)">第1回: '+scores[0]+'点</div>'+
+            '<div class="staff-score-badge" style="color:var(--text3)">第2回: '+scores[1]+'点</div>'+
+            '<div class="staff-score-badge '+sc2+'">第3回: '+scores[2]+'点</div>'+
+            '<div class="staff-score-badge">第4回: '+scores[3]+'点</div>'+
+            '<div class="staff-score-badge" style="color:var(--text3)">昇給ライン: '+line2+'点</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }
+    var areaLabel = app.selectedArea||'エリア未設定';
+    grid.innerHTML=
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">'+
+        '<button class="btn btn-ghost" onclick="selectArea(null)">← エリア一覧に戻る</button>'+
+        '<div style="font-family:\'Zen Kaku Gothic New\',sans-serif;font-weight:700;font-size:16px">📍 '+areaLabel+'</div>'+
+        '<div class="area-group-count">'+members.length+'名</div>'+
+      '</div>'+
+      '<div class="staff-grid">'+members.map(renderCard).join('')+'</div>';
+  }
+}
+
+function selectArea(area) { app.selectedArea=area; renderStaffGrid(); }
+function selectStaff(id) {
+  app.currentStaffId=id; app.currentPeriod=0;
+  renderStaffGrid();
+  document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('view-eval').classList.add('active');
+  document.getElementById('evalNavBtn').classList.add('active');
+  renderEvalStaffBar(); renderEval();
+}
+
+function openEditModal(id) {
+  var s=app.staff.find(function(x){return x.id==id;}); if (!s) return;
+  document.getElementById('editStaffId').value=s.id;
+  document.getElementById('editStaffName').textContent=s.name;
+  document.getElementById('editRoom').value=s.room||'';
+  document.getElementById('editArea').value=s.area||'';
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('editModal').classList.remove('open'); }
+async function saveStaffEdit() {
+  var id=parseInt(document.getElementById('editStaffId').value);
+  var room=document.getElementById('editRoom').value.trim();
+  var area=document.getElementById('editArea').value;
+  try {
+    await apiPost({action:'update_staff', id, room, area});
+    var s=app.staff.find(function(x){return x.id==id;});
+    if (s) { s.room=room; s.area=area; }
+    closeEditModal(); renderStaffGrid(); showNotif('✓ 更新しました');
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+document.getElementById('editModal').addEventListener('click', function(e){ if(e.target===this) closeEditModal(); });
+document.getElementById('areaModal').addEventListener('click', function(e){ if(e.target===this) closeAreaModal(); });
+
+// ============================================================
+// 評価入力
+// ============================================================
+function renderEvalStaffBar() {
+  var bar=document.getElementById('evalStaffBar'); if (!bar) return;
+  var chips=app.staff.map(function(s){
+    var j=getTotalScore(s.id, app.currentPeriod);
+    var line=getMasterRaiseLine(app.currentPeriod);
+    var col=j>=line?'var(--green)':'var(--text3)';
+    var active=s.id==app.currentStaffId?'active':'';
+    return '<div class="eval-staff-chip '+active+'" onclick="switchEvalStaff('+s.id+')">'+s.name+(j>0?'<span class="chip-score" style="color:'+col+'">'+j+'pt</span>':'')+'</div>';
+  }).join('');
+  bar.innerHTML=chips+
+    '<button class="eval-add-btn" onclick="toggleEvalAddForm()">＋ 追加</button>'+
+    '<div id="evalInlineForm" style="display:none;width:100%;margin-top:8px;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:14px 18px">'+
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent)">新しいスタッフを追加</div>'+
+      '<div class="form-row">'+
+        '<div class="form-group"><div class="form-label">氏名</div><input class="form-input" id="evalNewName" placeholder="例：山田 太郎"/></div>'+
+        '<div class="form-group"><div class="form-label">教室名</div><input class="form-input" id="evalNewRoom" placeholder="例：〇〇教室"/></div>'+
+        '<button class="btn btn-primary" onclick="addStaffFromEval()">追加する</button>'+
+        '<button class="btn btn-ghost" onclick="toggleEvalAddForm()">キャンセル</button>'+
+      '</div>'+
+    '</div>';
+}
+function toggleEvalAddForm() { var f=document.getElementById('evalInlineForm'); if(!f) return; var open=f.style.display!=='none'; f.style.display=open?'none':'block'; if(!open) document.getElementById('evalNewName').focus(); }
+async function addStaffFromEval() {
+  var name=document.getElementById('evalNewName').value.trim();
+  var room=document.getElementById('evalNewRoom').value.trim();
+  if (!name) { alert('氏名を入力してください'); return; }
+  try {
+    var ns=await apiPost({action:'add_staff', name, room, area:''});
+    app.staff.push(ns); app.evals[ns.id]={}; app.currentStaffId=ns.id;
+    renderEvalStaffBar(); renderEval(); renderStaffGrid(); showNotif('✓ '+name+' を追加しました');
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+function switchEvalStaff(id) { app.currentStaffId=id; app.currentPeriod=0; renderEvalStaffBar(); renderEval(); }
+
+function renderEval() {
+  var content=document.getElementById('evalContent');
+  if (!app.currentStaffId) {
+    content.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">スタッフを選択してください</div></div>'; return;
+  }
+  var s=app.staff.find(function(x){return x.id==app.currentStaffId;}); if (!s) return;
+  var period=app.currentPeriod;
+  var lower=isLowerPeriod(period);
+  var items=getMasterItems(period);
+  var cats=getCategoriesByPeriod(period);
+  var own=getTotalScore(s.id, period);
+  var line=getMasterRaiseLine(period);
+  var sc=own>=line?'good':own>=line*0.7?'warn':'bad';
+  var mok=getEval(s.id,period,'c07'), bonusOk=mok==='A'||mok==='B';
+  var halfLabel=lower?'<span class="half-note half-lower">下半期</span>':'<span class="half-note half-upper">上半期</span>';
+
+  var h='<div class="eval-header">'+
+    '<div class="eval-header-info">'+
+      '<div class="eval-header-name">'+s.name+halfLabel+'</div>'+
+      '<div class="eval-header-meta">'+(s.room||'教室未設定')+'</div>'+
+    '</div>'+
+    '<div class="score-display">'+
+      '<div class="score-label">'+PERIODS[period]+'</div>'+
+      '<div class="score-value '+sc+'">'+own+'</div>'+
+      '<div class="score-line">昇給ライン: '+line+'点</div>'+
+    '</div>'+
+    '<div class="score-display" style="min-width:145px">'+
+      '<div class="score-label" style="color:var(--yellow)">目標達成ボーナス</div>'+
+      '<div style="font-size:19px;font-weight:900;font-family:\'Zen Kaku Gothic New\',sans-serif;margin-top:5px;color:'+(bonusOk?'var(--yellow)':'var(--text3)')+'">'+(bonusOk?'＋5点':(mok===''?'—':'対象外'))+'</div>'+
+      '<div style="font-size:10px;margin-top:3px;color:var(--text3);line-height:1.4">'+(bonusOk?'目標達成率 '+mok+' で自動加算':(mok===''?'目標達成率を入力してください':'C評価：加算なし'))+'</div>'+
+    '</div>'+
+  '</div>';
+
+  var tabs='<div class="period-tabs">'+PERIODS.map(function(p,i){
+    return '<div class="period-tab '+(i===period?'active':'')+'" onclick="switchPeriod('+i+')">'+
+      '<div class="period-tab-label">評価期間</div>'+
+      '<div class="period-tab-name">'+p+(i<2?'<span class="half-note half-upper" style="margin-left:4px">上期</span>':'<span class="half-note half-lower" style="margin-left:4px">下期</span>')+'</div>'+
+    '</div>';
+  }).join('')+'</div>';
+
+  var catHtml=cats.map(function(catName){
+    var ci=items.filter(function(item){return item.cat===catName;});
+    var cs=ci.reduce(function(sum,item){return sum+calcScore(getEval(s.id,period,item.id),item.rate);},0);
+    var isAI=catName==='AIツールの活用';
+    var headerCls=isAI?'eval-category-header ai-cat':'eval-category-header';
+    var hasSelf = (catName==='教務' || catName==='教室運営');
+    var rows=ci.map(function(item){
+      var val=getEval(s.id,period,item.id); var iscore=calcScore(val,item.rate);
+      var btns=['A','B','C'].map(function(abc){
+        var sel=val===abc?'selected-'+abc:'';
+        return '<button class="abc-btn '+sel+'" onclick="setEval('+s.id+','+period+',\''+item.id+'\',\''+abc+'\')">'+abc+'</button>';
+      }).join('');
+      if (item.cA==='評価なし') { var s2=val==='評価なし'?'selected-評価なし':''; btns+='<button class="abc-btn '+s2+'" onclick="setEval('+s.id+','+period+',\''+item.id+'\',\'評価なし\')">—</button>'; }
+      var criteriaHtml='<div class="criteria-inline">'+
+        '<span class="ci-a">A: '+item.cA+'</span>'+
+        '<span class="ci-b">B: '+item.cB+'</span>'+
+        '<span class="ci-c">C: '+item.cC+'</span>'+
+      '</div>';
+      var isBonusItem=item.id==='c07';
+      var selfHtml='';
+      if (hasSelf) {
+        var selfId=item.id+'_self';
+        var selfVal=getEval(s.id,period,selfId);
+        var selfBtns=['A','B','C'].map(function(abc){
+          var sel=selfVal===abc?'selected-'+abc:'';
+          return '<button class="abc-btn '+sel+'" onclick="setEval('+s.id+','+period+',\''+selfId+'\',\''+abc+'\')">'+abc+'</button>';
+        }).join('');
+        selfHtml='<div class="self-divider"></div>'+
+          '<div><div class="eval-type-label" style="color:var(--accent)">自己評価</div><div class="abc-selector">'+selfBtns+'</div></div>';
+      }
+      return '<div class="eval-item'+(hasSelf?'':' no-self')+'">'+
+        '<div>'+
+          '<div class="eval-item-name">'+item.name+(isBonusItem?' <span style="font-size:10px;background:#fffbe0;color:var(--yellow);border:1px solid #e8d060;border-radius:4px;padding:1px 5px">A/B→＋5点</span>':'')+'</div>'+
+          (item.note?'<div class="eval-item-criteria">'+item.note+'</div>':'')+
+          criteriaHtml+
+        '</div>'+
+        '<div class="eval-item-rate">掛け率: <span>'+(item.rate!==null?item.rate:'—')+'</span></div>'+
+        '<div><div class="eval-type-label">監査評価</div><div class="abc-selector">'+btns+'</div></div>'+
+        selfHtml+
+        '<div class="eval-item-score"><div class="item-score-value '+(iscore>0?'pos':'zero')+'">'+iscore+'</div></div>'+
+      '</div>';
+    }).join('');
+    return '<div class="eval-category">'+
+      '<div class="'+headerCls+'">'+
+        '<div class="eval-category-name">'+(isAI?'🤖':'◆')+' '+catName+'</div>'+
+        '<div class="eval-category-score">カテゴリ合計: <span>'+cs+'</span>点</div>'+
+      '</div>'+rows+'</div>';
+  }).join('');
+
+  content.innerHTML=h+tabs+catHtml+'<div style="height:28px"></div>';
+}
+
+async function setEval(sid, period, iid, val) {
+  if (!app.evals[sid]) app.evals[sid]={};
+  if (!app.evals[sid][period]) app.evals[sid][period]={};
+  var prev=app.evals[sid][period][iid]; var nv=prev===val?'':val;
+  if (nv==='') { delete app.evals[sid][period][iid]; } else { app.evals[sid][period][iid]=nv; }
+  renderEval(); renderEvalStaffBar();
+  try {
+    await apiPost({action:'set_eval', staff_id:sid, period:period, item_id:iid, eval_value:nv});
+    showNotif('✓ 保存しました');
+  } catch(e) {
+    if (prev) { app.evals[sid][period][iid]=prev; } else { delete app.evals[sid][period][iid]; }
+    renderEval(); showNotif('保存失敗: '+e.message, true);
+  }
+}
+function switchPeriod(p) { app.currentPeriod=p; renderEvalStaffBar(); renderEval(); }
+
+// ============================================================
+// ダッシュボード
+// ============================================================
+var chartInstances=[];
+function renderDashboard() {
+  var content=document.getElementById('dashboardContent');
+  if (!app.staff.length) { content.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">データがありません</div></div>'; return; }
+  var sd=app.staff.map(function(s){
+    return {s:s, j0:getTotalScore(s.id,0), j1:getTotalScore(s.id,1), j2:getTotalScore(s.id,2), j3:getTotalScore(s.id,3), line2:getMasterRaiseLine(2), line3:getMasterRaiseLine(3)};
+  }).sort(function(a,b){return b.j2-a.j2;});
+  var avg2=sd.reduce(function(sum,x){return sum+x.j2;},0)/sd.length;
+  var achieved=sd.filter(function(x){return x.j2>=x.line2;}).length;
+
+  var scoreRows=app.staff.map(function(s){
+    var scores=[0,1,2,3].map(function(p){return getTotalScore(s.id,p);});
+    var line2=getMasterRaiseLine(2); var ok=scores[2]>=line2;
+    var cells=scores.map(function(sc,i){
+      if (sc===0) return '<td class="sc-none" style="text-align:center">—</td>';
+      var line=getMasterRaiseLine(i);
+      var cls=sc>=line?'sc-good':sc>=line*0.7?'sc-warn':'sc-bad';
+      return '<td class="'+cls+'" style="text-align:center">'+sc+'</td>';
+    }).join('');
+    return '<tr><td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="goToEval('+s.id+')">'+s.name+'</td>'+
+      '<td style="color:var(--text2);font-size:12px">'+(s.room||'—')+'</td>'+
+      cells+
+      '<td style="text-align:center"><span class="'+(ok?'badge-ok':'badge-ng')+'">'+(ok?'✓ 達成':'✗ 未達成')+'</span></td></tr>';
+  }).join('');
+
+  var rankRows=sd.map(function(x,i){
+    var rc=i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-n';
+    var ok=x.j2>=x.line2; var maxJ=sd[0].j2||1; var pct=Math.round(x.j2/maxJ*100);
+    var fc=ok?'good':x.j2>=x.line2*0.7?'warn':'bad';
+    return '<tr><td><div class="rank-badge '+rc+'">'+(i+1)+'</div></td>'+
+      '<td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="goToEval('+x.s.id+')">'+x.s.name+'</td>'+
+      '<td style="color:var(--text2)">'+(x.s.room||'—')+'</td>'+
+      '<td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill '+fc+'" style="width:'+pct+'%"></div></div><div class="progress-pct" style="color:var(--'+fc+')">'+x.j2+'点</div></div></td>'+
+      '<td style="font-weight:700">'+(x.j3>0?x.j3+'点':'—')+'</td>'+
+      '<td><span class="'+(ok?'badge-ok':'badge-ng')+'">'+(ok?'✓ 達成':'✗ 未達成')+'</span></td></tr>';
+  }).join('');
+
+  content.innerHTML=
+    '<div class="dashboard-top">'+
+      '<div class="kpi-card"><div class="kpi-label">スタッフ数</div><div class="kpi-value" style="color:var(--accent)">'+app.staff.length+'</div><div class="kpi-sub">名</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">第3回 平均スコア</div><div class="kpi-value" style="color:var(--yellow)">'+Math.round(avg2)+'</div><div class="kpi-sub">点</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">昇給ライン達成</div><div class="kpi-value" style="color:var(--green)">'+achieved+'</div><div class="kpi-sub">名 / '+app.staff.length+'名</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">達成率</div><div class="kpi-value" style="color:'+(achieved/app.staff.length>=0.5?'var(--green)':'var(--red)')+'">'+Math.round(achieved/app.staff.length*100)+'%</div><div class="kpi-sub">昇給ライン到達率</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">上半期昇給ライン</div><div class="kpi-value" style="color:var(--text2)">'+getMasterRaiseLine(0)+'</div><div class="kpi-sub">点（第1・2回）</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">下半期昇給ライン</div><div class="kpi-value" style="color:var(--text2)">'+getMasterRaiseLine(2)+'</div><div class="kpi-sub">点（第3・4回）</div></div>'+
+    '</div>'+
+    '<div class="section-header" style="margin-bottom:10px"><div class="section-title">人事スコア一覧（回別）</div></div>'+
+    '<div class="data-table" style="margin-bottom:18px"><table><thead><tr>'+
+      '<th>氏名</th><th>教室</th>'+
+      '<th class="accent-head" style="text-align:center">第1回<br><small style="font-weight:400;font-size:10px">上期</small></th>'+
+      '<th class="accent-head" style="text-align:center">第2回<br><small style="font-weight:400;font-size:10px">上期全体</small></th>'+
+      '<th class="accent-head" style="text-align:center">第3回<br><small style="font-weight:400;font-size:10px">下期</small></th>'+
+      '<th class="accent-head" style="text-align:center">第4回<br><small style="font-weight:400;font-size:10px">下期全体</small></th>'+
+      '<th style="text-align:center">昇給判定</th></tr></thead><tbody>'+scoreRows+'</tbody></table></div>'+
+    '<div class="charts-grid">'+
+      '<div class="chart-card"><div class="chart-card-title">スタッフ別スコア比較（第3回）</div><canvas id="barChart" height="200"></canvas></div>'+
+      '<div class="chart-card"><div class="chart-card-title">第3回 vs 第4回 推移</div><canvas id="lineChart" height="200"></canvas></div>'+
+    '</div>'+
+    '<div class="section-header" style="margin-bottom:10px"><div class="section-title">順位別一覧</div></div>'+
+    '<div class="data-table"><table><thead><tr><th>順位</th><th>氏名</th><th>教室</th><th>第3回スコア</th><th>第4回スコア</th><th>昇給判定</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>';
+
+  chartInstances.forEach(function(c){c.destroy();}); chartInstances=[];
+  var names=sd.map(function(x){return x.s.name;});
+  var s2=sd.map(function(x){return x.j2;});
+  var s3=sd.map(function(x){return x.j3;});
+  var line2=getMasterRaiseLine(2);
+  chartInstances.push(new Chart(document.getElementById('barChart').getContext('2d'),{
+    type:'bar', data:{labels:names, datasets:[{label:'第3回',data:s2,backgroundColor:sd.map(function(x){return x.j2>=x.line2?'rgba(15,173,122,0.7)':'rgba(224,120,48,0.7)';}),borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6380',font:{family:'Noto Sans JP'}},grid:{color:'#e0e4ef'}},y:{ticks:{color:'#5a6380'},grid:{color:'#e0e4ef'},beginAtZero:true}}}
+  }));
+  chartInstances.push(new Chart(document.getElementById('lineChart').getContext('2d'),{
+    type:'line', data:{labels:names, datasets:[
+      {label:'第3回',data:s2,borderColor:'#e07830',backgroundColor:'rgba(224,120,48,0.07)',tension:0.3,pointRadius:5,fill:true},
+      {label:'第4回',data:s3.map(function(v){return v>0?v:null;}),borderColor:'#0fad7a',backgroundColor:'rgba(15,173,122,0.07)',tension:0.3,pointRadius:5,fill:true,borderDash:[4,2]}
+    ]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#5a6380',font:{family:'Noto Sans JP'}}}},scales:{x:{ticks:{color:'#5a6380',font:{family:'Noto Sans JP'}},grid:{color:'#e0e4ef'}},y:{ticks:{color:'#5a6380'},grid:{color:'#e0e4ef'},beginAtZero:true}}}
+  }));
+}
+
+function goToEval(sid) {
+  app.currentStaffId=sid;
+  document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
+  document.getElementById('view-eval').classList.add('active');
+  document.getElementById('evalNavBtn').classList.add('active');
+  renderEvalStaffBar(); renderEval();
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>まんてん個別 まんてん個別 本部 5カ年計画シミュレーター</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans JP','Hiragino Sans',sans-serif;background:linear-gradient(135deg,#f8f9fa,#e8ecef);min-height:100vh;color:#2d3748}
+.header{background:linear-gradient(135deg,#1B4965,#2d7a9c);color:#fff;padding:16px 20px}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.header h1{font-size:18px;font-weight:700}
+.header .sub{font-size:12px;opacity:.8}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;margin-left:6px;background:rgba(255,255,255,.2);color:#fff}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{padding:6px 14px;border:2px solid transparent;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;background:#fff;color:#666;transition:.2s}
+.tab.active{border-color:#1B4965;background:rgba(27,73,101,.07);color:#1B4965;font-weight:700}
+.tab:hover{background:rgba(27,73,101,.04)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:16px}
+.kpi{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.kpi-label{font-size:11px;color:#888;margin-bottom:2px}
+.kpi-value{font-size:22px;font-weight:900}
+.kpi-sub{font-size:11px;color:#888;margin-top:2px}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;overflow:hidden}
+.card-header{padding:12px 16px;font-weight:700;font-size:14px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none}
+.card-body{padding:12px 16px}
+.card-body.collapsed{display:none}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:11px;width:100%;min-width:900px}
+th{background:#f8f9fa;padding:6px 4px;text-align:center;font-weight:600;position:sticky;top:0;z-index:2;border-bottom:2px solid #ddd;font-size:10px;white-space:nowrap}
+th:first-child{position:sticky;left:0;z-index:3;text-align:left;padding-left:8px}
+td{padding:4px 4px;text-align:right;white-space:nowrap;border-bottom:1px solid #f0f0f0}
+td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;background:inherit;z-index:1;border-right:1px solid #e8e8e8}
+.grp-header td{padding:5px 8px;font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:1px;background:#f8f8f8;border-top:2px solid #e0e0e0}
+.row-bold td{font-weight:700}
+.row-highlight{background:#f0f4f8!important}
+.row-highlight td{background:#f0f4f8!important}
+.annual-col{background:#f8f8f8;border-left:1px solid #ddd;font-weight:700;color:#1B4965}
+.base-col{font-size:10px;color:#888;background:#fafafa;border-right:1px solid #e8e8e8}
+.profit-neg{color:#C1292E}
+.profit-pos{color:#2D6A4F}
+.sem-col{background:#eef4fb!important;border-left:2px solid #b3cde0;border-right:2px solid #b3cde0;font-weight:700;color:#1B4965}
+.sem-col-h{background:#ddeaf5!important;border-left:2px solid #b3cde0;border-right:2px solid #b3cde0;font-weight:700;color:#1B4965;font-size:10px}
+.chart-container{position:relative;height:280px;margin:10px 0}
+.edit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin:10px 0}
+.edit-field label{display:block;font-size:11px;color:#666;margin-bottom:2px}
+.edit-field input{width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;color:#333}
+.edit-field input:focus{outline:none;border-color:#1B4965}
+.monthly-input{width:100%;padding:3px 4px;border:1px solid #ddd;border-radius:4px;font-size:11px;text-align:right}
+.monthly-input:focus{outline:none;border-color:#1B4965}
+.year-summary-table{width:100%;border-collapse:collapse;font-size:13px}
+.year-summary-table th{padding:8px 10px;text-align:right;background:#f8f9fa;border-bottom:2px solid #ddd;font-weight:600}
+.year-summary-table th:first-child{text-align:left}
+.year-summary-table td{padding:8px 10px;text-align:right;border-bottom:1px solid #f0f0f0}
+.year-summary-table td:first-child{text-align:left;font-weight:700}
+.year-summary-table tr:hover{background:rgba(27,73,101,.03);cursor:pointer}
+.saving{position:fixed;top:10px;right:10px;background:#1B4965;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:999;display:none}
+.info-box{padding:8px 12px;background:#f0f4f8;border-radius:8px;border:1px solid #dde8f0;font-size:12px;color:#666;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:26px">🏢</span>
+      <div>
+        <h1>まんてん個別 本部 5カ年計画シミュレーター<span class="badge">2026–2030</span></h1>
+        <div class="sub">売上ゼロ・費用管理専用 ｜ Excelデータ準拠</div>
+      </div>
+    </div>
+    <button onclick="if(confirm('初期データにリセットしますか？')){location.reload()}" style="padding:5px 12px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;font-size:11px;cursor:pointer">🔄 初期化</button>
+  </div>
+</div>
+
+<div id="loading" style="padding:60px;text-align:center;font-size:16px;color:#888">データを読み込み中...</div>
+<div id="app" style="display:none">
+<div class="container">
+  <div class="tabs" id="year-tabs"></div>
+  <div class="kpi-grid" id="kpi-area"></div>
+
+  <div class="tabs" style="margin-bottom:8px">
+    <div class="tab active" onclick="switchTab(0)">📊 月次P&L</div>
+    <div class="tab" onclick="switchTab(1)">⚙ パラメータ</div>
+    <div class="tab" onclick="switchTab(2)">📈 推移</div>
+  </div>
+
+  <div id="tab-0" class="card">
+    <div class="card-header" onclick="toggleCard(this)">📊 <span id="pl-title"></span></div>
+    <div class="card-body">
+      <div class="table-wrap" id="pl-table"></div>
+    </div>
+  </div>
+
+  <div id="tab-1" class="card" style="display:none">
+    <div class="card-header">⚙ パラメータ編集</div>
+    <div class="card-body" id="param-area"></div>
+  </div>
+
+  <div id="tab-2" style="display:none">
+    <div class="card">
+      <div class="card-header">📈 年度別推移</div>
+      <div class="card-body">
+        <div class="chart-container"><canvas id="year-chart"></canvas></div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table class="year-summary-table" id="year-summary"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /app -->
+<div class="saving" id="saving-ind">💾 保存中...</div>
+
+<script>
+// ============================================================
+// API設定・認証
+// ============================================================
+const API = 'api/index.php';
+
+async function apiGet(route) {
+  const token = sessionStorage.getItem('sim_token') || '';
+  const r = await fetch(API + '?route=' + route + '&_t=' + Date.now(), {
+    headers: { 'X-Sim-Token': token }
+  });
+  return r.json();
+}
+
+async function apiPost(route, data) {
+  const token = sessionStorage.getItem('sim_token') || '';
+  const fd = new FormData();
+  fd.append('route', route);
+  for (const [k, v] of Object.entries(data))
+    fd.append(k, typeof v === 'object' ? JSON.stringify(v) : v);
+  const r = await fetch(API, { method: 'POST', body: fd, headers: { 'X-Sim-Token': token } });
+  return r.json();
+}
+
+let _saveTimer = null;
+function saveField(id, field, value) {
+  clearTimeout(_saveTimer);
+  document.getElementById('saving-ind').style.display = 'block';
+  _saveTimer = setTimeout(async () => {
+    await apiPost('classroom', { action: 'update', id, field,
+      value: typeof value === 'object' ? JSON.stringify(value) : value });
+    document.getElementById('saving-ind').style.display = 'none';
+  }, 600);
+}
+
+// JS内部名 → DBカラム名マッピング
+const FIELD_MAP = { feeMonthly: 'fee_monthly' };
+
+let _saveYearTimer = null;
+function saveYearField(fy, field, value) {
+  const dbField = FIELD_MAP[field] || field;
+  clearTimeout(_saveYearTimer);
+  document.getElementById('saving-ind').style.display = 'block';
+  _saveYearTimer = setTimeout(async () => {
+    const res = await apiPost('year', { action: 'update', fiscal_year: fy, field: dbField,
+      value: typeof value === 'object' ? JSON.stringify(value) : value });
+    if (res && res.error) console.error('saveYearField error:', res.error, 'field:', dbField);
+    document.getElementById('saving-ind').style.display = 'none';
+  }, 600);
+}
+
+const MONTHS = ['4月','5月','6月','7月','8月','9月','10月','11月','12月','1月','2月','3月'];
+const BONUS_MONTHS = [0, 6]; // 4月・10月
+
+// ============================================================
+// 初期データ（Excelより）
+// ============================================================
+function makeYearData(fy) {
+  // 固定費（全年度共通ベース）
+  const base = {
+    rent: 272500,
+    water: 2000,
+    electric: fy === 2025 ? 15000 : 20000,
+    phone: 30000,
+    travel: 200000,
+    consume: 200000,
+    ads: Array(12).fill(200000),
+    sys: 40000,
+    fee: fy === 2025 ? 250000 : 350000, // 2025上期は250k、以降350k
+    welfare: 50000,
+    repair: 30000,
+    lease: 10000,
+    insurance: 30000,
+    sanitation: 1500,
+    other: 50000,
+    // 求人費：月次で変動
+    recruit: makeRecruitMonthly(fy),
+    recruit_part: Array(12).fill(0), // アルバイト求人費（月次）
+    // 支払手数料：2025上期のみ250k、他350k
+    feeMonthly: makeFeeMonthly(fy),
+    // 給与（staff配列: {name, salary, bonus, type:'staff'|'part'}）年度ごとに個別設定
+    staff: [],
+    legal_welf_r: 0.15,
+    // 返済・借入
+    repay: 1700000,
+    borrow: makeBorrowMonthly(fy),
+  };
+  return base;
+}
+
+function makeRecruitMonthly(fy) {
+  const r = Array(12).fill(0);
+  if (fy === 2025) { r[5]=1200000; } // 9月のみ
+  if (fy === 2026) { r[0]=1500000; r[6]=1000000; r[7]=0; } // 4月, 10月1000k
+  if (fy === 2027 || fy === 2028) { r[0]=2000000; r[6]=2000000; }
+  if (fy === 2029) { r[0]=2000000; r[6]=2000000; }
+  if (fy === 2030) { r[0]=3000000; r[6]=3000000; }
+  return r;
+}
+
+function makeFeeMonthly(fy) {
+  if (fy === 2025) {
+    return [250000,250000,250000,250000,250000,250000, 350000,350000,350000,350000,350000,350000];
+  }
+  return Array(12).fill(350000);
+}
+
+function makeBorrowMonthly(fy) {
+  const b = Array(12).fill(0);
+  if (fy === 2025) b[11] = 20000000; // 3月に2000万借入
+  return b;
+}
+
+// ============================================================
+// STATE
+// ============================================================
+const YEARS = [2026,2027,2028,2029,2030];
+let STATE = {
+  data: {},
+  yearIdx: 0,
+  mainTab: 0,
+  results: {},
+  yearChart: null,
+};
+
+function initData() {
+  YEARS.forEach(fy => {
+    STATE.data[fy] = makeYearData(fy);
+  });
+  calcAllResults();
+}
+
+// ============================================================
+// 計算エンジン
+// ============================================================
+function calcYear(fy) {
+  const d = STATE.data[fy];
+  const months = [];
+  for (let m = 0; m < 12; m++) {
+    const isBonusMonth = BONUS_MONTHS.includes(m);
+    const staff = d.staff || [];
+    const staffCosts = staff.map(s => {
+      const base = s.salary || 0;
+      return (s.bonus && isBonusMonth) ? base * 2 : base;
+    });
+    const staffTotal = staffCosts.reduce((s,v) => s+v, 0);
+    const legalW = staffTotal * d.legal_welf_r;
+    const labor = staffTotal + legalW;
+    // 後方互換
+    const sal1 = staffCosts[0] || 0;
+    const sal2 = staffCosts[1] || 0;
+
+    const adminTotal =
+      d.rent + d.water + d.electric + d.phone + d.travel + d.consume +
+      (d.ads[m]||0) + d.sys + (d.feeMonthly[m]||0) + d.welfare +
+      d.repair + d.lease + d.insurance + d.sanitation + d.other +
+      (d.recruit[m]||0) + (d.recruit_part[m]||0);
+
+    const expTotal = adminTotal + labor;
+    const profit = -expTotal;
+    const cf = profit - d.repay + (d.borrow[m]||0);
+
+    months.push({
+      rent:d.rent, water:d.water, electric:d.electric, phone:d.phone,
+      travel:d.travel, consume:d.consume, ads:d.ads[m]||0, sys:d.sys,
+      fee:d.feeMonthly[m]||0, welfare:d.welfare, repair:d.repair,
+      lease:d.lease, insurance:d.insurance, sanitation:d.sanitation,
+      other:d.other, recruit:d.recruit[m]||0, recruit_part:d.recruit_part[m]||0,
+      adminTotal,
+      sal1, sal2, legalW, labor,
+      expTotal, profit,
+      repay: d.repay,
+      borrow: d.borrow[m]||0,
+      cf,
+    });
+  }
+  const sum = k => months.reduce((s,m) => s+(m[k]||0), 0);
+  return { months, expTotal: sum('expTotal'), profit: sum('profit'), cf: sum('cf') };
+}
+
+function calcAllResults() {
+  YEARS.forEach(fy => { STATE.results[fy] = calcYear(fy); });
+  // 全社ダッシュボード向けエクスポート（本部は売上0・費用のみ）
+  try {
+    const exportData = YEARS.map(fy => {
+      const r = STATE.results[fy];
+      const monthlyExp = Array(12).fill(0);
+      const monthlyPro = Array(12).fill(0);
+      if (r && r.months) {
+        r.months.forEach((m, mi) => {
+          monthlyExp[mi] = Math.round(m.expTotal || 0);
+          monthlyPro[mi] = Math.round(m.profit   || 0);
+        });
+      }
+      return {
+        fy: fy,
+        revenue: 0,
+        expense: r ? Math.round(r.expTotal) : 0,
+        profit:  r ? Math.round(r.profit)   : 0,
+        rooms:   0,
+        monthly_revenue: JSON.stringify(Array(12).fill(0)),
+        monthly_expense: JSON.stringify(monthlyExp),
+        monthly_profit:  JSON.stringify(monthlyPro),
+      };
+    });
+    setTimeout(function() {
+      apiPost('export_write', { data: exportData })
+        .then(function(res) { console.log('export_write result:', JSON.stringify(res)); })
+        .catch(function(e) { console.error('export_write error:', e); });
+    }, 5000);
+  } catch(e) { console.error('export prep error:', e); }
+}
+
+// ============================================================
+// 保存
+// ============================================================
+let saveTimer = null;
+function saveAll() {
+  document.getElementById('saving-ind').style.display = 'block';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const saved = { _version:'1', data:{} };
+    YEARS.forEach(fy => { saved.data[fy] = {...STATE.data[fy]}; });
+    document.getElementById('saving-ind').style.display = 'none';
+  }, 500);
+}
+
+// ============================================================
+// レンダリング
+// ============================================================
+function curFy() { return YEARS[STATE.yearIdx]; }
+function curData() { return STATE.data[curFy()]; }
+function curResult() { return STATE.results[curFy()]; }
+
+function fmtY(v) { return Math.round(v).toLocaleString(); }
+function fmtS(v) {
+  const a = Math.abs(v);
+  if (a >= 1e8) return (v/1e8).toFixed(1)+'億';
+  if (a >= 1e4) return (v<0?'-':'')+Math.round(a/1e4).toLocaleString()+'万';
+  return Math.round(v).toLocaleString();
+}
+
+function renderYearTabs() {
+  const el = document.getElementById('year-tabs');
+  el.innerHTML = '';
+  YEARS.forEach((fy, i) => {
+    const r = STATE.results[fy];
+    const btn = document.createElement('div');
+    btn.className = 'tab' + (i===STATE.yearIdx?' active':'');
+    btn.textContent = fy + '年度';
+    btn.onclick = () => { STATE.yearIdx=i; renderYearTabs(); renderAll(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderKPI() {
+  const r = curResult();
+  const d = curData();
+  const fy = curFy();
+  const annRepay = d.repay * 12;
+  document.getElementById('kpi-area').innerHTML = `
+    <div class="kpi"><div class="kpi-label">${fy}年度 本部経費</div><div class="kpi-value" style="color:#C1292E">${fmtS(r.expTotal)}</div><div class="kpi-sub">売上ゼロ</div></div>
+    <div class="kpi"><div class="kpi-label">人件費</div><div class="kpi-value" style="color:#555">${fmtS(r.months.reduce((s,m)=>s+m.labor,0))}</div><div class="kpi-sub">給与①②＋法定福利費</div></div>
+    <div class="kpi"><div class="kpi-label">管理費</div><div class="kpi-value" style="color:#555">${fmtS(r.months.reduce((s,m)=>s+m.adminTotal,0))}</div><div class="kpi-sub">家賃・光熱費他</div></div>
+    <div class="kpi"><div class="kpi-label">年間返済</div><div class="kpi-value" style="color:#888">${fmtS(annRepay)}</div><div class="kpi-sub">月${fmtS(d.repay)}×12</div></div>
+    <div class="kpi"><div class="kpi-label">CF（返済後）</div><div class="kpi-value" style="color:${r.cf>=0?'#2D6A4F':'#C1292E'}">${fmtS(r.cf)}</div><div class="kpi-sub">利益−返済＋借入</div></div>
+  `;
+  document.getElementById('pl-title').textContent = fy + '年度 本部 月次P&L';
+}
+
+// P&L行定義
+const PL_ROWS = [
+  {l:'家賃',k:'rent',g:'admin'},
+  {l:'水道光熱',k:'water',g:'admin'},
+  {l:'電気',k:'electric',g:'admin'},
+  {l:'電話',k:'phone',g:'admin'},
+  {l:'旅費交通費',k:'travel',g:'admin'},
+  {l:'消耗品費',k:'consume',g:'admin'},
+  {l:'広告宣伝費',k:'ads',g:'admin'},
+  {l:'システム使用料',k:'sys',g:'admin'},
+  {l:'支払手数料',k:'fee',g:'admin'},
+  {l:'福利厚生費',k:'welfare',g:'admin'},
+  {l:'修繕費',k:'repair',g:'admin'},
+  {l:'賃借料',k:'lease',g:'admin'},
+  {l:'保険料',k:'insurance',g:'admin'},
+  {l:'衛生費',k:'sanitation',g:'admin'},
+  {l:'その他経費',k:'other',g:'admin'},
+  {l:'正社員求人費',k:'recruit',g:'admin'},
+  {l:'アルバイト求人費',k:'recruit_part',g:'admin'},
+  {l:'管理費計',k:'adminTotal',g:'admin',bold:true,hl:true},
+  {l:'法定福利費',k:'legalW',g:'labor'},
+  {l:'人件費計',k:'labor',g:'labor',bold:true,hl:true},
+  {l:'経費合計',k:'expTotal',g:'total',bold:true,hl:true},
+  {l:'営業損益',k:'profit',g:'total',bold:true,hl:true,neg:true},
+  {l:'返済',k:'repay',g:'cf'},
+  {l:'借入',k:'borrow',g:'cf'},
+  {l:'CF（返済後）',k:'cf',g:'cf',bold:true,hl:true,neg:true},
+];
+const GROUP_NAMES = {admin:'経費（管理費）',labor:'経費（人件費）',total:'合計',cf:'キャッシュフロー'};
+
+function renderPLTable() {
+  const r = curResult();
+  const M = r.months;
+  const d = curData();
+
+  // base ref
+  const baseRefs = {
+    rent:fmtY(d.rent), water:fmtY(d.water), electric:fmtY(d.electric),
+    phone:fmtY(d.phone), travel:fmtY(d.travel), consume:fmtY(d.consume),
+    ads:'月別', sys:fmtY(d.sys), fee:'上下期別',
+    welfare:fmtY(d.welfare), repair:fmtY(d.repair), lease:fmtY(d.lease),
+    insurance:fmtY(d.insurance), sanitation:fmtY(d.sanitation), other:fmtY(d.other),
+    recruit:'月別', recruit_part:'月別',
+    adminTotal:'-',
+    legalW:'給与×'+d.legal_welf_r, labor:'-',
+    expTotal:'-', profit:'-',
+    repay:'月額¥'+fmtY(d.repay), borrow:'月別', cf:'-',
+  };
+
+  let html = '<table><thead><tr>';
+  html += '<th style="min-width:130px;position:sticky;left:0;z-index:3;background:#f8f9fa">項目</th>';
+  html += '<th class="base-col" style="min-width:100px">基準値</th>';
+  MONTHS.slice(0,6).forEach(m => html += `<th>${m}</th>`);
+  html += '<th class="sem-col-h">上期計</th>';
+  MONTHS.slice(6,12).forEach(m => html += `<th>${m}</th>`);
+  html += '<th class="sem-col-h">下期計</th>';
+  html += '<th style="min-width:80px;background:#e8e8e8;color:#1B4965;font-weight:700;border-left:2px solid #999;font-size:10px">年計</th>';
+  html += '</tr></thead><tbody>';
+
+  // staff行を動的挿入（laborグループの前）
+  const staffRows = (d.staff||[]).map((s,i) => ({
+    l: s.name || `スタッフ${i+1}`,
+    k: `_staff_${i}`,
+    g: 'labor',
+    bonus: s.bonus,
+    type: s.type,
+    salary: s.salary||0,
+  }));
+
+  // M(月次)にstaff個別値を付与
+  M.forEach((mo, mi) => {
+    const isBM = BONUS_MONTHS.includes(mi);
+    (d.staff||[]).forEach((s,i) => {
+      mo[`_staff_${i}`] = (s.bonus && isBM) ? (s.salary||0)*2 : (s.salary||0);
+    });
+  });
+
+  // PL_ROWSにstaff行を動的追加（laborグループ先頭）
+  const laborIdx = PL_ROWS.findIndex(r => r.k === 'legalW');
+  const dynamicRows = [...PL_ROWS.slice(0, laborIdx), ...staffRows, ...PL_ROWS.slice(laborIdx)];
+
+  let lastG = '';
+  dynamicRows.forEach(row => {
+    if (row.g !== lastG) {
+      lastG = row.g;
+      html += `<tr class="grp-header"><td colspan="17">${GROUP_NAMES[row.g]}</td></tr>`;
+    }
+    const vals = M.map(m => m[row.k]||0);
+    const s0 = vals.slice(0,6).reduce((s,v)=>s+v,0);
+    const s1 = vals.slice(6,12).reduce((s,v)=>s+v,0);
+    const ann = vals.reduce((s,v)=>s+v,0);
+    const hl = row.hl ? (row.g==='admin'?'row-highlight':'row-highlight') : '';
+    html += `<tr class="${row.bold?'row-bold':''} ${hl}">`;
+    let label = row.l;
+    if (row.bonus !== undefined) {
+      label += ` <span style="color:#888;font-size:10px">(${row.bonus?'賞与あり':'賞与なし'}${row.type==='part'?' パート':''})</span>`;
+    }
+    html += `<td>${label}</td>`;
+    html += `<td class="base-col">${baseRefs[row.k]||'-'}</td>`;
+    vals.slice(0,6).forEach(v => {
+      const cl = row.neg ? (v>0?'profit-neg':'') : '';
+      html += `<td class="${cl}">${fmtY(v)}</td>`;
+    });
+    const sc0 = row.neg?(s0>0?'profit-neg':''):'';
+    html += `<td class="sem-col ${sc0}">${fmtY(s0)}</td>`;
+    vals.slice(6,12).forEach(v => {
+      const cl = row.neg ? (v>0?'profit-neg':'') : '';
+      html += `<td class="${cl}">${fmtY(v)}</td>`;
+    });
+    const sc1 = row.neg?(s1>0?'profit-neg':''):'';
+    html += `<td class="sem-col ${sc1}">${fmtY(s1)}</td>`;
+    const ac = row.neg?(ann>0?'profit-neg':(ann<0?'profit-pos':'')):'';
+    html += `<td class="annual-col ${ac}">${fmtY(ann)}</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('pl-table').innerHTML = html;
+}
+
+function renderParamArea() {
+  const d = curData();
+  const fy = curFy();
+
+  let html = `<div style="margin-bottom:12px;padding:8px 12px;background:#f0f4f8;border-radius:8px;font-size:12px;color:#666;border:1px solid #dde8f0">
+    ※ 編集した値は即時反映されます。年度ごとに個別設定可能です。
+  </div>`;
+
+  // 給与（staff配列）
+  html += `<h3 style="font-size:14px;margin-bottom:8px">👥 社員・パート給与</h3>`;
+  html += `<div id="staff-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">`;
+  const staff = d.staff || [];
+  if (staff.length === 0) {
+    html += `<div style="padding:12px 16px;background:#f8f9fa;border:1px dashed #ccc;border-radius:8px;color:#888;font-size:13px;text-align:center">
+      この年度はスタッフが設定されていません
+    </div>`;
+  }
+  staff.forEach((s, i) => {
+    const bonusAmt = s.bonus ? (s.salary||0)*2 : 0;
+    const typeLabel = s.type === 'part' ? 'パート' : '社員';
+    const typeColor = s.type === 'part' ? '#2D6A4F' : '#1B4965';
+    html += `<div style="background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden">
+      <div style="background:${typeColor};color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;font-size:13px">${typeLabel} ${i+1}</span>
+        <button onclick="removeStaff(${i})" style="background:rgba(255,255,255,0.2);border:none;color:#fff;cursor:pointer;border-radius:4px;padding:2px 8px;font-size:11px">削除</button>
+      </div>
+      <div style="padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#555;white-space:nowrap">名前</span>
+          <input type="text" value="${s.name||''}" style="width:110px;padding:4px 8px;border:1px solid #b3cde0;border-radius:4px;font-size:13px"
+            data-si="${i}" data-sf="name" onchange="onStaffChange(this)">
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#555;white-space:nowrap">月額</span>
+          <input type="number" value="${s.salary||0}" style="width:110px;padding:4px 8px;border:1px solid #b3cde0;border-radius:4px;font-size:13px;text-align:right"
+            data-si="${i}" data-sf="salary" onchange="onStaffChange(this)">
+          <span style="font-size:11px;color:#555">円</span>
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px">
+          <input type="checkbox" ${s.bonus?'checked':''} data-si="${i}" data-sf="bonus" onchange="onStaffChange(this)">
+          賞与あり（賞与月×2倍）
+        </label>
+        ${s.bonus ? `<span style="font-size:11px;color:#1B4965;font-weight:700">賞与月: ¥${fmtY(bonusAmt)}</span>` : ''}
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:#555">区分</span>
+          <select data-si="${i}" data-sf="type" onchange="onStaffChange(this)" style="padding:4px 6px;border:1px solid #b3cde0;border-radius:4px;font-size:12px">
+            <option value="staff" ${s.type!=='part'?'selected':''}>社員</option>
+            <option value="part" ${s.type==='part'?'selected':''}>パート</option>
+          </select>
+        </div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  html += `<div style="display:flex;gap:8px;margin-bottom:14px">
+    <button onclick="addStaff('staff')" style="padding:7px 16px;background:#1B4965;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">＋ 社員を追加</button>
+    <button onclick="addStaff('part')" style="padding:7px 16px;background:#2D6A4F;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">＋ パートを追加</button>
+  </div>`;
+
+  // 法定福利率
+  html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+    <label style="font-size:12px;font-weight:600">法定福利率</label>
+    <input type="number" value="${d.legal_welf_r}" step="0.01" style="width:80px;padding:5px 8px;border:1px solid #b3cde0;border-radius:4px;font-size:13px" data-field="legal_welf_r" onchange="onParamChange(this)">
+    <span style="font-size:11px;color:#888">（給与合計×率）</span>
+  </div>`;
+
+  // 固定費
+  html += `<h3 style="font-size:14px;margin-bottom:8px">🏢 固定費（月額）</h3>`;
+  html += `<div class="edit-grid">`;
+  const fixedFields = [
+    ['rent','家賃'],['water','水道光熱'],['electric','電気'],['phone','電話'],
+    ['travel','旅費交通費'],['consume','消耗品費'],['sys','システム使用料'],
+    ['welfare','福利厚生費'],['repair','修繕費'],['lease','賃借料'],
+    ['insurance','保険料'],['sanitation','衛生費'],['other','その他経費'],
+  ];
+  fixedFields.forEach(([k,l]) => {
+    html += `<div class="edit-field"><label>${l}</label>
+      <input type="number" value="${d[k]}" data-field="${k}" onchange="onParamChange(this)"></div>`;
+  });
+  html += `</div>`;
+
+  // 月次設定（広告・求人費・支払手数料・借入）
+  html += `<h3 style="font-size:14px;margin:14px 0 8px">📅 月次設定</h3>`;
+  html += `<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:700px">
+    <thead><tr style="background:#f0f4f8"><th style="text-align:left;padding:5px 8px">項目</th>`;
+  MONTHS.forEach(m => html += `<th style="padding:4px 6px;text-align:center">${m}</th>`);
+  html += `<th style="padding:4px 6px;text-align:right;background:#e8e8e8">年計</th></tr></thead><tbody>`;
+
+  [
+    ['ads','広告宣伝費','#555'],
+    ['feeMonthly','支払手数料','#555'],
+    ['recruit','正社員求人費','#C1292E'],
+    ['recruit_part','アルバイト求人費','#2D6A4F'],
+    ['borrow','借入金','#2D6A4F'],
+  ].forEach(([k,l,c]) => {
+    const vals = d[k] || Array(12).fill(0);
+    const ann = vals.reduce((s,v)=>s+v,0);
+    html += `<tr><td style="padding:4px 8px;font-weight:600;color:${c}">${l}</td>`;
+    vals.forEach((v,mi) => {
+      html += `<td style="padding:2px 3px"><input type="number" class="monthly-input" value="${v}" data-field="${k}" data-mi="${mi}" onchange="onMonthlyChange(this)"></td>`;
+    });
+    html += `<td style="padding:4px 6px;text-align:right;background:#f5f5f5;font-weight:700">${fmtY(ann)}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // 返済
+  html += `<h3 style="font-size:14px;margin:14px 0 8px">🏦 返済（月額固定）</h3>`;
+  html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0">
+    <label style="font-size:13px;font-weight:700;color:#C1292E">月額返済</label>
+    <input type="number" value="${d.repay}" style="width:120px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:15px;font-weight:700;text-align:right" data-field="repay" onchange="onParamChange(this)">
+    <span style="font-size:11px;color:#888">円/月 → 年間 ¥${fmtY(d.repay*12)}</span>
+  </div>`;
+
+  document.getElementById('param-area').innerHTML = html;
+}
+
+function renderYearSummary() {
+  const rows = YEARS.map(fy => {
+    const r = STATE.results[fy];
+    const d = STATE.data[fy];
+    const admin = r.months.reduce((s,m)=>s+m.adminTotal,0);
+    const labor = r.months.reduce((s,m)=>s+m.labor,0);
+    const repay = d.repay * 12;
+    const borrow = (d.borrow||[]).reduce((s,v)=>s+v,0);
+    return {fy, admin, labor, exp:r.expTotal, profit:r.profit, repay, borrow, cf:r.cf};
+  });
+
+  let html = `<thead><tr>
+    <th style="text-align:left">年度</th><th>管理費</th><th>人件費</th><th>経費合計</th>
+    <th>営業損益</th><th>返済</th><th>CF（返済後）</th>
+  </tr></thead><tbody>`;
+  rows.forEach((r,i) => {
+    const bg = i===STATE.yearIdx?'rgba(0,0,0,.04)':'';
+    html += `<tr style="background:${bg}" onclick="STATE.yearIdx=${i};renderYearTabs();renderAll()">
+      <td>${r.fy}年度</td>
+      <td>${fmtY(r.admin)}</td><td>${fmtY(r.labor)}</td>
+      <td style="font-weight:700">${fmtY(r.exp)}</td>
+      <td class="profit-neg" style="font-weight:700">${fmtY(r.profit)}</td>
+      <td style="color:#888">${fmtY(r.repay)}</td>
+      <td style="font-weight:700;color:${r.cf>=0?'#2D6A4F':'#C1292E'}">${fmtY(r.cf)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('year-summary').innerHTML = html;
+
+  const ctx = document.getElementById('year-chart');
+  if (STATE.yearChart) STATE.yearChart.destroy();
+  STATE.yearChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: YEARS.map(y=>y+'年度'),
+      datasets:[
+        {label:'経費合計',data:rows.map(r=>Math.round(r.exp)),backgroundColor:'rgba(27,73,101,0.7)',order:2},
+        {label:'返済',data:rows.map(r=>Math.round(r.repay)),backgroundColor:'rgba(224,122,95,0.7)',order:2},
+        {label:'CF',data:rows.map(r=>Math.round(r.cf)),type:'line',borderColor:'#1B4965',backgroundColor:'rgba(0,0,0,0.05)',fill:true,tension:.3,order:1,pointRadius:4},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{tooltip:{callbacks:{label:c=>c.dataset.label+': ¥'+fmtS(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fmtS(v)}}}
+    }
+  });
+}
+
+function renderAll() {
+  renderKPI();
+  renderPLTable();
+  renderParamArea();
+  if (STATE.mainTab===2) renderYearSummary();
+}
+
+// ============================================================
+// イベント
+// ============================================================
+function onParamChange(el) {
+  const field = el.dataset.field;
+  const step = parseFloat(el.step)||1;
+  const val = step<1 ? parseFloat(el.value)||0 : parseInt(el.value)||0;
+  const d = curData();
+  d[field] = val;
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderParamArea();
+  saveYearField(curFy(), field, val);
+}
+
+function onStaffChange(el) {
+  const i = parseInt(el.dataset.si);
+  const sf = el.dataset.sf;
+  const d = curData();
+  if (!d.staff) d.staff = [];
+  if (!d.staff[i]) return;
+  if (sf === 'salary') d.staff[i].salary = parseInt(el.value)||0;
+  else if (sf === 'name') d.staff[i].name = el.value;
+  else if (sf === 'bonus') d.staff[i].bonus = el.checked;
+  else if (sf === 'type') d.staff[i].type = el.value;
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderParamArea();
+  saveYearField(curFy(), 'staff_json', d.staff);
+}
+
+function addStaff(type) {
+  const d = curData();
+  if (!d.staff) d.staff = [];
+  d.staff.push({ name: type==='part'?'パート':'新スタッフ', salary: type==='part'?80000:300000, bonus: false, type });
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderParamArea();
+  saveYearField(curFy(), 'staff_json', d.staff);
+}
+
+function removeStaff(i) {
+  const d = curData();
+  if (!confirm(`${d.staff[i].name||'スタッフ'}をこの年度から削除しますか？`)) return;
+  d.staff.splice(i, 1);
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderParamArea();
+  saveYearField(curFy(), 'staff_json', d.staff);
+}
+
+function onMonthlyChange(el) {
+  const field = el.dataset.field;
+  const mi = parseInt(el.dataset.mi);
+  const val = parseInt(el.value)||0;
+  const d = curData();
+  if (!d[field]) d[field] = Array(12).fill(0);
+  d[field][mi] = val;
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderParamArea();
+  saveYearField(curFy(), field, d[field]);
+}
+
+function switchTab(idx) {
+  STATE.mainTab = idx;
+  [0,1,2].forEach(i => {
+    document.getElementById('tab-'+i).style.display = i===idx?'':'none';
+  });
+  document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i) => {
+    el.className='tab'+(i===idx?' active':'');
+  });
+  if (idx===2) renderYearSummary();
+}
+
+function toggleCard(h){ h.nextElementSibling.classList.toggle('collapsed'); }
+
+// ============================================================
+// 起動
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('sim_token')) {
+    loadFromAPI();
+  } else {
+    showLoginScreen();
+  }
+});
+
+function showLoginScreen() {
+  document.getElementById('loading').innerHTML = `
+    <div style="max-width:340px;margin:0 auto;padding:40px 20px;text-align:center">
+      <div style="font-size:36px;margin-bottom:16px">🌿</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:#1B4965">本部</div>
+      <div style="font-size:13px;color:#888;margin-bottom:24px">シミュレーター</div>
+      <input type="password" id="pw-input" placeholder="パスワードを入力"
+        style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:12px;text-align:center"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()"
+        style="width:100%;padding:10px;background:#1B4965;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
+        ログイン
+      </button>
+      <div id="pw-error" style="color:#C1292E;font-size:13px;margin-top:10px;display:none">パスワードが違います</div>
+    </div>`;
+  setTimeout(() => document.getElementById('pw-input')?.focus(), 100);
+}
+
+
+async function loadFromAPI() {
+  document.getElementById('loading').innerHTML = 'データを読み込み中...';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('app').style.display = 'none';
+  try {
+    document.getElementById('loading').innerHTML = 'APIに接続中...';
+    let data;
+    try {
+      data = await apiGet('all');
+    } catch(fetchErr) {
+      document.getElementById('loading').innerHTML = '<div style="color:#C1292E">接続エラー: ' + fetchErr.message + '</div>';
+      return;
+    }
+    document.getElementById('loading').innerHTML = 'データ処理中... (' + JSON.stringify(data).substring(0,80) + ')';
+    if (data.error) {
+      if (data.error === 'Unauthorized' || data.error === '認証されていません' || data.error.includes('認証')) { sessionStorage.removeItem('sim_token'); showLoginScreen(); return; }
+      // その他のエラーはデフォルト値で表示
+      document.getElementById('loading').innerHTML = 'APIエラー（デフォルト値で表示）: ' + data.error;
+      STATE.years = YEARS.map(fy => ({ fiscal_year: fy }));
+      YEARS.forEach(fy => { STATE.data[fy] = makeYearData(fy); });
+      calcAllResults();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      renderYearTabs(); renderAll();
+      return;
+    }
+    // STATE.yearsを設定
+    STATE.years = YEARS.map(fy => ({ fiscal_year: fy }));
+    // 本部データをSTATEに反映（DBキー名→内部キー名に変換）
+    (data.years || []).forEach(d => {
+      const fy = d.fiscal_year;
+      STATE.data[fy] = {
+        staff: Array.isArray(d.staff_json) ? d.staff_json : (d.staff_json ? JSON.parse(d.staff_json) : []),
+        legal_welf_r: parseFloat(d.legal_welf_r) || 0.15,
+        rent:         parseInt(d.rent) || 272500,
+        water:        parseInt(d.water) || 2000,
+        electric:     parseInt(d.electric) || 20000,
+        phone:        parseInt(d.phone) || 30000,
+        travel:       parseInt(d.travel) || 200000,
+        consume:      parseInt(d.consume) || 200000,
+        sys:          parseInt(d.sys) || 40000,
+        welfare:      parseInt(d.welfare) || 50000,
+        repair:       parseInt(d.repair) || 30000,
+        lease:        parseInt(d.lease) || 10000,
+        insurance:    parseInt(d.insurance) || 30000,
+        sanitation:   parseInt(d.sanitation) || 1500,
+        other:        parseInt(d.other) || 50000,
+        repay:        parseInt(d.repay) || 1700000,
+        // DBのjsonフィールド（文字列またはarray）
+        ads:         Array.isArray(d.ads)        ? d.ads        : (typeof d.ads==='string'        ? JSON.parse(d.ads)        : Array(12).fill(200000)),
+        feeMonthly:  Array.isArray(d.fee_monthly) ? d.fee_monthly : (typeof d.fee_monthly==='string' ? JSON.parse(d.fee_monthly) : Array(12).fill(350000)),
+        recruit:     Array.isArray(d.recruit)    ? d.recruit    : (typeof d.recruit==='string'    ? JSON.parse(d.recruit)    : Array(12).fill(0)),
+        recruit_part: Array.isArray(d.recruit_part) ? d.recruit_part : (typeof d.recruit_part==='string' ? JSON.parse(d.recruit_part) : Array(12).fill(0)),
+        borrow:      Array.isArray(d.borrow)     ? d.borrow     : (typeof d.borrow==='string'     ? JSON.parse(d.borrow)     : Array(12).fill(0)),
+      };
+    });
+    // DBにデータがない年度はデフォルト値で補完
+    YEARS.forEach(fy => {
+      if (!STATE.data[fy]) STATE.data[fy] = makeYearData(fy);
+    });
+    calcAllResults();
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    renderYearTabs();
+    renderAll();
+    // export_write は calcAllResults 内で実行
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<div style="color:#C1292E">読み込み失敗: ' + e.message + '</div>';
+  }
+}
+
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  const fd = new FormData();
+  fd.append('route', 'auth');
+  fd.append('password', pw);
+  const r = await fetch(API, { method: 'POST', body: fd });
+  const d = await r.json();
+  if (d.ok) {
+    sessionStorage.setItem('sim_token', pw);
+    loadFromAPI();
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+  }
+}
+</script>
+</body>
+</html>

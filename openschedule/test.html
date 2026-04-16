@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8"><title>API テスト</title>
+<style>
+body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px}
+.ok{color:green;font-weight:bold}.ng{color:red;font-weight:bold}
+pre{background:#f0f0f0;padding:10px;border-radius:5px;overflow:auto;max-height:200px;font-size:12px}
+button{padding:8px 16px;margin:5px;font-size:14px;cursor:pointer}
+h2{margin-top:30px;border-bottom:2px solid #333;padding-bottom:5px}
+</style></head><body>
+<h1>🔧 API 診断テスト</h1>
+<div id="log"></div>
+
+<h2>手動テスト</h2>
+<button onclick="testDelete()">削除テスト</button>
+<button onclick="testCopy()">複製テスト</button>
+<button onclick="cleanAll()">全プロジェクト削除</button>
+<div id="manual"></div>
+
+<script>
+const BASE = document.baseURI.replace(/\/[^\/]*$/, '/');
+const LOG = document.getElementById('log');
+const MANUAL = document.getElementById('manual');
+
+function log(label, ok, detail) {
+  LOG.innerHTML += `<p><span class="${ok?'ok':'ng'}">${ok?'✅':'❌'} ${label}</span></p><pre>${typeof detail==='object'?JSON.stringify(detail,null,2):detail}</pre>`;
+}
+
+async function rawFetch(url, opts) {
+  const res = await fetch(url, opts || {});
+  const text = await res.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch(e) {}
+  return { status: res.status, text, json, headers: Object.fromEntries(res.headers) };
+}
+
+async function runTests() {
+  LOG.innerHTML = '<h2>自動テスト実行中...</h2>';
+
+  // Test 1: GET dashboard
+  log('テスト1: GET dashboard', true, '送信中...');
+  try {
+    const r1 = await rawFetch(BASE + 'api/index.php?route=dashboard');
+    log('テスト1: GET dashboard (status=' + r1.status + ')', r1.json !== null, r1.text.substring(0, 500));
+  } catch(e) { log('テスト1: GET dashboard', false, e.message); }
+
+  // Test 2: POST create project
+  log('テスト2: POST プロジェクト作成', true, '送信中...');
+  try {
+    const r2 = await rawFetch(BASE + 'api/index.php?route=projects', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({name: 'テスト教室', open_date: '2026-06-01', staff: []})
+    });
+    log('テスト2: POST 作成 (status=' + r2.status + ')', r2.json && r2.json.ok, r2.text.substring(0, 500));
+
+    if (r2.json && r2.json.id) {
+      const testId = r2.json.id;
+
+      // Test 3: GET single project
+      const r3 = await rawFetch(BASE + 'api/index.php?route=projects/' + testId);
+      log('テスト3: GET プロジェクト取得 (status=' + r3.status + ')', r3.json && r3.json.name === 'テスト教室', r3.text.substring(0, 500));
+
+      // Test 4: POST delete project
+      log('テスト4: POST 削除 (action=delete)', true, '送信URL: ' + BASE + 'api/index.php?route=projects/' + testId + '&action=delete');
+      const r4 = await rawFetch(BASE + 'api/index.php?route=projects/' + testId + '&action=delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({})
+      });
+      log('テスト4: POST 削除結果 (status=' + r4.status + ')', r4.json && r4.json.ok, r4.text.substring(0, 500));
+
+      // Test 5: Verify deletion
+      const r5 = await rawFetch(BASE + 'api/index.php?route=projects/' + testId);
+      log('テスト5: 削除確認', r5.status === 404 || (r5.json && r5.json.error), r5.text.substring(0, 500));
+    }
+  } catch(e) { log('テスト2-5', false, e.message + '\n' + e.stack); }
+
+  // Test 6: Check PHP error log
+  log('テスト6: PHP情報', true, 'BASE URL = ' + BASE + '\nFull API URL example = ' + BASE + 'api/index.php?route=dashboard');
+}
+
+async function testDelete() {
+  MANUAL.innerHTML = '<p>削除テスト中...</p>';
+  // Get all projects
+  const r = await rawFetch(BASE + 'api/index.php?route=projects');
+  if (!r.json || !r.json.length) { MANUAL.innerHTML = '<p class="ng">プロジェクトがありません</p>'; return; }
+
+  const p = r.json[0];
+  MANUAL.innerHTML = `<p>「${p.name}」(id=${p.id}) を削除します...</p>`;
+
+  const url = BASE + 'api/index.php?route=projects/' + p.id + '&action=delete';
+  MANUAL.innerHTML += `<p>URL: <code>${url}</code></p>`;
+
+  const d = await rawFetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+  MANUAL.innerHTML += `<p>Status: ${d.status}</p><pre>${d.text}</pre>`;
+  MANUAL.innerHTML += d.json && d.json.ok ? '<p class="ok">✅ 削除成功！</p>' : '<p class="ng">❌ 削除失敗</p>';
+}
+
+async function testCopy() {
+  MANUAL.innerHTML = '<p>複製テスト中...</p>';
+  const r = await rawFetch(BASE + 'api/index.php?route=projects');
+  if (!r.json || !r.json.length) { MANUAL.innerHTML = '<p class="ng">プロジェクトがありません</p>'; return; }
+
+  const p = r.json[0];
+  const url = BASE + 'api/index.php?route=projects/' + p.id + '&action=copy';
+  MANUAL.innerHTML = `<p>「${p.name}」を複製... URL: <code>${url}</code></p>`;
+
+  const d = await rawFetch(url, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({name:'コピーテスト', open_date:'2026-07-01', daysDiff:30})
+  });
+  MANUAL.innerHTML += `<p>Status: ${d.status}</p><pre>${d.text}</pre>`;
+  MANUAL.innerHTML += d.json && d.json.ok ? '<p class="ok">✅ 複製成功！</p>' : '<p class="ng">❌ 複製失敗</p>';
+}
+
+async function cleanAll() {
+  MANUAL.innerHTML = '<p>全削除中...</p>';
+  const r = await rawFetch(BASE + 'api/index.php?route=projects');
+  if (!r.json) { MANUAL.innerHTML = '<pre>' + r.text + '</pre>'; return; }
+  for (const p of r.json) {
+    const d = await rawFetch(BASE + 'api/index.php?route=projects/' + p.id + '&action=delete', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'
+    });
+    MANUAL.innerHTML += `<p>${p.name}: ${d.json&&d.json.ok?'✅':'❌'}</p>`;
+  }
+  MANUAL.innerHTML += '<p class="ok">完了</p>';
+}
+
+runTests();
+</script></body></html>
