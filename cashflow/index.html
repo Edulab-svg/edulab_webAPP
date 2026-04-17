@@ -284,8 +284,10 @@ async function apiPost(action, data={}) {
 const mc = () => document.getElementById('mc');
 let planBalDashChart = null;
 let planBalDashYear = new Date().getFullYear(), planBalDashMonth = new Date().getMonth() + 1;
+let _dailyStickyCleanup = null;
 function loading() {
   if (planBalDashChart) { planBalDashChart.destroy(); planBalDashChart = null; }
+  if (typeof _dailyStickyCleanup === 'function') { _dailyStickyCleanup(); _dailyStickyCleanup = null; }
   mc().innerHTML = '<div class="loading"><div class="spinner"></div>読み込み中…</div>';
 }
 function toast(msg, type='ok') {
@@ -1220,11 +1222,100 @@ async function renderDailyCF() {
     }
     applyDailyCfSectionFilter();
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollDailyGridToTodayIfApplicable());
+      requestAnimationFrame(() => {
+        scrollDailyGridToTodayIfApplicable();
+        _dailyStickyCleanup = setupStickyDailyHeader();
+      });
     });
   } catch(e) {
     mc().innerHTML = `<div class="loading" style="color:var(--danger)">${e.message}</div>`;
   }
+}
+
+// ============================================================
+//  日次CFグリッド: スクロール同期型スティッキーヘッダー
+//  overflow-x:auto コンテナ内でも確実に動作する JS 実装
+// ============================================================
+function setupStickyDailyHeader() {
+  const wrap  = document.querySelector('#mc .grid-wrap');
+  const table = wrap?.querySelector('.daily-grid');
+  if (!wrap || !table) return null;
+  const thead = table.querySelector('thead');
+  if (!thead) return null;
+
+  // 固定表示用オーバーレイを body 直下に作成
+  const overlay = document.createElement('div');
+  overlay.id = 'daily-sticky-hdr';
+  Object.assign(overlay.style, {
+    position: 'fixed', zIndex: '50', overflow: 'hidden',
+    visibility: 'hidden', pointerEvents: 'none',
+    boxShadow: '0 2px 6px rgba(0,0,0,.1)'
+  });
+
+  const cloneTable = document.createElement('table');
+  cloneTable.className = 'daily-grid';
+  Object.assign(cloneTable.style, {
+    position: 'absolute', top: '0', left: '0',
+    tableLayout: 'fixed', borderCollapse: 'collapse', borderSpacing: '0', margin: '0'
+  });
+  const cloneThead = thead.cloneNode(true);
+  cloneTable.appendChild(cloneThead);
+  overlay.appendChild(cloneTable);
+  document.body.appendChild(overlay);
+
+  const HEADER_H = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue('--header-h')
+  ) || 52;
+  let widthsSynced = false;
+
+  function syncWidths() {
+    const origThs  = thead.querySelectorAll('th');
+    const cloneThs = cloneThead.querySelectorAll('th');
+    let totalW = 0;
+    origThs.forEach((o, i) => {
+      const w = o.getBoundingClientRect().width;
+      totalW += w;
+      if (cloneThs[i]) {
+        cloneThs[i].style.width    = w + 'px';
+        cloneThs[i].style.minWidth = w + 'px';
+        cloneThs[i].style.maxWidth = w + 'px';
+      }
+    });
+    cloneTable.style.width = totalW + 'px';
+    widthsSynced = true;
+  }
+
+  function update() {
+    const wr = wrap.getBoundingClientRect();
+    const tr = thead.getBoundingClientRect();
+    const show = tr.top < HEADER_H && wr.bottom > HEADER_H + 20;
+
+    if (show && !widthsSynced) syncWidths();
+    overlay.style.visibility   = show ? 'visible' : 'hidden';
+    overlay.style.pointerEvents = show ? 'auto'   : 'none';
+    if (!show) return;
+
+    overlay.style.top    = HEADER_H + 'px';
+    overlay.style.left   = wr.left + 'px';
+    overlay.style.width  = wr.width + 'px';
+    overlay.style.height = tr.height + 'px';
+    cloneTable.style.transform = `translateX(${-wrap.scrollLeft}px)`;
+  }
+
+  const onResize = () => { widthsSynced = false; update(); };
+  window.addEventListener('scroll',  update,   { passive: true });
+  wrap.addEventListener(  'scroll',  update,   { passive: true });
+  window.addEventListener('resize',  onResize, { passive: true });
+
+  // 初回レイアウト確定後に幅を同期
+  requestAnimationFrame(() => { syncWidths(); update(); });
+
+  return function cleanup() {
+    window.removeEventListener('scroll',  update);
+    window.removeEventListener('resize',  onResize);
+    wrap.removeEventListener(  'scroll',  update);
+    overlay.remove();
+  };
 }
 
 function dailyParseInputAmt(inp) {
