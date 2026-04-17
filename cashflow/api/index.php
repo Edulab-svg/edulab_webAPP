@@ -121,38 +121,88 @@ function check_alerts(PDO $pdo): array {
     $settings = $pdo->query("SELECT * FROM alert_settings WHERE is_active=1")->fetchAll();
 
     foreach ($settings as $s) {
-        if ($s['alert_type'] === 'balance_low') {
-            $row = $pdo->query("
-                SELECT SUM(balance) AS total FROM bank_balances
-                WHERE balance_date = (SELECT MAX(balance_date) FROM bank_balances)
-            ")->fetch();
-            $total = (int)($row['total'] ?? 0);
-            if ($total < (int)$s['threshold']) {
-                $alerts[] = [
-                    'type'    => 'balance_low',
-                    'message' => '預金残高が閾値（'.number_format($s['threshold']).'円）を下回っています（現在: '.number_format($total).'円）',
-                    'level'   => 'danger',
-                ];
-            }
-        }
-        if ($s['alert_type'] === 'cashflow_negative') {
+        if ($s['alert_type'] === 'plan_balance_low') {
+            $threshold = (int)$s['threshold'];
             $from = date('Y-m-01');
             $to   = date('Y-m-t');
-            $st   = $pdo->prepare("
-                SELECT COALESCE(SUM(CASE WHEN c.type = 'income'  THEN d.amount ELSE 0 END), 0)
-                     - COALESCE(SUM(CASE WHEN c.type = 'expense' THEN d.amount ELSE 0 END), 0) AS net
+
+            // 当月の日次予定 収入・支出 合計を日付ごとに取得
+            $st = $pdo->prepare("
+                SELECT d.entry_date,
+                       COALESCE(SUM(CASE WHEN c.type='income'  THEN d.amount ELSE 0 END), 0) AS inc,
+                       COALESCE(SUM(CASE WHEN c.type='expense' THEN d.amount ELSE 0 END), 0) AS exp
                 FROM daily_cashflow_entries d
                 INNER JOIN categories c ON c.id = d.category_id
                 WHERE d.entry_date BETWEEN ? AND ?
                   AND d.entry_type = 'plan'
+                GROUP BY d.entry_date
+                ORDER BY d.entry_date
             ");
             $st->execute([$from, $to]);
-            $net = (int)($st->fetch()['net'] ?? 0);
-            if ($net < (int)$s['threshold']) {
+            $dailyMap = [];
+            foreach ($st->fetchAll() as $r) {
+                $dailyMap[$r['entry_date']] = [(int)$r['inc'], (int)$r['exp']];
+            }
+
+            // 繰越残高: 当月開始日より前の最新残高合計
+            $bSt = $pdo->prepare("
+                SELECT COALESCE(SUM(b2.balance), 0) AS total
+                FROM bank_balances b2
+                INNER JOIN (
+                    SELECT account_id, MAX(balance_date) AS max_date
+                    FROM bank_balances
+                    WHERE balance_date < ?
+                    GROUP BY account_id
+                ) latest ON b2.account_id = latest.account_id
+                         AND b2.balance_date = latest.max_date
+                INNER JOIN bank_accounts a ON a.id = b2.account_id
+                WHERE a.is_active = 1
+            ");
+            $bSt->execute([$from]);
+            $bRow    = $bSt->fetch();
+            $carryIn = ($bRow && (int)$bRow['total'] > 0) ? (int)$bRow['total'] : null;
+
+            // 繰越が不明な場合は当月内最初の実残高を起点にする
+            if ($carryIn === null) {
+                $fSt = $pdo->prepare("
+                    SELECT COALESCE(SUM(b.balance), 0) AS total
+                    FROM bank_balances b
+                    INNER JOIN bank_accounts a ON a.id = b.account_id
+                    WHERE b.balance_date = (
+                        SELECT MIN(balance_date) FROM bank_balances
+                        WHERE balance_date BETWEEN ? AND ?
+                    ) AND a.is_active = 1
+                ");
+                $fSt->execute([$from, $to]);
+                $fRow    = $fSt->fetch();
+                $carryIn = ($fRow && (int)$fRow['total'] > 0) ? (int)$fRow['total'] : null;
+            }
+
+            if ($carryIn === null) {
+                continue; // 起点残高が特定できないためスキップ
+            }
+
+            // 日別予定残高を積み上げてアラート判定
+            $cur      = $from;
+            $running  = $carryIn;
+            $minBal   = PHP_INT_MAX;
+            $hasAlert = false;
+            while ($cur <= $to) {
+                $inc     = $dailyMap[$cur][0] ?? 0;
+                $exp     = $dailyMap[$cur][1] ?? 0;
+                $running += ($inc - $exp);
+                if ($running < $threshold) {
+                    $hasAlert = true;
+                    $minBal   = min($minBal, $running);
+                }
+                $cur = date('Y-m-d', strtotime($cur . ' +1 day'));
+            }
+
+            if ($hasAlert) {
                 $alerts[] = [
-                    'type'    => 'cashflow_negative',
-                    'message' => '当月の日次CF（予定）収支が閾値を下回っています（'.number_format($net).'円）',
-                    'level'   => 'warning',
+                    'type'    => 'plan_balance_low',
+                    'message' => '当月の予定残高が警戒ライン（'.number_format($threshold).'円）を下回る日があります（最小: '.number_format($minBal).'円）',
+                    'level'   => 'danger',
                 ];
             }
         }

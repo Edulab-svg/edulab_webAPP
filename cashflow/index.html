@@ -159,6 +159,12 @@ main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-he
 .daily-grid .daily-cf-bal-td{text-align:right;vertical-align:middle;white-space:nowrap}
 .daily-grid .daily-bal-cell-amt{display:inline}
 .daily-grid .daily-bal-to-input{padding:2px 8px;font-size:10px;margin-left:4px;vertical-align:middle;line-height:1.2}
+
+/* 予定残高アラート */
+.daily-grid td.plan-bal-alert-cell{background:#fef2f2 !important;color:#dc2626 !important;font-weight:600}
+.plan-bal-alert-banner{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;
+  border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -295,6 +301,24 @@ const fmt = n => (n==null ? '' : Number(n).toLocaleString('ja-JP'));
 const cfL = {operating:'営業',investing:'投資',financing:'財務'};
 
 // ============================================================
+//  アラート閾値キャッシュ
+// ============================================================
+let _alertThresholdCache = undefined; // undefined=未取得, null=無効/未設定, number=閾値
+
+async function getAlertThreshold() {
+  if (_alertThresholdCache !== undefined) return _alertThresholdCache;
+  try {
+    const d = await apiGet('alerts_list');
+    const a = d.alerts.find(x => x.alert_type === 'plan_balance_low' && parseInt(x.is_active));
+    _alertThresholdCache = (a != null && Number.isFinite(parseInt(a.threshold, 10)))
+      ? parseInt(a.threshold, 10) : null;
+  } catch { _alertThresholdCache = null; }
+  return _alertThresholdCache;
+}
+
+function invalidateAlertCache() { _alertThresholdCache = undefined; }
+
+// ============================================================
 //  Navigation
 // ============================================================
 const pages = {};
@@ -313,8 +337,11 @@ pages.dashboard = () => renderPlanBalDashboard();
 async function renderPlanBalDashboard() {
   loading();
   try {
-    const carryIn = await planCarryInFromPreviousMonthEnd(planBalDashYear, planBalDashMonth);
-    const d = await apiGet('daily_grid', { year: planBalDashYear, month: planBalDashMonth });
+    const [carryIn, d, threshold] = await Promise.all([
+      planCarryInFromPreviousMonthEnd(planBalDashYear, planBalDashMonth),
+      apiGet('daily_grid', { year: planBalDashYear, month: planBalDashMonth }),
+      getAlertThreshold()
+    ]);
     const { days, planBalMap, balMap, hasPlanBal } = deriveDailyPlanBalanceFromApi(d, carryIn);
     const ymLabel = `${planBalDashYear}年${planBalDashMonth}月`;
 
@@ -323,13 +350,26 @@ async function renderPlanBalDashboard() {
       planBalDashChart = null;
     }
 
-    const labels = days.map(dt => `${parseInt(dt.slice(8), 10)}日`);
+    const labels   = days.map(dt => `${parseInt(dt.slice(8), 10)}日`);
     const planData = days.map(dt => (planBalMap[dt] != null ? planBalMap[dt] : null));
-    const actData = days.map(dt => (balMap[dt] != null ? balMap[dt] : null));
+    const actData  = days.map(dt => (balMap[dt]     != null ? balMap[dt]     : null));
+
+    // アラート判定
+    const alertDays = threshold !== null
+      ? days.filter(dt => planBalMap[dt] != null && planBalMap[dt] < threshold)
+      : [];
+    const minBal = alertDays.length > 0
+      ? Math.min(...alertDays.map(dt => planBalMap[dt])) : null;
+    const alertBanner = alertDays.length > 0 ? `
+      <div class="plan-bal-alert-banner">
+        ⚠️ <strong>${alertDays.length}日間</strong>の予定残高が警戒ライン（¥${fmt(threshold)}）を下回っています
+        （最小: ¥${fmt(minBal)}）
+      </div>` : '';
 
     const noPlan = !hasPlanBal;
     mc().innerHTML = `
       <div class="page-title">📈 予定残高グラフ</div>
+      ${alertBanner}
       <div class="toolbar">
         <div class="year-nav">
           <button type="button" data-mc-nav="planbal-month" data-dir="prev">◀</button>
@@ -348,39 +388,62 @@ async function renderPlanBalDashboard() {
 
     if (noPlan) return;
 
+    // ポイント色: 閾値未満の日を赤に
+    const pointColors = planData.map(v =>
+      threshold !== null && v !== null && v < threshold ? '#dc2626' : '#2563eb'
+    );
+
+    const datasets = [
+      {
+        label: '予定残高',
+        data: planData,
+        borderColor: '#2563eb',
+        backgroundColor: 'rgba(37,99,235,.12)',
+        fill: true,
+        tension: 0.25,
+        borderWidth: 2,
+        pointRadius: planData.map(v => v != null ? 3 : 0),
+        pointHoverRadius: 5,
+        pointBackgroundColor: pointColors,
+        pointBorderColor: pointColors,
+        spanGaps: false
+      },
+      {
+        label: '実残高（入力がある日のみ）',
+        data: actData,
+        borderColor: '#64748b',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0.2,
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 2,
+        pointHoverRadius: 5,
+        spanGaps: true
+      }
+    ];
+
+    // 閾値ラインを赤い点線データセットとして追加
+    if (threshold !== null) {
+      datasets.push({
+        label: `警戒ライン（¥${fmt(threshold)}）`,
+        data: days.map(() => threshold),
+        borderColor: '#dc2626',
+        backgroundColor: 'transparent',
+        fill: false,
+        tension: 0,
+        borderWidth: 1.5,
+        borderDash: [5, 4],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        order: 99
+      });
+    }
+
     const ctx = document.getElementById('planbal-chart');
     planBalDashChart = new Chart(ctx, {
       type: 'line',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: '予定残高',
-            data: planData,
-            borderColor: '#2563eb',
-            backgroundColor: 'rgba(37,99,235,.12)',
-            fill: true,
-            tension: 0.25,
-            borderWidth: 2,
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            spanGaps: false
-          },
-          {
-            label: '実残高（入力がある日のみ）',
-            data: actData,
-            borderColor: '#64748b',
-            backgroundColor: 'transparent',
-            fill: false,
-            tension: 0.2,
-            borderWidth: 2,
-            borderDash: [6, 4],
-            pointRadius: 2,
-            pointHoverRadius: 5,
-            spanGaps: true
-          }
-        ]
-      },
+      data: { labels, datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -994,8 +1057,11 @@ function deriveDailyPlanBalanceFromApi(d, carryInFromPrevMonthEnd = null) {
 async function renderDailyCF() {
   loading();
   try {
-    const carryIn = await planCarryInFromPreviousMonthEnd(dailyYear, dailyMonth);
-    const d = await apiGet('daily_grid', {year: dailyYear, month: dailyMonth});
+    const [carryIn, d, threshold] = await Promise.all([
+      planCarryInFromPreviousMonthEnd(dailyYear, dailyMonth),
+      apiGet('daily_grid', {year: dailyYear, month: dailyMonth}),
+      getAlertThreshold()
+    ]);
     const today = new Date().toISOString().slice(0, 10);
     const { days, eMap, dayIncTot, dayExpTot, balMap, planBalMap, baseDate, carryInUsed } =
       deriveDailyPlanBalanceFromApi(d, carryIn);
@@ -1078,7 +1144,9 @@ async function renderDailyCF() {
       <td class="sticky-col">予定残高</td>
       ${days.map(dt=>{
         const p = planBalMap[dt];
-        return `<td class="num${dt===today?' today-col':''}">${p != null ? '¥'+fmt(p) : ''}</td>`;
+        const isAlert = threshold !== null && p != null && p < threshold;
+        const cls = (dt===today?' today-col':'') + (isAlert?' plan-bal-alert-cell':'');
+        return `<td class="num${cls}">${p != null ? (isAlert?'⚠ ':'')+'¥'+fmt(p) : ''}</td>`;
       }).join('')}
       <td></td>
     </tr>`;
@@ -1123,7 +1191,7 @@ async function renderDailyCF() {
       </div>
       <div class="card" style="padding:0">
         <div class="grid-wrap">
-          <table class="daily-grid" data-days="${days.join('|')}" data-plan-carry-in="${carryInUsed != null ? carryInUsed : ''}">
+          <table class="daily-grid" data-days="${days.join('|')}" data-plan-carry-in="${carryInUsed != null ? carryInUsed : ''}" data-alert-threshold="${threshold !== null ? threshold : ''}">
             <thead><tr>
               <th class="sticky-col" style="min-width:130px;text-align:left;padding-left:10px">科目</th>
               ${dayHeaders.join('')}
@@ -1283,6 +1351,10 @@ function refreshDailyDerivedRows() {
     }
   }
 
+  const thresholdRaw = table.dataset.alertThreshold;
+  const alertThreshold = (thresholdRaw !== undefined && thresholdRaw !== '')
+    ? parseInt(thresholdRaw, 10) : null;
+
   const trPlan = table.querySelector('tr[data-daily-summary="plan-bal"]');
   if (trPlan) {
     const tds = trPlan.querySelectorAll('td');
@@ -1290,7 +1362,9 @@ function refreshDailyDerivedRows() {
       const td = tds[i + 1];
       if (!td) return;
       const p = planBalMap[dt];
-      td.textContent = p != null ? '¥' + fmt(p) : '';
+      const isAlert = alertThreshold !== null && p != null && p < alertThreshold;
+      td.textContent = p != null ? (isAlert ? '⚠ ' : '') + '¥' + fmt(p) : '';
+      td.classList.toggle('plan-bal-alert-cell', isAlert);
     });
   }
 
@@ -1391,7 +1465,7 @@ pages.alerts = () => renderAlerts();
 async function renderAlerts() {
   loading();
   const d = await apiGet('alerts_list');
-  const typeLabel = {balance_low:'💰 預金残高下限アラート', cashflow_negative:'📉 日次CF（予定）収支マイナス'};
+  const typeLabel = { plan_balance_low: '⚠️ 予定残高 下限アラート' };
 
   mc().innerHTML = `
     <div class="page-title">🔔 アラート設定</div>
@@ -1402,7 +1476,7 @@ async function renderAlerts() {
           <div class="form-group"><label>ラベル</label>
             <input type="text" id="al-lbl-${a.id}" value="${a.label||''}" style="width:200px">
           </div>
-          <div class="form-group"><label>閾値（円）</label>
+          <div class="form-group"><label>警戒ライン（円）</label>
             <input type="number" id="al-thr-${a.id}" value="${a.threshold}" style="width:140px">
           </div>
           <div class="form-group"><label>有効</label>
@@ -1414,8 +1488,7 @@ async function renderAlerts() {
           <button class="btn btn-primary" onclick="saveAlert(${a.id})">保存</button>
         </div>
         <div style="font-size:12px;color:var(--text-sub)">
-          ${a.alert_type==='balance_low'?'預金残高の合計がこの金額を下回るとアラートとして扱います。':
-            '当月の日次CF（予定のみ）について、収入合計−支出合計がこの金額を下回るとアラートとして扱います。'}
+          予定残高がこの金額を下回る日があると、予定残高グラフ・日次CFに警告表示します。
         </div>
       </div>`).join('')}`;
 }
@@ -1428,6 +1501,7 @@ async function saveAlert(id) {
       threshold: document.getElementById(`al-thr-${id}`).value,
       is_active: document.getElementById(`al-act-${id}`).value
     });
+    invalidateAlertCache();
     toast('保存しました');
   } catch(e) { toast(e.message,'err'); }
 }
