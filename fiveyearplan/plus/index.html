@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>まんてん個別プラス 5カ年計画シミュレーター v20260414-1640</title>
+<title>まんてん個別プラス 5カ年計画シミュレーター v20260422-2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,11 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
       <h1>まんてん個別プラス 5カ年計画シミュレーター<span class="badge badge-info" id="header-badge"></span></h1>
       <div class="sub" id="header-sub"></div>
     </div>
-    <div style="margin-left:auto">
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="text-align:right">
+        <button id="manual-save-btn" onclick="manualSave()" style="padding:7px 18px;background:#fff;color:#2D5016;border:2px solid #fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:5px">💾 保存する</button>
+        <div id="save-info" style="font-size:10px;opacity:.85;margin-top:3px;text-align:right;line-height:1.6"></div>
+      </div>
       <button onclick="if(confirm('再読み込みしますか？')){sessionStorage.removeItem('sim_token');location.reload();}" style="padding:5px 12px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;font-size:11px;cursor:pointer">🔄 初期化</button>
     </div>
   </div>
@@ -113,10 +117,7 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
 
     <div id="main-tab-1" class="card" style="display:none">
       <div class="card-header">⚙ パラメータ編集</div>
-      <div class="card-body">
-        <div class="classroom-list" id="param-classroom-list" style="margin-bottom:12px"></div>
-        <div id="param-area"></div>
-      </div>
+      <div class="card-body"><div id="param-area"></div></div>
     </div>
 
     <div id="main-tab-2" style="display:none">
@@ -169,92 +170,212 @@ async function apiPost(route, data) {
   const r = await fetch(API, { method: 'POST', body: fd, headers: { 'X-Sim-Token': token } });
   return r.json();
 }
-const _saveTimers = {};
-let _savePending = 0;
+let _saveTimer = null;
+const _pendingSaves = {}; // {id_field: {id, field, value}}
+
 function saveField(id, field, value) {
-  const key = id + '__' + field;
-  // 既存のタイマーがあればキャンセルし、_savePending を戻す
-  if (_saveTimers[key] != null) {
-    clearTimeout(_saveTimers[key]);
-    _saveTimers[key] = null;
-    _savePending = Math.max(0, _savePending - 1);
-  }
-  _savePending++;
+  // 同じid+fieldの保存はキューで上書き（無駄なリクエストを排除）
+  _pendingSaves[id + '::' + field] = { id, field, value };
+  clearTimeout(_saveTimer);
   document.getElementById('saving-indicator').style.display = 'block';
-  _saveTimers[key] = setTimeout(async () => {
-    _saveTimers[key] = null;
-    try {
-      await apiPost('classroom', { action: 'update', id, field,
-        value: typeof value === 'object' ? JSON.stringify(value) : value });
-    } finally {
-      _savePending = Math.max(0, _savePending - 1);
-      if (_savePending === 0) document.getElementById('saving-indicator').style.display = 'none';
-    }
+  _saveTimer = setTimeout(async () => {
+    await flushSaves();
   }, 600);
 }
 
-// 同名教室の指定フィールドを全年度保存
-function saveAllYears(clName, field, val) {
-  STATE.years.forEach(ys => {
-    const match = (STATE.classrooms[ys.fiscal_year] || []).find(c => c.name === clName);
-    if (match && typeof match.id === 'number') saveField(match.id, field, val);
-  });
+async function flushSaves() {
+  clearTimeout(_saveTimer);
+  const entries = Object.values(_pendingSaves);
+  if (!entries.length) {
+    document.getElementById('saving-indicator').style.display = 'none';
+    return;
+  }
+  Object.keys(_pendingSaves).forEach(k => delete _pendingSaves[k]);
+  // 並列送信（50件ずつバッチ処理）
+  const batchSize = 50;
+  for (let i = 0; i < entries.length; i += batchSize) {
+    const batch = entries.slice(i, i + batchSize);
+    await Promise.all(batch.map(e =>
+      apiPost('classroom', { action: 'update', id: e.id, field: e.field,
+        value: typeof e.value === 'object' ? JSON.stringify(e.value) : e.value })
+    ));
+  }
+  document.getElementById('saving-indicator').style.display = 'none';
 }
 
-// 全教室・全フィールドをDB保存（有効なDB IDを持つ教室のみ）
+// saveAll: 現在の年度の全教室の全フィールドをDBに保存
+const JSON_FIELDS  = ['prices','enroll','ads','enroll_base','wd_base'];
+const INT_FIELDS   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+                      'consume_r','promo_r','recruit_fee','sys_per_st','mat_per_st','fee_r','welfare_r',
+                      'repair','lease_cost','insurance','sanitation','other_exp','parttime_cost',
+                      'recruit_fee_part','recruit_fee_oct','enroll_fee','salary1','salary2'];
+const FLOAT_FIELDS = ['wd_rate','conv_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
+
 function saveAll() {
-  const fields = [
-    'open_month','start_st','start_wd','max_st',
-    'rent','water','electric','phone','travel',
-    'consume_r','promo_r','recruit_fee','recruit_fee_part',
-    'sys_per_st','mat_per_st','enroll_fee','exam_buy_r','exam_sell_r',
-    'fee_r','welfare_r','repair','lease_cost','insurance','sanitation','other_exp','parttime_cost',
-    'salary1','salary2','legal_welf_r','tax_r','wd_rate','conv_r',
-    'prices','enroll','ads','enroll_base','wd_base',
-  ];
+  const allFields = [...JSON_FIELDS, ...INT_FIELDS, ...FLOAT_FIELDS, 'name'];
+  // 全年度の全教室を対象（名前同期で全年度更新済みのため）
   STATE.years.forEach(ys => {
     (STATE.classrooms[ys.fiscal_year] || []).forEach(c => {
-      if (typeof c.id !== 'number') return;
-      fields.forEach(f => { if (c[f] !== undefined) saveField(c.id, f, c[f]); });
+      if (!c.id || String(c.id).includes('new')) return; // 未保存の新規はskip（addClassroomで別途処理）
+      allFields.forEach(field => {
+        if (c[field] !== undefined) {
+          saveField(c.id, field, c[field]);
+        }
+      });
     });
   });
 }
 
-// DBに2026年度の教室レコードがない場合、自動でINSERT → IDを更新
-const _SEED_FIELDS = [
-  'start_st','start_wd','rent','water','electric','phone','travel',
-  'consume_r','promo_r','recruit_fee','recruit_fee_part','sys_per_st','mat_per_st',
-  'enroll_fee','exam_buy_r','exam_sell_r','fee_r','welfare_r','repair','lease_cost',
-  'insurance','sanitation','other_exp','parttime_cost','salary1','salary2',
-  'legal_welf_r','tax_r','wd_rate','conv_r','max_st',
-  'prices','enroll','ads','enroll_base','wd_base',
-];
-async function seedAllClassroomsIfNeeded() {
-  for (const ys of STATE.years) {
-    const fy = ys.fiscal_year;
-    const cls = STATE.classrooms[fy] || [];
-    const hasFake = cls.some(c => typeof c.id !== 'number');
-    if (!hasFake) continue;
-    console.log('[plus] DBに' + fy + '年度の教室データがないため、自動登録します...');
-    for (const c of cls) {
-      if (typeof c.id === 'number') continue;
-      try {
-        const res = await apiPost('classroom', {
-          action: 'add', fiscal_year: fy, name: c.name,
-          open_month: (c.open_month != null ? c.open_month : -1)
-        });
-        if (res.id) {
-          c.id = res.id;
-          for (const f of _SEED_FIELDS) {
-            if (c[f] !== undefined) saveField(c.id, f, c[f]);
-          }
-        } else {
-          console.error('[plus] seed failed for ' + c.name + ':', res);
-        }
-      } catch(e) { console.error('[plus] seed error for ' + c.name + ':', e); }
+function saveClassroomField(id, field, value) {
+  saveField(id, field, value);
+}
+
+// ============================================================
+// 手動保存ボタン
+// ============================================================
+async function updateSaveInfo() {
+  const el = document.getElementById('save-info');
+  if (!el) return;
+  try {
+    const res = await apiGet('save_info_read');
+    if (res && res.saved_at && res.saved_by) {
+      const dt = res.saved_at.replace(/-/g,'/').slice(0,16);
+      el.innerHTML = `最終保存: ${dt}<br>保存者: ${res.saved_by}`;
+    } else {
+      el.innerHTML = '未保存';
     }
-    console.log('[plus] ' + fy + '年度 自動登録完了');
+  } catch(e) {
+    el.innerHTML = '未保存';
   }
+}
+
+async function manualSave() {
+  const choice = await showSaverDialog();
+  if (choice === null) return;
+
+  const btn = document.getElementById('manual-save-btn');
+  btn.textContent = '保存中...';
+  btn.disabled = true;
+
+  // 仮IDの教室が残っていればDBに登録してリアルIDを取得
+  const allSaveFields = ['prices','enroll','ads','enroll_base','wd_base',
+    'start_st','start_wd','rent','water','electric','phone','travel','consume_r','promo_r',
+    'sys_per_st','mat_per_st','exam_buy_r','fee_r','welfare_r','repair','lease_cost',
+    'insurance','sanitation','other_exp','parttime_cost','recruit_fee','recruit_fee_oct',
+    'recruit_fee_part','enroll_fee','salary1','wd_rate','conv_r','exam_sell_r',
+    'legal_welf_r','tax_r','max_st','name','open_month'];
+
+  for (const ys of STATE.years) {
+    for (const c of (STATE.classrooms[ys.fiscal_year] || [])) {
+      const idNum = Number(c.id);
+      const isFakeId = !c.id || isNaN(idNum) || idNum <= 0;
+      if (isFakeId) {
+        // DBに登録してリアルIDを取得
+        try {
+          const res = await apiPost('classroom', { action: 'add', fiscal_year: ys.fiscal_year, name: c.name, open_month: c.open_month });
+          if (res && res.id) c.id = res.id;
+        } catch(e) { console.warn('add failed:', c.name, e); }
+      }
+    }
+  }
+
+  // 全教室の全フィールドをキューに積む
+  STATE.years.forEach(ys => {
+    (STATE.classrooms[ys.fiscal_year] || []).forEach(c => {
+      const idNum = Number(c.id);
+      if (!c.id || isNaN(idNum) || idNum <= 0) return; // まだ仮IDのものはスキップ
+      allSaveFields.forEach(f => {
+        if (c[f] !== undefined) saveField(c.id, f, c[f]);
+      });
+    });
+  });
+
+  try {
+    // キューに溜まった保存を即時フラッシュ
+    await flushSaves();
+    const res = await apiPost('save_info_write', { saved_by: choice });
+    if (res && res.saved_at) {
+      const dt = res.saved_at.replace(/-/g,'/').slice(0,16);
+      const el = document.getElementById('save-info');
+      if (el) el.innerHTML = `最終保存: ${dt}<br>保存者: ${res.saved_by}`;
+    }
+  } catch(e) {}
+  btn.innerHTML = '✅ 保存しました';
+  btn.style.background = '#a8d5a2';
+  btn.disabled = false;
+  setTimeout(() => {
+    btn.innerHTML = '💾 保存する';
+    btn.style.background = '#fff';
+  }, 2500);
+}
+
+function showSaverDialog() {
+  return new Promise(resolve => {
+    // オーバーレイ作成
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+
+    const box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:14px;padding:28px 32px;min-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.2);font-family:inherit';
+    box.innerHTML = `
+      <div style="font-size:16px;font-weight:700;color:#2D5016;margin-bottom:18px">💾 保存者は？</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="saver-btn" data-name="信定" style="padding:10px 16px;background:#f0f5ec;border:2px solid #c8dfc0;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#2D5016;text-align:left">👤 信定</button>
+        <button class="saver-btn" data-name="川口" style="padding:10px 16px;background:#f0f5ec;border:2px solid #c8dfc0;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#2D5016;text-align:left">👤 川口</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="saver-btn" data-name="__other__" style="padding:10px 16px;background:#f5f5f5;border:2px solid #ddd;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;color:#555;white-space:nowrap">✏️ その他</button>
+          <input id="saver-other-input" type="text" placeholder="名前を入力" style="flex:1;padding:9px 12px;border:2px solid #ddd;border-radius:8px;font-size:13px;display:none">
+        </div>
+      </div>
+      <div style="margin-top:18px;text-align:right">
+        <button id="saver-cancel" style="padding:7px 18px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;color:#666">キャンセル</button>
+        <button id="saver-confirm" style="padding:7px 18px;background:#2D5016;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;margin-left:8px;display:none">保存する</button>
+      </div>
+    `;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    let selectedName = null;
+
+    box.querySelectorAll('.saver-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        box.querySelectorAll('.saver-btn').forEach(b => { b.style.borderColor='#ddd'; b.style.background=b.dataset.name==='__other__'?'#f5f5f5':'#f0f5ec'; });
+        btn.style.borderColor = '#2D5016';
+        btn.style.background = btn.dataset.name==='__other__' ? '#e8f0e4' : '#dcefd4';
+        const otherInput = document.getElementById('saver-other-input');
+        const confirmBtn = document.getElementById('saver-confirm');
+        if (btn.dataset.name === '__other__') {
+          otherInput.style.display = 'block';
+          otherInput.focus();
+          selectedName = null;
+          confirmBtn.style.display = 'inline-block';
+        } else {
+          otherInput.style.display = 'none';
+          selectedName = btn.dataset.name;
+          confirmBtn.style.display = 'inline-block';
+        }
+      });
+    });
+
+    document.getElementById('saver-cancel').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      resolve(null);
+    });
+
+    document.getElementById('saver-confirm').addEventListener('click', () => {
+      const otherInput = document.getElementById('saver-other-input');
+      if (otherInput.style.display !== 'none') {
+        selectedName = otherInput.value.trim() || 'その他';
+      }
+      if (!selectedName) return;
+      document.body.removeChild(overlay);
+      resolve(selectedName);
+    });
+
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) { document.body.removeChild(overlay); resolve(null); }
+    });
+  });
 }
 
 // ============================================================
@@ -263,11 +384,11 @@ async function seedAllClassroomsIfNeeded() {
 const MONTHS = ["4月","5月","6月","7月","8月","9月","10月","11月","12月","1月","2月","3月"];
 // 入会比率 (まんてん個別プラスはシンプルな均等分配ベース + 7月・12月集中)
 // 入会比率ベース（まんてん個別実績準拠 - 教室ごとに上書き可能）
-const ENROLL_BASE_DEFAULT = [81, 59, 75, 148, 35, 70, 54, 57, 73, 60, 95, 132];
+const ENROLL_BASE_DEFAULT = [92, 64, 91, 152, 43, 43, 39, 27, 66, 67, 80, 128]; // 2025年実績
 const ENROLL_TOTAL_DEFAULT = ENROLL_BASE_DEFAULT.reduce((s,v)=>s+v, 0);
 const ENROLL_RATIOS_PLUS = ENROLL_BASE_DEFAULT.map(v=>v/ENROLL_TOTAL_DEFAULT);
 // 退会比率ベース（まんてん個別実績準拠）
-const WD_BASE_DEFAULT = [24, 15, 16, 32, 33, 23, 30, 22, 33, 32, 144, 239];
+const WD_BASE_DEFAULT = [18, 20, 21, 38, 36, 28, 39, 43, 46, 47, 127, 304]; // 2025年実績
 const WD_TOTAL_DEFAULT = WD_BASE_DEFAULT.reduce((s,v)=>s+v, 0);
 const WD_RATIOS_PLUS = WD_BASE_DEFAULT.map(v=>v/WD_TOTAL_DEFAULT);
 const SALARY_RAISE = 2500; // 半期ごと昇給
@@ -286,10 +407,10 @@ const INITIAL_DATA = {
   ],
   classrooms: {
     2026: [
-      {id:'2026-0',name:'たつの',open_month:-1,start_st:22,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[250000,35000,200000,250000,35000,35000,35000,35000,300000,35000,200000,250000],rent:165000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_part:0,parttime_cost:0,salary1:290000,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[81,59,75,148,35,70,54,57,73,60,95,132],wd_base:[24,15,16,32,33,23,30,22,33,32,144,239]},
-      {id:'2026-1',name:'広畑',open_month:-1,start_st:8,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[500000,70000,400000,500000,70000,70000,140000,140000,1200000,140000,800000,1000000],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_part:0,parttime_cost:0,salary1:380000,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[81,59,75,148,35,70,54,57,73,60,95,132],wd_base:[24,15,16,32,33,23,30,22,33,32,144,239]},
-      {id:'2026-2',name:'英賀保駅前',open_month:-1,start_st:15,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[250000,35000,200000,250000,35000,35000,35000,35000,300000,35000,200000,250000],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_part:0,parttime_cost:0,salary1:0,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[81,59,75,148,35,70,54,57,73,60,95,132],wd_base:[24,15,16,32,33,23,30,22,33,32,144,239]},
-      {id:'2026-3',name:'姫路中地',open_month:-1,start_st:15,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[250000,35000,200000,250000,35000,35000,35000,35000,300000,35000,200000,250000],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_part:0,parttime_cost:0,salary1:0,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[81,59,75,148,35,70,54,57,73,60,95,132],wd_base:[24,15,16,32,33,23,30,22,33,32,144,239]},
+      {id:'2026-0',name:'たつの',open_month:-1,start_st:22,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[250000,35000,200000,250000,35000,35000,35000,35000,300000,35000,200000,250000],rent:165000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,parttime_cost:0,salary1:290000,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[92,64,91,152,43,43,39,27,66,67,80,128],wd_base:[18,20,21,38,36,28,39,43,46,47,127,304]},
+      {id:'2026-1',name:'広畑',open_month:-1,start_st:8,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[2,2,2,4,2,2,2,2,4,2,2,4],ads:[500000,70000,400000,500000,70000,70000,140000,140000,1200000,140000,800000,1000000],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,parttime_cost:0,salary1:380000,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[92,64,91,152,43,43,39,27,66,67,80,128],wd_base:[18,20,21,38,36,28,39,43,46,47,127,304]},
+      {id:'2026-2',name:'英賀保駅前',open_month:-1,start_st:0,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[0,0,0,0,0,0,2,2,4,2,2,4],ads:[142641,20500,123851,99935,10250,17937,16229,68332,87977,18791,132393,116164],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,parttime_cost:0,salary1:0,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[92,64,91,152,43,43,39,27,66,67,80,128],wd_base:[18,20,21,38,36,28,39,43,46,47,127,304]},
+      {id:'2026-3',name:'姫路中地',open_month:-1,start_st:0,prices:[25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000,25000],enroll:[0,0,0,0,0,0,2,2,4,2,2,4],ads:[142641,20500,123851,99935,10250,17937,16229,68332,87977,18791,132393,116164],rent:220000,water:2000,electric:15000,phone:10000,travel:2000,consume_r:700,promo_r:150,sys_per_st:300,mat_per_st:4500,exam_buy_r:0.9,fee_r:150,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,parttime_cost:0,salary1:0,salary2:0,legal_welf_r:0.15,tax_r:0.07,enroll_fee:11000,exam_sell_r:0.03,wd_rate:0.035,start_wd:0,max_st:80,conv_r:0.6,enroll_base:[92,64,91,152,43,43,39,27,66,67,80,128],wd_base:[18,20,21,38,36,28,39,43,46,47,127,304]},
     ],
     2027: null,
     2028: null,
@@ -367,7 +488,7 @@ function initData() {
         ...baseClassrooms[0],
         rent:220000,water:2000,electric:15000,phone:10000,travel:2000,
         repair:10000,insurance:1000,sanitation:1500,other_exp:0,salary1:275000,
-        parttime_cost:0,recruit_fee:0,recruit_fee_part:0,
+        parttime_cost:0,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,
       };
       const src = isNew ? {...baseTemplate} : (base ? {...base} : {...baseTemplate});
       const enroll = isNew
@@ -389,7 +510,7 @@ function initData() {
         welfare_r:src.welfare_r||0, repair:src.repair||10000,
         lease_cost:src.lease_cost||0, insurance:src.insurance||1000,
         sanitation:src.sanitation||1500, other_exp:isNew?0:(src.other_exp||5000),
-        recruit_fee:src.recruit_fee||0, recruit_fee_part:src.recruit_fee_part||0,
+        recruit_fee:src.recruit_fee||0, recruit_fee_oct:src.recruit_fee_oct||0, recruit_fee_part:src.recruit_fee_part||0,
         parttime_cost:src.parttime_cost||0,
         salary1:pr.salary1||src.salary1||275000, salary2:0,
         legal_welf_r:src.legal_welf_r||0.15, tax_r:src.tax_r||0.07,
@@ -488,20 +609,24 @@ function distributeEnroll(annual, openMonth, enrollBase) {
   if (!annual) return Array(12).fill(0);
   const base = (enrollBase && enrollBase.length===12) ? enrollBase : ENROLL_BASE_DEFAULT;
   const total = base.reduce((s,v)=>s+v,0);
-  let ratios = base.map(v=>v/total);
-  if (openMonth !== undefined && openMonth >= 0) {
-    ratios = ratios.map((r, i) => i >= openMonth ? r : 0);
+  if (!total) return Array(12).fill(0);
+  // openMonth=0は4月開校＝全月対象なので既存教室と同じ扱い
+  const isOpenYear = (openMonth !== undefined && openMonth > 0);
+  const raw = base.map((v, i) => {
+    if (isOpenYear && i < openMonth) return 0;
+    return annual * v / total;
+  });
+  const result = raw.map(v => Math.round(v));
+  if (isOpenYear) {
+    // 開校年（4月以外）は合計が annual より少なくて正しい（端数調整しない）
+    return result;
   }
-  const sum = ratios.reduce((s,v)=>s+v,0);
-  if (!sum) return Array(12).fill(0);
-  const norm = ratios.map(r=>r/sum);
-  const raw = norm.map(r=>annual*r);
-  const result = raw.map(v=>Math.round(v));
+  // 既存教室・4月開校は合計がぴったり annual になるよう端数調整
   let diff = annual - result.reduce((s,v)=>s+v,0);
   const rem = raw.map((v,i)=>({i,r:v-Math.floor(v)})).filter(x=>x.r>0).sort((a,b)=>b.r-a.r);
-  if(!rem.length) return result;
-  for(let j=0;diff>0;j++){result[rem[j%rem.length].i]++;diff--;}
-  for(let j=rem.length-1;diff<0;j--){result[rem[Math.abs(j)%rem.length].i]--;diff++;}
+  if (!rem.length) return result;
+  for (let j=0; diff>0; j++) { result[rem[j%rem.length].i]++; diff--; }
+  for (let j=rem.length-1; diff<0; j--) { result[rem[Math.abs(j)%rem.length].i]--; diff++; }
   return result;
 }
 
@@ -515,6 +640,22 @@ function distributeWd(annual, wdBase) {
   const rem = raw.map((v,i)=>({i,r:v-Math.floor(v)})).sort((a,b)=>b.r-a.r);
   for(let j=0;diff>0;j++){result[rem[j%12].i]++;diff--;}
   for(let j=rem.length-1;diff<0;j--){result[rem[j%12].i]--;diff++;}
+  return result;
+}
+
+// 広告費比率（実績ベース）
+const ADS_BASE = [167, 24, 145, 117, 12, 21, 19, 80, 103, 22, 155, 136];
+const ADS_TOTAL = ADS_BASE.reduce((s,v)=>s+v, 0);
+
+function distributeAds(annual, openMonth) {
+  if (!annual) return Array(12).fill(0);
+  // 全月にADS_BASEの比率を適用し、端数を最大値の月に加算
+  const result = ADS_BASE.map(v => Math.round(annual * v / ADS_TOTAL));
+  const diff = annual - result.reduce((s,v)=>s+v, 0);
+  if (diff !== 0) {
+    const maxIdx = ADS_BASE.indexOf(Math.max(...ADS_BASE));
+    result[maxIdx] += diff;
+  }
   return result;
 }
 
@@ -542,13 +683,26 @@ function calcClassroom(p, fiscalYear) {
     let estSt = 0, tmpSt = p.start_st;
     for (let m=0;m<12;m++){
       const base = tmpSt - (m===0?(p.start_wd||0):wdMonthly[m-1]);
-      let active = Math.max(0, base + p.enroll[m]);
+      let active = base + p.enroll[m];
       estSt += active;
       tmpSt = active;
     }
     annualWd = Math.round(wdRate * estSt);
     wdMonthly = distributeWd(annualWd, p.wd_base);
   }
+
+  // 開校年数を計算（修繕費などの年数判定に使用）
+  const yearNum = (() => {
+    if (typeof CLASSROOM_OPEN_FY !== 'undefined' && CLASSROOM_OPEN_FY[p.name] !== undefined) {
+      return fiscalYear - CLASSROOM_OPEN_FY[p.name] + 1;
+    }
+    const allFy = STATE.years.map(y=>y.fiscal_year).sort((a,b)=>a-b);
+    for(const fy of allFy){
+      const cls = STATE.classrooms[fy]||[];
+      if(cls.some(x=>x.name===p.name)) return fiscalYear - fy + 1;
+    }
+    return 1;
+  })();
 
   const BONUS_MONTHS = [0, 6]; // 4月・10月が賞与（半期）
   const months = [];
@@ -576,7 +730,7 @@ function calcClassroom(p, fiscalYear) {
     const prevWd = m===0 ? (p.start_wd||0) : months[m-1][2];
     const base = prevSt - prevWd;
     const enr = p.enroll[m];
-    let active = Math.max(0, base + enr);
+    let active = base + enr;
     if(p.max_st && p.max_st > 0) active = Math.min(active, p.max_st);
     const wd = wdMonthly[m];
 
@@ -617,9 +771,9 @@ function calcClassroom(p, fiscalYear) {
       const staffRecruit = 0; // 人材紹介費（個別プラスは0）
       const matBuyTraditional = 0; // 未使用（idx:20）
       const adminTotal = (p.rent||0) + (p.water||0) + (p.electric||0) + (p.phone||0) + (p.travel||0)
-        + consume + promo + (p.recruit_fee||0) + (p.recruit_fee_part||0) + (p.ads[m]||0) + staffRecruit + sys
+        + consume + promo + (yearNum===1&&m===0?(p.recruit_fee||0):0) + (yearNum===1&&m===6?(p.recruit_fee_oct||0):0) + (yearNum===1&&m===(om>=0?om:0)?(p.recruit_fee_part||0):0) + (p.ads[m]||0) + staffRecruit + sys
         + matBuyTraditional + matBuy + examBuy
-        + fee + welfare + (p.repair||0) + (p.lease_cost||0) + (p.insurance||0) + (p.sanitation||0) + otherExpM;
+        + fee + welfare + (yearNum >= 4 ? (p.repair||0) : 0) + (p.lease_cost||0) + (p.insurance||0) + (p.sanitation||0) + otherExpM;
 
       const legalW = salary * (p.legal_welf_r || 0.15);
       const parttime = p.parttime_cost || 0;
@@ -641,9 +795,9 @@ function calcClassroom(p, fiscalYear) {
         cpo, enr, wd, active, price,                                    // 0-4
         tuition, matSale, examSale, revenue,                             // 5-8
         p.rent||0, p.water||0, p.electric||0, p.phone||0, p.travel||0,  // 9-13
-        consume, promo, p.recruit_fee||0, p.ads[m]||0, staffRecruit,    // 14-18 (16=正社員求人費)
+        consume, promo, (m===0?(p.recruit_fee||0):(m===6?(p.recruit_fee_oct||0):0)), p.ads[m]||0, staffRecruit,    // 14-18 (16=正社員求人費 4月・10月のみ)
         sys, matBuyTraditional, matBuy, examBuy, fee,                    // 19-23
-        welfare, p.repair||0, p.lease_cost||0, p.insurance||0, p.sanitation||0, otherExpM, // 24-29
+        welfare, (yearNum>=4?(p.repair||0):0), p.lease_cost||0, p.insurance||0, p.sanitation||0, otherExpM, // 24-29
         adminTotal,                                                       // 30
         salary, legalW, parttime, labor,                                 // 31-34
         tax, expTotal, profit,                                            // 35-37
@@ -871,21 +1025,16 @@ function renderAll(){
 
 function renderKPI(){
   const results=curResults();
-  const cls=curClassrooms();
-  const fy=curYear().fiscal_year;
-  const isSingle=STATE.plMode==='single';
   const t={revenue:0,expense:0,profit:0,enroll:0,wd:0,endSt:0,totalSt:0};
-  const targets=isSingle?[results[STATE.clIdx]]:results;
-  targets.forEach(r=>{if(!r)return;t.revenue+=r.revenue;t.expense+=r.expense;t.profit+=r.profit;t.enroll+=r.totalEnroll;t.wd+=r.totalWd;t.endSt+=r.endStudents;t.totalSt+=r.months.reduce((s,m)=>s+m[3],0)});
+  results.forEach(r=>{t.revenue+=r.revenue;t.expense+=r.expense;t.profit+=r.profit;t.enroll+=r.totalEnroll;t.wd+=r.totalWd;t.endSt+=r.endStudents;t.totalSt+=r.months.reduce((s,m)=>s+m[3],0)});
+  const fy=curYear().fiscal_year;
   const wdRate=t.totalSt>0?(t.wd/t.totalSt*100).toFixed(2):0;
-  const label=isSingle?(cls[STATE.clIdx]?.name||''):'全教室合計';
-  const subLabel=isSingle?cls[STATE.clIdx]?.name:`${cls.length}教室合計`;
   document.getElementById('kpi-area').innerHTML=`
-    <div class="kpi"><div class="kpi-label">${fy}年度 売上</div><div class="kpi-value" style="color:#2D5016">${fmtShort(t.revenue)}</div><div class="kpi-sub">${label}</div></div>
-    <div class="kpi"><div class="kpi-label">経費</div><div class="kpi-value" style="color:#E07A5F">${fmtShort(t.expense)}</div><div class="kpi-sub">${subLabel}</div></div>
+    <div class="kpi"><div class="kpi-label">${fy}年度 売上</div><div class="kpi-value" style="color:#2D5016">${fmtShort(t.revenue)}</div></div>
+    <div class="kpi"><div class="kpi-label">経費</div><div class="kpi-value" style="color:#E07A5F">${fmtShort(t.expense)}</div><div class="kpi-sub">${curClassrooms().length}教室合計</div></div>
     <div class="kpi"><div class="kpi-label">営業利益</div><div class="kpi-value" style="color:${t.profit>=0?'#2D6A4F':'#C1292E'}">${fmtShort(t.profit)}</div><div class="kpi-sub">利益率 ${t.revenue>0?(t.profit/t.revenue*100).toFixed(1):0}%</div></div>
     <div class="kpi"><div class="kpi-label">入会/退会</div><div class="kpi-value" style="color:#2D5016">${t.enroll}/${t.wd}</div><div class="kpi-sub">退会率 ${wdRate}% | 純増${t.enroll-t.wd}名</div></div>
-    <div class="kpi"><div class="kpi-label">年度末生徒数</div><div class="kpi-value" style="color:#3D5A80">${t.endSt}名</div><div class="kpi-sub">${isSingle?label:`${cls.length}教室`}</div></div>
+    <div class="kpi"><div class="kpi-label">年度末生徒数</div><div class="kpi-value" style="color:#3D5A80">${t.endSt}名</div><div class="kpi-sub">${curClassrooms().length}教室</div></div>
   `;
 }
 
@@ -900,7 +1049,7 @@ function renderClassroomList(){
   btnAll.className='cl-btn'+(isCon?' active':'');
   if(!isCon)btnAll.style.cssText='background:#f0f5ec;color:#2D5016;border-color:#2D5016;font-weight:700';
   btnAll.innerHTML=`📊 ${fy}年度 全教室<br><span style="font-size:10px;opacity:.85">${cls.length}教室 合算P&L</span>`;
-  btnAll.onclick=()=>{STATE.plMode='consolidated';renderClassroomList();renderKPI();renderPLTable()};
+  btnAll.onclick=()=>{STATE.plMode='consolidated';renderClassroomList();renderPLTable()};
   el.appendChild(btnAll);
   const sep=document.createElement('div');
   sep.style.cssText='width:1px;background:#ddd;margin:2px 4px;align-self:stretch';
@@ -915,7 +1064,7 @@ function renderClassroomList(){
     const isNew=yn===1;
     const bdgCls=isNew?'year-badge new-badge':'year-badge';
     btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">利益:'+fmtShort(r?.profit||0)+' | '+(r?.endStudents||0)+'名</span>';
-    btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderKPI();renderPLTable();renderParamArea()};
+    btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderPLTable();renderParamArea()};
     el.appendChild(btn);
   });
   if(isCon){
@@ -924,24 +1073,6 @@ function renderClassroomList(){
     const c=cls[STATE.clIdx];
     const yn=getYearNum(c,fy);
     document.getElementById('pl-title').innerHTML=(c?.name||'')+` <span class="year-badge">${yn}年目</span> P&L（月次）`;
-  }
-
-  // パラメータタブ用教室リスト
-  const paramEl=document.getElementById('param-classroom-list');
-  if(paramEl){
-    paramEl.innerHTML='';
-    cls.forEach((c,i)=>{
-      const btn=document.createElement('div');
-      const isActive=STATE.plMode==='single'&&i===STATE.clIdx;
-      btn.className='cl-btn'+(isActive?' active':'');
-      const r=results[i];
-      const yn=getYearNum(c,fy);
-      const isNew=yn===1;
-      const bdgCls=isNew?'year-badge new-badge':'year-badge';
-      btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">利益:'+fmtShort(r?.profit||0)+' | '+(r?.endStudents||0)+'名</span>';
-      btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderParamArea();};
-      paramEl.appendChild(btn);
-    });
   }
 }
 
@@ -1115,7 +1246,8 @@ function renderParamArea(){
     {k:'travel',l:'交通費'},
     {k:'consume_r',l:'消耗品/人'},
     {k:'promo_r',l:'販促費/人'},
-    {k:'recruit_fee',l:'正社員求人費'},
+    {k:'recruit_fee',l:'正社員求人費(4月)'},
+    {k:'recruit_fee_oct',l:'正社員求人費(10月)'},
     {k:'recruit_fee_part',l:'アルバイト求人費'},
     {k:'sys_per_st',l:'システム/人'},
     {k:'mat_per_st',l:'教材仕入/人'},
@@ -1154,7 +1286,7 @@ function renderParamArea(){
   const om=p.open_month;
   html+=`<div style="margin-bottom:12px;padding:8px 12px;background:${om>=0?'#fff8e1':'#f8f9fa'};border-radius:8px;border:1px solid ${om>=0?'#ffe082':'#e0e0e0'};display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <label style="font-weight:700;font-size:12px">開校区分</label>
-    <select style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" data-id="${p.id}" onchange="onOpenMonthChange(this)">
+    <select style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:12px" onchange="onOpenMonthChange(this)">
       <option value="-1"${om===-1?' selected':''}>既存教室</option>
       <option value="0"${om===0?' selected':''}>4月開校（初期費用300万）</option>
       <option value="1"${om===1?' selected':''}>5月開校（初期費用300万）</option>
@@ -1166,7 +1298,11 @@ function renderParamArea(){
 
   html+='<div class="edit-grid">';
   fields.forEach(f=>{
-    html+=`<div class="edit-field"><label>${f.l}</label><input type="number" value="${p[f.k]}" step="${f.step||1}" data-id="${p.id}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+    if (f.k === 'repair') {
+      html+=`<div class="edit-field"><label>${f.l} <span style="font-size:10px;color:#e65100;font-weight:400">※4年目以降のみ適用</span></label><input type="number" value="${p[f.k]}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+    } else {
+      html+=`<div class="edit-field"><label>${f.l}</label><input type="number" value="${p[f.k]}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+    }
   });
   html+='</div>';
 
@@ -1175,15 +1311,15 @@ function renderParamArea(){
     <div style="font-weight:700;font-size:13px;margin-bottom:8px">💰 社員給与・アルバイト</div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div><label style="font-size:11px;color:#666">基本給（上期）</label><br>
-      <input type="number" value="${p.salary1}" style="width:110px;padding:5px 8px;border:1px solid #8cb87a;border-radius:4px;font-size:13px" data-id="${p.id}" data-field="salary1" onchange="onParamChange(this)"></div>
+      <input type="number" value="${p.salary1}" style="width:110px;padding:5px 8px;border:1px solid #8cb87a;border-radius:4px;font-size:13px" data-field="salary1" onchange="onParamChange(this)"></div>
       <div style="font-size:12px;color:#555">→ ${fy}年度実支給: <b style="color:#2D5016">¥${effSal>0?effSal.toLocaleString():'-'}</b></div>
       <div style="font-size:11px;color:#888">（半期ごと+¥${SALARY_RAISE.toLocaleString()}自動昇給）</div>
     </div>
     <div style="margin-top:8px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
       <div><label style="font-size:11px;color:#666">退会率 (%)</label><br>
-      <input type="number" value="${(p.wd_rate*100).toFixed(2)}" step="0.01" style="width:80px;padding:5px 8px;border:1px solid #ef9a9a;border-radius:4px;font-size:13px" data-id="${p.id}" data-field="_wd_rate_pct" onchange="onWdRateChange(this)"></div>
+      <input type="number" value="${(p.wd_rate*100).toFixed(2)}" step="0.01" style="width:80px;padding:5px 8px;border:1px solid #ef9a9a;border-radius:4px;font-size:13px" data-field="_wd_rate_pct" onchange="onWdRateChange(this)"></div>
       <div><label style="font-size:11px;color:#666">期首退会数</label><br>
-      <input type="number" value="${p.start_wd||0}" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px" data-id="${p.id}" data-field="start_wd" onchange="onParamChange(this)"></div>
+      <input type="number" value="${p.start_wd||0}" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px" data-field="start_wd" onchange="onParamChange(this)"></div>
       <div style="font-size:11px;color:#888;align-self:flex-end;padding-bottom:6px">問合せ→入会率: <b>${Math.round((p.conv_r||0)*100)}%</b>（${(p.conv_r||0)>0?Math.round(30/(p.conv_r||1))+'件/年':'-'}問合せ想定）</div>
     </div>
   </div>`;
@@ -1192,14 +1328,9 @@ function renderParamArea(){
   const annEnroll=p.enroll.reduce((s,v)=>s+v,0);
   // ============ 入会・退会（まんてん個別と同じUI） ============
   const actualEnroll = p.enroll.reduce((s,v)=>s+v, 0);
-  const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
-  let annualEnroll = actualEnroll;
-  if(om2 > 0){
-    const enrollBase2 = p.enroll_base || ENROLL_BASE_DEFAULT;
-    const eTotal2 = enrollBase2.reduce((s,v)=>s+v,0);
-    const activeSum = enrollBase2.filter((_,i)=>i>=om2).reduce((s,v)=>s+v,0);
-    annualEnroll = activeSum>0 ? Math.round(actualEnroll/(activeSum/eTotal2)) : actualEnroll;
-  }
+  const om2 = (p.open_month != null && p.open_month >= 0) ? p.open_month : -1;
+  // enroll_annualがあればそれを表示、なければenroll合計
+  const annualEnroll = p.enroll_annual != null ? p.enroll_annual : actualEnroll;
   const wdRate = (p.wd_rate||0)*100;
   // 退会数の再計算（表示用）
   let estTotalSt=0, tmpSt2=p.start_st;
@@ -1222,11 +1353,11 @@ function renderParamArea(){
   html+='<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">';
   html+='<div style="flex:1;min-width:250px;padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
   html+=`<label style="font-weight:700;font-size:13px;color:#2D6A4F">年間入会数</label>`;
-  html+=`<input type="number" value="${annualEnroll}" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-id="${p.id}" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">`;
-  html+=`<span style="font-size:11px;color:#666">名${om2>0?' (開校年は'+actualEnroll+'名)':''}</span></div>`;
+  html+=`<input type="number" value="${annualEnroll}" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">`;
+  html+=`<span style="font-size:11px;color:#666">名${om2>=0?' (開校月以降に配分)':''}</span></div>`;
   html+='<div style="flex:1;min-width:300px;padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
   html+=`<label style="font-weight:700;font-size:13px;color:#C1292E">年間退会率</label>`;
-  html+=`<input type="number" value="${wdRate.toFixed(2)}" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-id="${p.id}" data-field="_wd_rate_pct" onchange="onWdRateChange(this)">`;
+  html+=`<input type="number" value="${wdRate.toFixed(2)}" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_wd_rate_pct" onchange="onWdRateChange(this)">`;
   html+=`<span style="font-size:11px;color:#666">% → 退会${calcAnnualWd}名 | 純増${actualEnroll-calcAnnualWd}名</span></div>`;
   html+='</div>';
 
@@ -1260,14 +1391,36 @@ function renderParamArea(){
     ⚠ 授業料単価は開校年数で自動設定されます（再計算のたびに上書き）：
     <b>1年目 ¥24,000 ／ 2年目 ¥25,000 ／ 3年目 ¥27,500 ／ 4年目 ¥28,500 ／ 5年目〜 ¥30,000</b>
   </td></tr>`;
-  ['prices','ads'].forEach(field=>{
-    const labels={prices:'授業料単価',ads:'広告費'};
-    html+=`<tr><td style="font-weight:600">${labels[field]}</td>`;
-    p[field].forEach((v,mi)=>{
-      html+=`<td><input type="number" value="${v}" data-id="${p.id}" data-field="${field}" data-mi="${mi}" onchange="onArrayChange(this)"></td>`;
-    });
-    html+=`<td style="background:#f8f8f8;font-size:10px;color:#888">${p[field].reduce((s,v)=>s+v,0).toLocaleString()}</td></tr>`;
+  // 授業料単価（月別）
+  html+=`<tr><td style="font-weight:600">授業料単価</td>`;
+  p.prices.forEach((v,mi)=>{
+    html+=`<td><input type="number" value="${v}" data-field="prices" data-mi="${mi}" onchange="onArrayChange(this)"></td>`;
   });
+  html+=`<td style="background:#f8f8f8;font-size:10px;color:#888">${p.prices.reduce((s,v)=>s+v,0).toLocaleString()}</td></tr>`;
+  // 広告費（年間合計入力→比率自動配分）
+  const annAds = p.ads ? p.ads.reduce((s,v)=>s+v,0) : 0;
+  html+=`<tr><td style="font-weight:600;color:#555">広告費<br><span style="font-size:10px;font-weight:400;color:#888">年間合計入力</span></td>`;
+  html+=`<td colspan="12" style="padding:4px 6px">`;
+  html+=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">`;
+  html+=`<input type="number" value="${annAds}" style="width:130px;padding:5px 8px;border:2px solid #555;border-radius:6px;font-size:15px;font-weight:700;text-align:right" data-field="_annual_ads" onchange="onAnnualAdsChange(this)">`;
+  html+=`<span style="font-size:12px;color:#666">円/年 → 比率自動配分</span>`;
+  html+=`</div>`;
+  html+=`<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">`;
+  MONTHS.forEach((m,mi)=>{
+    html+=`<div style="font-size:10px;color:#888;text-align:center;min-width:50px">${m}<br><b style="color:#555">${(p.ads[mi]||0).toLocaleString()}</b></div>`;
+  });
+  html+=`</div>`;
+  // 広告比率（常時表示・編集可）
+  const adsBase3 = p.ads && p.ads.some(v=>v>0) ? p.ads : ADS_BASE;
+  const adsBaseTotal = adsBase3.reduce((s,v)=>s+v,0);
+  html+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">`;
+  adsBase3.forEach((v,mi)=>{
+    const pct = adsBaseTotal > 0 ? (v/adsBaseTotal*100).toFixed(1) : '0.0';
+    html+=`<div style="text-align:center"><div style="font-size:9px;color:#e65100">${MONTHS[mi]}</div><span style="display:inline-block;width:42px;font-size:10px;color:#e65100;text-align:right;font-weight:600">${pct}%</span></div>`;
+  });
+  html+=`</div><div style="font-size:10px;color:#aaa;margin-top:2px">各月の配分割合（%）</div>`;
+  html+=`</td>`;
+  html+=`<td style="background:#f8f8f8;font-size:10px;color:#888">${annAds.toLocaleString()}</td></tr>`;
   html+='</tbody></table></div>';
 
   // 入会比率・退会比率のカスタム設定（折りたたみ）
@@ -1280,12 +1433,12 @@ function renderParamArea(){
   html+=`<th>合計</th></tr></thead><tbody>`;
   html+=`<tr><td style="font-weight:600;color:#2D6A4F;font-size:11px">入会比率</td>`;
   enrollBase3.forEach((v,mi)=>{
-    html+=`<td><input type="number" value="${v}" data-id="${p.id}" data-field="enroll_base" data-mi="${mi}" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#2D6A4F;border-color:#a5d6a7"></td>`;
+    html+=`<td><input type="number" value="${v}" data-field="enroll_base" data-mi="${mi}" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#2D6A4F;border-color:#a5d6a7"></td>`;
   });
   html+=`<td style="background:#e8f5e9;font-size:10px;font-weight:700;color:#2D6A4F">${eBaseTotal}</td></tr>`;
   html+=`<tr><td style="font-weight:600;color:#C1292E;font-size:11px">退会比率</td>`;
   wdBase3.forEach((v,mi)=>{
-    html+=`<td><input type="number" value="${v}" data-id="${p.id}" data-field="wd_base" data-mi="${mi}" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#C1292E;border-color:#ef9a9a"></td>`;
+    html+=`<td><input type="number" value="${v}" data-field="wd_base" data-mi="${mi}" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#C1292E;border-color:#ef9a9a"></td>`;
   });
   html+=`<td style="background:#fef5f5;font-size:10px;font-weight:700;color:#C1292E">${wBaseTotal}</td></tr>`;
   html+=`</tbody></table></div></details>`;
@@ -1331,48 +1484,45 @@ async function addClassroom(openMonth) {
   const fy = curYear().fiscal_year;
   const cls = STATE.classrooms[fy];
   const newCl = makeNewClassroom(fy, cls.length, openMonth);
+  // DBに新規作成してIDを取得
+  const res = await apiPost('classroom', { action: 'add', fiscal_year: fy, name: newCl.name, open_month: openMonth });
+  if (res && res.id) {
+    newCl.id = res.id;
+    // 全フィールドをDBに保存
+    const allFields = ['prices','enroll','ads','enroll_base','wd_base',
+      'start_st','start_wd','max_st','rent','water','electric','phone','travel',
+      'consume_r','promo_r','recruit_fee','recruit_fee_oct','recruit_fee_part',
+      'sys_per_st','mat_per_st','fee_r','welfare_r','repair','lease_cost',
+      'insurance','sanitation','other_exp','parttime_cost','enroll_fee','salary1','salary2',
+      'wd_rate','conv_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
+    allFields.forEach(f => { if (newCl[f] !== undefined) saveField(newCl.id, f, newCl[f]); });
+  }
   cls.push(newCl);
   STATE.clIdx = cls.length - 1;
   STATE.plMode = 'single';
   calcAllResults();
   renderYearTabs();
   renderAll();
-  // API経由でDB追加し、返却されたIDで上書き
-  try {
-    const res = await apiPost('classroom', { action: 'add', fiscal_year: fy, name: newCl.name, open_month: openMonth });
-    if (res.id) {
-      newCl.id = res.id;
-      const saveFields = ['start_st','rent','water','electric','phone','travel','consume_r','promo_r',
-        'recruit_fee','recruit_fee_part','sys_per_st','mat_per_st','enroll_fee','exam_buy_r','exam_sell_r',
-        'fee_r','welfare_r','repair','lease_cost','insurance','sanitation','other_exp','parttime_cost',
-        'salary1','salary2','legal_welf_r','tax_r','wd_rate','conv_r','max_st',
-        'prices','enroll','ads','enroll_base','wd_base'];
-      saveFields.forEach(f => { if (newCl[f] !== undefined) saveField(newCl.id, f, newCl[f]); });
-    }
-  } catch(e) { console.error('addClassroom error:', e); }
 }
 
 async function deleteClassroom(idx) {
   const fy = curYear().fiscal_year;
   const cls = STATE.classrooms[fy];
   if (cls.length <= 1) { alert('最低1教室は必要です'); return; }
-  const cl = cls[idx];
-  const name = cl.name;
+  const name = cls[idx].name;
   if (!confirm(`「${name}」を削除しますか？\nこの操作は現在の年度のみに適用されます。`)) return;
+  const cl = cls[idx];
+  // DBから削除
+  if (cl.id && !String(cl.id).includes('new') && !String(cl.id).includes('-')) {
+    await apiPost('classroom', { action: 'delete', id: cl.id });
+  }
   cls.splice(idx, 1);
   STATE.clIdx = Math.min(STATE.clIdx, cls.length - 1);
   STATE.plMode = 'single';
   calcAllResults();
   renderYearTabs();
   renderAll();
-  // DB上のレコードも削除
-  if (typeof cl.id === 'number') {
-    try { await apiPost('classroom', { action: 'delete', id: cl.id }); }
-    catch(e) { console.error('deleteClassroom error:', e); }
-  }
 }
-
-// saveAll はAPI保存に移行済み（上部で実装）
 
 function syncAllYears(clName, field, val) {
   STATE.years.forEach(ys=>{
@@ -1382,14 +1532,13 @@ function syncAllYears(clName, field, val) {
 }
 
 function onParamChange(el){
-  const id=el.dataset.id;
   const field=el.dataset.field;
   const step=parseFloat(el.step)||1;
   const val=step<1?parseFloat(el.value)||0:parseInt(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
   p[field]=val;
-  saveField(id,field,val);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();
+  saveField(p.id, field, val);
 }
 
 function onNameChange(el){
@@ -1398,74 +1547,96 @@ function onNameChange(el){
   const newName=el.value;
   STATE.years.forEach(ys=>{
     const cls=STATE.classrooms[ys.fiscal_year]||[];
-    cls.forEach(c=>{if(c.name===oldName){c.name=newName;if(typeof c.id==='number')saveField(c.id,'name',newName);}});
+    cls.forEach(c=>{
+      if(c.name===oldName){ c.name=newName; saveField(c.id,'name',newName); }
+    });
   });
   renderClassroomList();renderPLTable();
 }
 
 function onOpenMonthChange(el){
-  const id=el.dataset.id;
   const val=parseInt(el.value);
   const p=curClassrooms()[STATE.clIdx];
   p.open_month=val;
+  saveField(p.id,'open_month',val);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamArea();
-  saveField(id,'open_month',val);
 }
 
 function onWdRateChange(el){
-  const id=el.dataset.id;
   const rate=parseFloat(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
   p.wd_rate=rate/100;
+  saveField(p.id,'wd_rate',p.wd_rate);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamArea();
-  saveField(id,'wd_rate',p.wd_rate);
 }
 
 function onAnnualEnrollChange(el){
-  const id=el.dataset.id;
   const annual=parseInt(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
-  // 表示は「年換算値」なので、部分年開校の場合は実入会数に逆変換してから配分
-  let actualAnnual = annual;
-  const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
-  if(om2 > 0){
-    const enrollBase2 = p.enroll_base || ENROLL_BASE_DEFAULT;
-    const eTotal2 = enrollBase2.reduce((s,v)=>s+v,0);
-    const activeSum = enrollBase2.filter((_,i)=>i>=om2).reduce((s,v)=>s+v,0);
-    if(activeSum > 0) actualAnnual = Math.round(annual * (activeSum/eTotal2));
-  }
-  p.enroll=distributeEnroll(actualAnnual, p.open_month>=0?p.open_month:undefined, p.enroll_base);
+  p.enroll_annual=annual;
+  p.enroll=distributeEnroll(annual, p.open_month>=0?p.open_month:undefined, p.enroll_base);
+  saveField(p.id,'enroll',p.enroll);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamArea();
-  saveField(id,'enroll',p.enroll);
 }
 
 function onRatioChange(el){
-  const id=el.dataset.id;
   const field=el.dataset.field; // 'enroll_base' or 'wd_base'
   const mi=parseInt(el.dataset.mi);
   const val=parseInt(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
   if(!p[field]) p[field]=field==='enroll_base'?ENROLL_BASE_DEFAULT.slice():WD_BASE_DEFAULT.slice();
   p[field][mi]=val;
-  // 入会比率変更時は enroll を再配分
+  // 入会比率変更時はenrollを再配分
   if(field==='enroll_base'){
-    const ann=p.enroll.reduce((s,v)=>s+v,0);
+    const ann=p.enroll_annual!=null?p.enroll_annual:p.enroll.reduce((s,v)=>s+v,0);
     p.enroll=distributeEnroll(ann, p.open_month>=0?p.open_month:undefined, p.enroll_base);
+    saveField(p.id,'enroll',p.enroll);
   }
+  saveField(p.id, field, p[field]);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamArea();
-  saveField(id,field,p[field]);
-  if(field==='enroll_base') saveField(id,'enroll',p.enroll);
 }
 
+
+
+function onAdsRatioChange(el) {
+  const mi = parseInt(el.dataset.mi);
+  const val = parseFloat(el.value) || 0;
+  const p = curClassrooms()[STATE.clIdx];
+  // 現在のads配列を比率ベースに変換して更新
+  const annAds = p.ads ? p.ads.reduce((s,v)=>s+v, 0) : 0;
+  if (!annAds) return;
+  // 現在の比率配列（%表示）を取得・更新
+  const adsBase = p.ads && p.ads.some(v=>v>0) ? p.ads.slice() : ADS_BASE.slice();
+  const total = adsBase.reduce((s,v)=>s+v, 0);
+  const pcts = adsBase.map(v => total > 0 ? v/total*100 : 0);
+  pcts[mi] = val;
+  // pcts→実金額に変換
+  const pctTotal = pcts.reduce((s,v)=>s+v, 0);
+  if (!pctTotal) return;
+  const newAds = pcts.map(p => Math.round(annAds * p / pctTotal));
+  // 端数調整
+  let diff = annAds - newAds.reduce((s,v)=>s+v, 0);
+  const idx = pcts.indexOf(Math.max(...pcts));
+  newAds[idx] += diff;
+  p.ads = newAds;
+  calcAllResults(); renderKPI(); renderPLTable(); renderParamArea();
+  saveField(p.id, 'ads', p.ads);
+}
+function onAnnualAdsChange(el) {
+  const annual = parseInt(el.value) || 0;
+  const p = curClassrooms()[STATE.clIdx];
+  p.ads = distributeAds(annual, p.open_month >= 0 ? p.open_month : undefined);
+  saveField(p.id, 'ads', p.ads);
+  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList(); renderParamArea();
+}
 function onArrayChange(el){
-  const id=el.dataset.id;
   const field=el.dataset.field;
   const mi=parseInt(el.dataset.mi);
   const val=parseInt(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
   p[field][mi]=val;
+  saveField(p.id, field, p[field]);
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();
-  saveField(id,field,p[field]);
 }
 
 // ============================================================
@@ -1486,6 +1657,7 @@ function renderMasterTable(){
     {k:'name',l:'教室名',readonly:true,w:90},
     {k:'_enroll',l:'年間入会',w:70,special:'enroll'},
     {k:'_wd',l:'退会率%',w:65,special:'wd'},
+    {k:'_ads',l:'広告費/年',w:80,special:'ads'},
     {k:'conv_r',l:'入会率',step:0.01,w:60},
     {k:'rent',l:'家賃',w:75},{k:'water',l:'水道',w:55},{k:'electric',l:'電気',w:55},
     {k:'phone',l:'電話',w:55},{k:'travel',l:'交通',w:55},
@@ -1500,23 +1672,50 @@ function renderMasterTable(){
     {k:'max_st',l:'定員上限',w:65},
   ];
 
-  let html='<table style="border-collapse:collapse;font-size:12px;white-space:nowrap"><thead><tr style="background:#e8f0e4;color:#2D5016;border-bottom:2px solid #2D5016">';
+  // 一括変更UI
+  let bulkHtml = '<div style="background:#fff8e1;border:1px solid #ffd54f;border-radius:10px;padding:12px 16px;margin-bottom:14px">';
+  bulkHtml += '<div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⚡ 一括変更</div><div style="font-size:11px;color:#b45309;margin-bottom:8px">① チェックボックスで教室を選択 → ② 項目と値を入力 → ③「選択教室に適用」ボタン</div>';
+  bulkHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
+  bulkHtml += '<select id="bulk-field" style="padding:6px 10px;border:1px solid #ffd54f;border-radius:6px;font-size:13px;background:#fff">';
+  // special項目を先頭に追加
+  bulkHtml += '<option value="_enroll" data-step="1" data-special="enroll">年間入会数</option>';
+  bulkHtml += '<option value="_wd" data-step="0.01" data-special="wd">退会率％</option>';
+  bulkHtml += '<option value="_ads" data-step="1" data-special="ads">広告費/年</option>';
+  const bulkCols = cols.filter(c=>!c.readonly && !c.special);
+  bulkCols.forEach(c=>{
+    bulkHtml += `<option value="${c.k}" data-step="${c.step||1}">${c.l}</option>`;
+  });
+  bulkHtml += '</select>';
+  bulkHtml += '<span style="font-size:13px;color:#666">→</span>';
+  bulkHtml += '<input type="number" id="bulk-value" placeholder="新しい値" style="width:120px;padding:6px 8px;border:1px solid #ffd54f;border-radius:6px;font-size:13px;text-align:right">';
+  bulkHtml += '<button onclick="applyBulkChange()" style="padding:6px 16px;background:#e65100;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">選択教室に適用</button>';
+  bulkHtml += '<button onclick="selectAllMaster(true)" style="padding:6px 12px;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:12px;cursor:pointer">全選択</button>';
+  bulkHtml += '<button onclick="selectAllMaster(false)" style="padding:6px 12px;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:12px;cursor:pointer">全解除</button>';
+  bulkHtml += '</div></div>';
+  let html= bulkHtml +'<table style="border-collapse:collapse;font-size:12px;white-space:nowrap"><thead><tr style="background:#e8f0e4;color:#2D5016;border-bottom:2px solid #2D5016">';
+  // チェックボックス列ヘッダー
+  html+='<th style="padding:6px 4px;width:30px;background:#e8f0e4;position:sticky;left:0;z-index:3"><input type="checkbox" id="check-all-master" onchange="selectAllMaster(this.checked)"></th>';
   cols.forEach(c=>{
-    html+=`<th style="padding:6px 4px;min-width:${c.w}px;font-weight:700;color:#2D5016;background:#e8f0e4;position:${c.readonly?'sticky':'static'};left:0;z-index:${c.readonly?2:1}">${c.l}</th>`;
+    html+=`<th style="padding:6px 4px;min-width:${c.w}px;font-weight:700;color:#2D5016;background:#e8f0e4;position:${c.readonly?'sticky':'static'};left:${c.readonly?'30px':'0'};z-index:${c.readonly?2:1}">${c.l}</th>`;
   });
   html+='</tr></thead><tbody>';
   masterCls.forEach((p,ci)=>{
     const bg=ci%2===0?'#fff':'#f8f9fa';
-    html+=`<tr style="background:${bg}">`;
+    html+=`<tr style="background:${bg}" data-name="${p.name}">`;
+    // チェックボックス
+    html+=`<td style="padding:4px;text-align:center;position:sticky;left:0;background:${bg};z-index:1"><input type="checkbox" class="master-check" data-name="${p.name}"></td>`;
     cols.forEach(c=>{
       if(c.readonly){
-        html+=`<td style="padding:4px 6px;font-weight:700;position:sticky;left:0;background:${bg};border-right:2px solid #ddd;z-index:1">${p[c.k]}</td>`;
+        html+=`<td style="padding:4px 6px;font-weight:700;position:sticky;left:30px;background:${bg};border-right:2px solid #ddd;z-index:1">${p[c.k]}</td>`;
       } else if(c.special==='enroll'){
-        const ann=p.enroll?p.enroll.reduce((s,v)=>s+v,0):0;
+        const ann = p.enroll_annual != null ? p.enroll_annual : (p.enroll?p.enroll.reduce((s,v)=>s+v,0):0);
         html+=`<td style="padding:2px;background:${ci%2===0?'#f0f8f0':'#e8f5e9'}"><input type="number" value="${ann}" style="width:100%;padding:3px 4px;border:1px solid #a5d6a7;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#2D6A4F;font-weight:600" data-name="${p.name}" onchange="onMasterEnrollChange(this)"></td>`;
       } else if(c.special==='wd'){
         const wr=((p.wd_rate||0)*100).toFixed(2);
         html+=`<td style="padding:2px;background:${ci%2===0?'#fef5f5':'#fce8e8'}"><input type="number" value="${wr}" step="0.01" style="width:100%;padding:3px 4px;border:1px solid #ef9a9a;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#C1292E;font-weight:600" data-name="${p.name}" onchange="onMasterWdChange(this)"></td>`;
+      } else if(c.special==='ads'){
+        const annAds=p.ads?(p.ads.reduce((s,v)=>s+v,0)):0;
+        html+=`<td style="padding:2px;background:${ci%2===0?'#fffde7':'#fff8e1'}"><input type="number" value="${annAds}" style="width:100%;padding:3px 4px;border:1px solid #ffd54f;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#e65100;font-weight:600" data-name="${p.name}" onchange="onMasterAdsChange(this)"></td>`;
       } else {
         const v=p[c.k]||0;
         html+=`<td style="padding:2px"><input type="number" value="${v}" step="${c.step||1}" style="width:100%;padding:3px 4px;border:1px solid #ddd;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#333" data-name="${p.name}" data-field="${c.k}" onchange="onMasterChange(this)"></td>`;
@@ -1537,6 +1736,63 @@ function renderMasterTable(){
   el.innerHTML=html;
 }
 
+function applyBulkChange() {
+  const field = document.getElementById('bulk-field').value;
+  const valStr = document.getElementById('bulk-value').value;
+  if (valStr === '') { alert('値を入力してください'); return; }
+  const selectedOpt = document.getElementById('bulk-field').selectedOptions[0];
+  const step = parseFloat(selectedOpt?.dataset.step)||1;
+  const special = selectedOpt?.dataset.special || '';
+  const val = step < 1 ? parseFloat(valStr)||0 : parseInt(valStr)||0;
+  const checked = document.querySelectorAll('.master-check:checked');
+  if (!checked.length) { alert('教室を選択してください'); return; }
+  if (!confirm(`選択中の${checked.length}教室の「${selectedOpt.text}」を${val}${special==='wd'?'%':''}に変更しますか？`)) return;
+
+  checked.forEach(cb => {
+    const name = cb.dataset.name;
+    STATE.years.forEach(ys => {
+      (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
+        if (c.name !== name) return;
+        if (special === 'enroll') {
+          c.enroll_annual = val;
+          c.enroll = distributeEnroll(val, c.open_month >= 0 ? c.open_month : undefined, c.enroll_base);
+          saveField(c.id, 'enroll', c.enroll);
+        } else if (special === 'wd') {
+          c.wd_rate = val / 100;
+          saveField(c.id, 'wd_rate', c.wd_rate);
+        } else if (special === 'ads') {
+          c.ads = distributeAds(val, c.open_month >= 0 ? c.open_month : undefined);
+          saveField(c.id, 'ads', c.ads);
+        } else {
+          c[field] = val;
+          saveField(c.id, field, val);
+        }
+      });
+    });
+  });
+  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList(); renderMasterTable();
+}
+
+function selectAllMaster(checked) {
+  document.querySelectorAll('.master-check').forEach(cb => cb.checked = checked);
+  const allCheck = document.getElementById('check-all-master');
+  if (allCheck) allCheck.checked = checked;
+}
+
+
+function onMasterAdsChange(el) {
+  const name = el.dataset.name;
+  const annual = parseInt(el.value) || 0;
+  STATE.years.forEach(ys => {
+    (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
+      if (c.name === name) {
+        c.ads = distributeAds(annual, c.open_month >= 0 ? c.open_month : undefined);
+        saveField(c.id, 'ads', c.ads);
+      }
+    });
+  });
+  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList();
+}
 function onMasterChange(el){
   const name=el.dataset.name;
   const field=el.dataset.field;
@@ -1544,10 +1800,7 @@ function onMasterChange(el){
   const val=step<1?parseFloat(el.value)||0:parseInt(el.value)||0;
   STATE.years.forEach(ys=>{
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
-      if(c.name===name){
-        c[field]=val;
-        if(typeof c.id==='number') saveField(c.id,field,val);
-      }
+      if(c.name===name){ c[field]=val; saveField(c.id,field,val); }
     });
   });
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();
@@ -1559,8 +1812,9 @@ function onMasterEnrollChange(el){
   STATE.years.forEach(ys=>{
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
       if(c.name===name){
+        c.enroll_annual=annual;
         c.enroll=distributeEnroll(annual,c.open_month>=0?c.open_month:undefined,c.enroll_base);
-        if(typeof c.id==='number') saveField(c.id,'enroll',c.enroll);
+        saveField(c.id,'enroll',c.enroll);
       }
     });
   });
@@ -1572,10 +1826,7 @@ function onMasterWdChange(el){
   const rate=parseFloat(el.value)||0;
   STATE.years.forEach(ys=>{
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
-      if(c.name===name){
-        c.wd_rate=rate/100;
-        if(typeof c.id==='number') saveField(c.id,'wd_rate',rate/100);
-      }
+      if(c.name===name){ c.wd_rate=rate/100; saveField(c.id,'wd_rate',c.wd_rate); }
     });
   });
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();
@@ -1717,7 +1968,7 @@ async function loadFromAPI() {
           name: pr.name || (base?base.name:`新教室${i+1}`),
           open_month: om, start_st: pr.start_st||0,
           prices: src.prices?src.prices.slice():Array(12).fill(25000),
-          enroll: isNew ? distributeEnroll(30,om,src.enroll_base) : (src.enroll?src.enroll.slice():distributeEnroll(30,undefined,src.enroll_base)),
+          enroll: src.enroll ? src.enroll.slice() : distributeEnroll(30, om >= 0 ? om : undefined, src.enroll_base),
           ads: isNew ? generateAds(om) : (src.ads?src.ads.slice():Array(12).fill(35000)),
           rent:src.rent||220000,water:src.water||2000,electric:src.electric||15000,phone:src.phone||10000,travel:src.travel||2000,
           consume_r:src.consume_r||700,promo_r:src.promo_r||150,sys_per_st:src.sys_per_st||300,mat_per_st:src.mat_per_st||4500,
@@ -1733,19 +1984,38 @@ async function loadFromAPI() {
       }) : _base2026;
     }
 
-    // mat_per_stを4500に強制上書き（2026年度・全教室）
+    // mat_per_stを4500に強制上書き・英賀保/姫路中地のopen_monthを-1に修正
     (STATE.classrooms[2026]||[]).forEach(c => {
       if ((c.mat_per_st||0) !== 4500) {
         c.mat_per_st = 4500;
-        if (typeof c.id === 'number') saveField(c.id, 'mat_per_st', 4500);
+        if (c.id) saveField(c.id, 'mat_per_st', 4500);
+      }
+      // 2025年開校教室は2026年度では既存扱い・adsも全月配分に強制上書き
+      if (c.name==='英賀保駅前' || c.name==='姫路中地') {
+        if (c.open_month !== -1) {
+          c.open_month = -1;
+          if (c.id) saveField(c.id, 'open_month', -1);
+        }
+        // adsが4〜9月に0が並んでいる（旧データ）場合は全月配分に修正
+        const adsTotal = (c.ads||[]).reduce((s,v)=>s+v,0);
+        const adsZeroCount = (c.ads||[]).slice(0,6).filter(v=>v===0).length;
+        if (adsZeroCount >= 4 && adsTotal > 0) {
+          // 年間合計を保持したまま全月比率で再配分
+          c.ads = distributeAds(adsTotal, undefined);
+          if (c.id) saveField(c.id, 'ads', c.ads);
+        } else if (adsTotal === 0) {
+          // 合計0の場合はデフォルト855,000円で配分
+          c.ads = distributeAds(855000, undefined);
+          if (c.id) saveField(c.id, 'ads', c.ads);
+        }
       }
     });
     // 2026年度以降はinitDataと同じロジックで自動生成（計算ロジックと完全一致）
-    [2027,2028,2029,2030].forEach(fy => {
+    for (const fy of [2027,2028,2029,2030]) {
       const prev_fy = fy - 1;
       const prevCls = STATE.classrooms[prev_fy] || [];
       const proj = EXCEL_PROJECTIONS[fy];
-      if (!proj) return;
+      if (!proj) continue;
       const openPlan = OPEN_MONTH_PLAN[fy] || {};
       const baseClassrooms = STATE.classrooms[2026] || INITIAL_DATA.classrooms[2026];
       const cls = proj.map((pr, i) => {
@@ -1758,7 +2028,7 @@ async function loadFromAPI() {
           ...baseClassrooms[0],
           rent:220000,water:2000,electric:15000,phone:10000,travel:2000,
           repair:10000,insurance:1000,sanitation:1500,other_exp:0,salary1:275000,
-          parttime_cost:0,recruit_fee:0,recruit_fee_part:0,
+          parttime_cost:0,recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,
           atama_r:baseClassrooms[0]?.atama_r||0.2,teacher_monthly:baseClassrooms[0]?.teacher_monthly||50000,
         };
         const base = isNew ? {...baseTemplate} : (prevCl ? {...prevCl} : {...baseTemplate});
@@ -1770,28 +2040,70 @@ async function loadFromAPI() {
         const result = {
           id: dbCl ? dbCl.id : `${fy}-${i}`,
           name, open_month:om, start_st:pr.start_st||0,
-          prices: (dbCl||base).prices?.slice() || base.prices?.slice(),
-          enroll: dbCl ? dbCl.enroll : annualEnroll,
+          prices: dbCl ? dbCl.prices?.slice() : (base.prices?.slice() || Array(12).fill(25000)),
+          enroll: dbCl ? dbCl.enroll?.slice() : (isNew ? distributeEnroll(30, om, base.enroll_base) : annualEnroll),
           ads: dbCl ? dbCl.ads : (isNew ? generateAds(om) : base.ads?.slice()),
-          rent: dbCl ? dbCl.rent : (base.rent||220000),
-          water:base.water, electric:base.electric, phone:base.phone, travel:base.travel,
-          consume_r:base.consume_r, promo_r:base.promo_r, sys_per_st:base.sys_per_st,
-          mat_per_st:base.mat_per_st, exam_buy_r:base.exam_buy_r, fee_r:base.fee_r,
-          welfare_r:base.welfare_r, repair:base.repair||10000, lease_cost:base.lease_cost||0,
-          insurance:base.insurance||1000, sanitation:base.sanitation||1500,
-          other_exp: isNew ? 0 : (base.other_exp||5000),
-          recruit_fee:base.recruit_fee||0, recruit_fee_part:base.recruit_fee_part||0, parttime_cost:base.parttime_cost||0,
+          rent:       dbCl ? dbCl.rent       : (base.rent||220000),
+          water:      dbCl ? dbCl.water      : base.water,
+          electric:   dbCl ? dbCl.electric   : base.electric,
+          phone:      dbCl ? dbCl.phone      : base.phone,
+          travel:     dbCl ? dbCl.travel     : base.travel,
+          consume_r:  dbCl ? dbCl.consume_r  : base.consume_r,
+          promo_r:    dbCl ? dbCl.promo_r    : base.promo_r,
+          sys_per_st: dbCl ? dbCl.sys_per_st : base.sys_per_st,
+          mat_per_st: dbCl ? dbCl.mat_per_st : base.mat_per_st,
+          exam_buy_r: dbCl ? dbCl.exam_buy_r : base.exam_buy_r,
+          fee_r:      dbCl ? dbCl.fee_r      : base.fee_r,
+          welfare_r:  dbCl ? dbCl.welfare_r  : base.welfare_r,
+          repair:     dbCl ? dbCl.repair     : (base.repair||10000),
+          lease_cost: dbCl ? dbCl.lease_cost : (base.lease_cost||0),
+          insurance:  dbCl ? dbCl.insurance  : (base.insurance||1000),
+          sanitation: dbCl ? dbCl.sanitation : (base.sanitation||1500),
+          other_exp:  dbCl ? dbCl.other_exp  : (isNew ? 0 : (base.other_exp||5000)),
+          recruit_fee:      dbCl ? dbCl.recruit_fee      : 0,
+          recruit_fee_oct:  dbCl ? dbCl.recruit_fee_oct  : 0,
+          recruit_fee_part: dbCl ? dbCl.recruit_fee_part : 0,
+          parttime_cost: dbCl ? dbCl.parttime_cost : (base.parttime_cost||0),
           salary1: dbCl ? dbCl.salary1 : (pr.salary1||base.salary1||275000),
-          salary2:0, legal_welf_r:base.legal_welf_r, tax_r:base.tax_r,
-          enroll_fee:base.enroll_fee, exam_sell_r:base.exam_sell_r||0,
-          wd_rate:base.wd_rate||0.035, start_wd:0, max_st:base.max_st||80, conv_r:base.conv_r||0.6,
-          enroll_base: base.enroll_base?.slice() || ENROLL_BASE_DEFAULT.slice(),
-          wd_base: base.wd_base?.slice() || WD_BASE_DEFAULT.slice(),
+          salary2: 0,
+          legal_welf_r: dbCl ? dbCl.legal_welf_r : base.legal_welf_r,
+          tax_r:        dbCl ? dbCl.tax_r        : base.tax_r,
+          enroll_fee:   dbCl ? dbCl.enroll_fee   : base.enroll_fee,
+          exam_sell_r:  dbCl ? dbCl.exam_sell_r  : (base.exam_sell_r||0),
+          wd_rate:   dbCl ? dbCl.wd_rate   : (base.wd_rate||0.035),
+          start_wd: 0,
+          max_st:   dbCl ? dbCl.max_st   : (base.max_st||80),
+          conv_r:   dbCl ? dbCl.conv_r   : (base.conv_r||0.6),
+          enroll_base: dbCl ? dbCl.enroll_base?.slice() : (base.enroll_base?.slice() || ENROLL_BASE_DEFAULT.slice()),
+          wd_base:     dbCl ? dbCl.wd_base?.slice()     : (base.wd_base?.slice() || WD_BASE_DEFAULT.slice()),
         };
         return result;
       });
       STATE.classrooms[fy] = cls;
+    }
+    // 全教室のadsをADS_BASEの比率で強制再計算（DB保存値の差異を吸収）
+    STATE.years.forEach(ys => {
+      (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
+        const annAds = (c.ads||[]).reduce((s,v)=>s+v, 0);
+        if (annAds > 0) {
+          const newAds = distributeAds(annAds, undefined);
+          // 比率が異なる場合のみ更新
+          const isSame = newAds.every((v,i) => v === (c.ads[i]||0));
+          if (!isSame) {
+            c.ads = newAds;
+            if (c.id) saveField(c.id, 'ads', c.ads);
+          }
+        }
+      });
     });
+    // enroll_annualをDBのenroll合計からそのまま設定（逆算・再計算しない）
+    STATE.years.forEach(ys => {
+      (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
+        c.enroll_annual = (c.enroll||[]).reduce((s,v)=>s+v, 0);
+      });
+    });
+    // ロード時の自動保存をすべてフラッシュ
+    await flushSaves();
     calcAllResults();
     document.getElementById('loading').style.display = 'none';
     document.getElementById('app').style.display = 'block';
@@ -1799,8 +2111,7 @@ async function loadFromAPI() {
     document.getElementById('header-badge').textContent = STATE.years.length+'カ年計画 (2026-2030)';
     document.getElementById('header-sub').textContent = '全'+totalRooms+'教室データ反映済 ｜ DBデータ準拠';
     renderYearTabs(); renderAll();
-    // 2026年度の教室がDBに未登録の場合、自動シード
-    seedAllClassroomsIfNeeded().catch(e => console.error('[plus] seedIfNeeded error:', e));
+    updateSaveInfo(); // 保存情報を表示
     // ダッシュボード向けエクスポート書き込み
 
   } catch(e) {
