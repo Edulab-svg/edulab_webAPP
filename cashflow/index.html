@@ -160,6 +160,11 @@ main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-he
 .daily-grid .daily-bal-cell-amt{display:inline}
 .daily-grid .daily-bal-to-input{padding:2px 8px;font-size:10px;margin-left:4px;vertical-align:middle;line-height:1.2}
 
+/* 口座別支出行 */
+.daily-grid .acc-exp-row td{background:#fff8f8;font-size:11px}
+.daily-grid .acc-exp-row td.sticky-col{background:#fff8f8;color:var(--text-sub);padding-left:18px}
+.daily-grid .acc-exp-row td.num{color:#c2410c}
+
 /* 予定残高アラート */
 .daily-grid td.plan-bal-alert-cell{background:#fef2f2 !important;color:#dc2626 !important;font-weight:600}
 .plan-bal-alert-banner{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;
@@ -203,6 +208,10 @@ main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-he
     </div>
     <div class="form-group"><label>科目名</label><input type="text" id="cat-name"></div>
     <div class="form-group"><label>並び順</label><input type="number" id="cat-sort" value="0"></div>
+    <div class="form-group"><label>支払口座（任意）</label>
+      <select id="cat-acc"></select>
+      <span style="font-size:11px;color:var(--text-sub);margin-top:3px">支出の場合は出金元口座、収入の場合は受取口座を設定できます。日次CFで口座別支出合計を確認するのに使います。</span>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('cat-modal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveCat()">保存</button>
@@ -614,18 +623,22 @@ async function renderCats() {
     const idx = arr.findIndex(x => x.id === c.id);
     const canUp = idx > 0;
     const canDown = idx < arr.length - 1;
+    const accBadge = c.account_name
+      ? `<span style="font-size:11px;background:#e0f2fe;color:#0369a1;padding:2px 7px;border-radius:99px">${c.account_name.replace(/</g,'')}</span>`
+      : '<span style="color:var(--text-sub);font-size:11px">—</span>';
     return `
     <tr>
       <td>${c.name}</td>
       <td><span class="badge badge-${c.type==='income'?'income':'expense'}">${c.type==='income'?'収入':'支出'}</span></td>
       <td><span class="badge badge-${c.cf_section.slice(0,2)==='op'?'op':c.cf_section.slice(0,2)==='in'?'inv':'fin'}">${cfL[c.cf_section]}</span></td>
+      <td>${accBadge}</td>
       <td>${c.sort_order}</td>
       <td class="cell-reorder">
         <button type="button" class="btn btn-ghost btn-sm" title="上へ" ${canUp?'':'disabled'} onclick="moveCat(${c.id},'up')">↑</button>
         <button type="button" class="btn btn-ghost btn-sm" title="下へ" ${canDown?'':'disabled'} onclick="moveCat(${c.id},'down')">↓</button>
       </td>
       <td>
-        <button class="btn btn-ghost btn-sm" onclick="openCatM(${c.id},'${c.type}','${c.cf_section}',\`${c.name.replace(/`/g,'\\`')}\`,${c.sort_order})">編集</button>
+        <button class="btn btn-ghost btn-sm" onclick="openCatM(${c.id},'${c.type}','${c.cf_section}',\`${c.name.replace(/`/g,'\\`')}\`,${c.sort_order},${c.account_id||0})">編集</button>
         <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="delCat(${c.id})">削除</button>
       </td>
     </tr>`;
@@ -651,8 +664,8 @@ async function renderCats() {
     </div>
     <div class="card" style="padding:0">
       <table class="master-table">
-        <thead><tr><th>科目名</th><th>種別</th><th>CF区分</th><th>順</th><th style="width:88px">移動</th><th>操作</th></tr></thead>
-        <tbody>${tbl||'<tr><td colspan="6" style="color:var(--text-sub);text-align:center;padding:20px">科目がありません</td></tr>'}</tbody>
+        <thead><tr><th>科目名</th><th>種別</th><th>CF区分</th><th>支払口座</th><th>順</th><th style="width:88px">移動</th><th>操作</th></tr></thead>
+        <tbody>${tbl||'<tr><td colspan="7" style="color:var(--text-sub);text-align:center;padding:20px">科目がありません</td></tr>'}</tbody>
       </table>
     </div>
     <div class="card" id="daily-template-section">
@@ -672,7 +685,15 @@ async function renderCats() {
     </div>`;
 }
 
-function openCatM(id, type='income', cf='operating', name='', sort=0) {
+async function openCatM(id, type='income', cf='operating', name='', sort=0, accountId=0) {
+  try {
+    const ad = await apiGet('accounts_list');
+    const accounts = (ad.accounts || []).filter(a => parseInt(a.is_active));
+    const sel = document.getElementById('cat-acc');
+    sel.innerHTML = '<option value="">（未設定）</option>' +
+      accounts.map(a => `<option value="${a.id}">${String(a.name).replace(/</g,'')}</option>`).join('');
+    sel.value = accountId ? String(accountId) : '';
+  } catch { /* 口座取得失敗時は未設定のまま */ }
   document.getElementById('cat-id').value = id;
   document.getElementById('cat-type').value = type;
   document.getElementById('cat-cf').value = cf;
@@ -690,7 +711,8 @@ async function saveCat() {
       id, name,
       type:       document.getElementById('cat-type').value,
       cf_section: document.getElementById('cat-cf').value,
-      sort_order: parseInt(document.getElementById('cat-sort').value)||0
+      sort_order: parseInt(document.getElementById('cat-sort').value)||0,
+      account_id: document.getElementById('cat-acc').value || ''
     });
     closeM('cat-modal'); toast('保存しました'); renderCats();
   } catch(e) { toast(e.message,'err'); }
@@ -1089,7 +1111,7 @@ async function renderDailyCF() {
           rowSum += v;
           const todayCls = dt === today ? ' today-col' : '';
           return `<td class="num${todayCls}"><input type="number" value="${v||''}"
-            data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}"
+            data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}" data-acc-id="${cat.account_id||''}"
             oninput="refreshDailyDerivedRows()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
             onblur="saveDailyCell(this)"></td>`;
@@ -1120,6 +1142,28 @@ async function renderDailyCF() {
       ${days.map(dt=>`<td class="num${dt===today?' today-col':''}" style="color:var(--danger)">${dayExpTot[dt]?fmt(dayExpTot[dt]):'-'}</td>`).join('')}
       <td class="num" style="color:var(--danger)">${fmt(expSum)}</td>
     </tr>`;
+
+    // 口座別支出合計行
+    const expAccMap = {};
+    expense.forEach(cat => {
+      const key = cat.account_id ? String(cat.account_id) : '__none__';
+      const label = cat.account_name || '（口座未設定）';
+      if (!expAccMap[key]) expAccMap[key] = { label, totByDay: {}, monthly: 0 };
+      days.forEach(dt => {
+        const v = (eMap[cat.id]?.[dt]?.['plan']) || 0;
+        expAccMap[key].totByDay[dt] = (expAccMap[key].totByDay[dt] || 0) + v;
+        expAccMap[key].monthly += v;
+      });
+    });
+    const hasMultipleAccounts = Object.keys(expAccMap).length > 1 ||
+      (Object.keys(expAccMap).length === 1 && !expAccMap['__none__']);
+    const accExpRows = !hasMultipleAccounts ? '' :
+      Object.entries(expAccMap).map(([key, acc]) => `
+        <tr class="bal-row acc-exp-row daily-cf-block-exp" data-acc-key="${key}">
+          <td class="sticky-col"> └ ${acc.label.replace(/</g,'')}</td>
+          ${days.map(dt=>`<td class="num${dt===today?' today-col':''}">${acc.totByDay[dt]?fmt(acc.totByDay[dt]):''}</td>`).join('')}
+          <td class="num">${acc.monthly?fmt(acc.monthly):'-'}</td>
+        </tr>`).join('');
 
     const netRow = `<tr class="net-row" data-daily-summary="net">
       <td class="sticky-col">差引</td>
@@ -1206,6 +1250,7 @@ async function renderDailyCF() {
               <tr class="daily-cf-block-exp"><td colspan="${nc}" style="background:#fef2f2;color:var(--danger);font-weight:700;padding:5px 10px;font-size:12px">▼ 支 出</td></tr>
               ${expRows}
               ${expTotRow}
+              ${accExpRows}
               ${netRow}
               ${balRow}
               ${planBalRow}
@@ -1352,6 +1397,28 @@ function refreshDailyDerivedRows() {
     const cells = tr.querySelectorAll('td');
     const last = cells[cells.length - 1];
     if (last) last.textContent = rowSum ? fmt(rowSum) : '-';
+  });
+
+  // 口座別支出合計行を更新
+  const dayAccTot = {};
+  table.querySelectorAll('tr.expense-row input[data-date][data-acc-id]').forEach(inp => {
+    const key = inp.dataset.accId || '__none__';
+    if (!dayAccTot[key]) dayAccTot[key] = {};
+    const dt = inp.dataset.date;
+    dayAccTot[key][dt] = (dayAccTot[key][dt] || 0) + dailyParseInputAmt(inp);
+  });
+  table.querySelectorAll('tr.acc-exp-row[data-acc-key]').forEach(trAcc => {
+    const key = trAcc.dataset.accKey;
+    const tds = trAcc.querySelectorAll('td');
+    let sum = 0;
+    days.forEach((dt, i) => {
+      const v = (dayAccTot[key] || {})[dt] || 0;
+      sum += v;
+      const td = tds[i + 1];
+      if (td) td.textContent = v ? fmt(v) : '';
+    });
+    const lastTd = tds[days.length + 1];
+    if (lastTd) lastTd.textContent = sum ? fmt(sum) : '-';
   });
 
   const trInc = table.querySelector('tr[data-daily-summary="inc"]');

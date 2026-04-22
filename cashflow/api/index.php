@@ -274,7 +274,10 @@ function action_balance_delete(array $b): void {
 function action_categories_list(): void {
     $pdo = get_pdo();
     json_ok(['categories' => $pdo->query(
-        "SELECT * FROM categories ORDER BY type DESC, sort_order ASC, id ASC"
+        "SELECT c.*, a.name AS account_name
+         FROM categories c
+         LEFT JOIN bank_accounts a ON a.id = c.account_id
+         ORDER BY c.type DESC, c.sort_order ASC, c.id ASC"
     )->fetchAll()]);
 }
 
@@ -282,20 +285,22 @@ function action_categories_list(): void {
 //  ACTION: 科目 保存
 // ============================================================
 function action_category_save(array $b): void {
-    $pdo  = get_pdo();
-    $id   = intval($b['id'] ?? 0);
-    $type = in_array($b['type'] ?? '', ['income','expense']) ? $b['type'] : 'income';
-    $cf   = in_array($b['cf_section'] ?? '', ['operating','investing','financing']) ? $b['cf_section'] : 'operating';
-    $name = substr(trim($b['name'] ?? ''), 0, 100);
-    $sort = intval($b['sort_order'] ?? 0);
+    $pdo    = get_pdo();
+    $id     = intval($b['id'] ?? 0);
+    $type   = in_array($b['type'] ?? '', ['income','expense']) ? $b['type'] : 'income';
+    $cf     = in_array($b['cf_section'] ?? '', ['operating','investing','financing']) ? $b['cf_section'] : 'operating';
+    $name   = substr(trim($b['name'] ?? ''), 0, 100);
+    $sort   = intval($b['sort_order'] ?? 0);
+    $accRaw = $b['account_id'] ?? '';
+    $acc_id = ($accRaw !== '' && $accRaw !== null && intval($accRaw) > 0) ? intval($accRaw) : null;
     if (!$name) json_error('名称は必須です');
 
     if ($id) {
-        $pdo->prepare("UPDATE categories SET type=?,cf_section=?,name=?,sort_order=? WHERE id=?")
-            ->execute([$type,$cf,$name,$sort,$id]);
+        $pdo->prepare("UPDATE categories SET type=?,cf_section=?,name=?,sort_order=?,account_id=? WHERE id=?")
+            ->execute([$type,$cf,$name,$sort,$acc_id,$id]);
     } else {
-        $pdo->prepare("INSERT INTO categories (type,cf_section,name,sort_order) VALUES (?,?,?,?)")
-            ->execute([$type,$cf,$name,$sort]);
+        $pdo->prepare("INSERT INTO categories (type,cf_section,name,sort_order,account_id) VALUES (?,?,?,?,?)")
+            ->execute([$type,$cf,$name,$sort,$acc_id]);
         $id = (int)$pdo->lastInsertId();
     }
     json_ok(['id' => $id]);
@@ -697,9 +702,13 @@ function action_daily_grid(array $b): void {
     $from = sprintf('%04d-%02d-01', $year, $month);
     $to   = date('Y-m-t', strtotime($from)); // 月末日
 
-    // 全科目
+    // 全科目（口座情報含む）
     $cats = $pdo->query(
-        "SELECT id, type, cf_section, name, sort_order FROM categories ORDER BY type DESC, sort_order ASC, id ASC"
+        "SELECT c.id, c.type, c.cf_section, c.name, c.sort_order, c.account_id,
+                a.name AS account_name
+         FROM categories c
+         LEFT JOIN bank_accounts a ON a.id = c.account_id
+         ORDER BY c.type DESC, c.sort_order ASC, c.id ASC"
     )->fetchAll();
 
     // 当月の日次明細
