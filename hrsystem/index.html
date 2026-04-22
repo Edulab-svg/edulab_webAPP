@@ -37,17 +37,17 @@ select option{background:#ffffff}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden}
 .pfill{height:100%;border-radius:3px;transition:width .5s ease}
 table{width:100%;border-collapse:collapse}
-th{text-align:left;padding:11px 14px;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0;white-space:nowrap;cursor:pointer;user-select:none}
+th{text-align:left;padding:8px 10px;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #e2e8f0;white-space:nowrap;cursor:pointer;user-select:none}
 th:hover{color:#6366f1}
 th.sort-active{color:#6366f1}
-td{padding:11px 14px;font-size:14px;border-bottom:1px solid #f1f5f9}
+td{padding:9px 10px;font-size:13px;border-bottom:1px solid #f1f5f9}
 tr.emp-row{transition:background .12s;cursor:pointer}
 tr.emp-row:hover{background:#f8fafc}
 label{display:block;font-size:13px;font-weight:500;color:#64748b;margin-bottom:6px}
 .fg{margin-bottom:16px}
 .filter-chip{padding:5px 14px;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #e2e8f0;background:transparent;color:#94a3b8;transition:all .15s;font-family:inherit}
 .filter-chip.active{background:#fee2e244;border-color:#f43f5e;color:#ef4444}
-.filter-chip.active-warn{background:#fef3c744;border-color:#f59e0b;color:#d97706}
+.filter-chip.active-warn{background:#fef3c7;border-color:#d97706;color:#92400e}
 .view-toggle-btn{background:#f1f5f9;border:1px solid #e2e8f0;color:#94a3b8;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:16px;line-height:1;font-family:inherit}
 .view-toggle-btn.active{background:rgba(99,102,241,.1);border-color:#6366f1;color:#6366f1}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -272,7 +272,7 @@ function sortIcon(key){
 // ══════════════════════════════════════════════════════════════════
 function highLeaveTag(avail){
   if(avail>=AVAIL_WARN)
-    return`<span class="tag" style="background:#78350f33;color:#fbbf24;margin-left:6px" title="残日数が${AVAIL_WARN}日以上です">⚠ 残多</span>`;
+    return`<span class="tag" style="background:#fef3c7;color:#92400e;margin-left:6px" title="残日数が${AVAIL_WARN}日以上です">⚠ 残多</span>`;
   return'';
 }
 
@@ -405,12 +405,12 @@ function renderDashboard(){
     const m=getMandatory(emp);
     const tenure=diffMonths(emp.hire_date);
     const warnAvail=avail>=AVAIL_WARN;
-    return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#78350f11;':''}" onmouseenter="this.style.background='${warnAvail?'#78350f22':'#f8fafc'}'" onmouseleave="this.style.background='${warnAvail?'#78350f11':''}'">
+    return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#fefce8;':''}" onmouseenter="this.style.background='${warnAvail?'#fef9c3':'#f8fafc'}'" onmouseleave="this.style.background='${warnAvail?'#fefce8':''}'">
       <td><div style="font-weight:600;color:#1e293b;display:flex;align-items:center">${emp.name}${highLeaveTag(avail)}</div><div style="font-size:12px;color:#64748b;margin-top:2px">週${emp.work_days_per_week}日</div></td>
       <td style="color:#94a3b8;font-family:monospace;font-size:13px">${emp.hire_date}</td>
       <td style="color:#94a3b8;font-size:13px">${tenure}ヶ月</td>
       <td><span style="font-weight:700;color:#6366f1">${entitled}日</span></td>
-      <td><span style="font-weight:700;color:#f59e0b">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
+      <td><span style="font-weight:700;color:#b45309">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
       <td><span style="font-weight:700;color:${warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981'}">${avail}日</span></td>
       <td>${mandatoryTag(m)}</td>
       <td onclick="event.stopPropagation()"><button class="btn-sm" onclick="openEditEmp(${emp.id})">✏</button></td>
@@ -434,12 +434,12 @@ function renderDashboard(){
   // 残多バナー
   const warnEmps=employees.filter(e=>calcAvail(e.hire_date,e.work_days_per_week,e.leaves)>=AVAIL_WARN);
   const warnBanner=warnEmps.length
-    ? `<div style="background:#78350f22;border:1px solid #f59e0b55;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+    ? `<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
         <span style="font-size:20px;flex-shrink:0">🔔</span>
         <div>
-          <div style="font-weight:600;color:#fbbf24;margin-bottom:6px">残日数${AVAIL_WARN}日以上の社員がいます（${warnEmps.length}名）</div>
+          <div style="font-weight:600;color:#b45309;margin-bottom:6px">残日数${AVAIL_WARN}日以上の社員がいます（${warnEmps.length}名）</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${warnEmps.map(e=>`<span onclick="goDetail(${e.id})" style="cursor:pointer;background:#78350f33;border:1px solid #f59e0b55;color:#fbbf24;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}（残${calcAvail(e.hire_date,e.work_days_per_week,e.leaves)}日）</span>`).join('')}
+            ${warnEmps.map(e=>`<span onclick="goDetail(${e.id})" style="cursor:pointer;background:#fef3c7;border:1px solid #fde68a;color:#92400e;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}（残${calcAvail(e.hire_date,e.work_days_per_week,e.leaves)}日）</span>`).join('')}
           </div>
         </div>
       </div>`
@@ -530,12 +530,12 @@ function renderEmployeeList(){
       const m=getMandatory(emp);
       const tenure=diffMonths(emp.hire_date);
       const warnAvail=avail>=AVAIL_WARN;
-      return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#78350f11;':''}" onmouseenter="this.style.background='${warnAvail?'#78350f22':'#f8fafc'}'" onmouseleave="this.style.background='${warnAvail?'#78350f11':''}'">
+      return`<tr class="emp-row" onclick="goDetail(${emp.id})" style="${warnAvail?'background:#fefce8;':''}" onmouseenter="this.style.background='${warnAvail?'#fef9c3':'#f8fafc'}'" onmouseleave="this.style.background='${warnAvail?'#fefce8':''}'">
         <td><div style="font-weight:600;color:#1e293b;display:flex;align-items:center">${emp.name}${highLeaveTag(avail)}</div><div style="font-size:12px;color:#64748b;margin-top:2px">週${emp.work_days_per_week}日勤務</div></td>
         <td style="color:#94a3b8;font-family:monospace;font-size:13px">${emp.hire_date}</td>
         <td style="color:#94a3b8;font-size:13px">${tenure}ヶ月</td>
         <td><span style="font-weight:700;color:#6366f1">${entitled}日</span></td>
-        <td><span style="font-weight:700;color:#f59e0b">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
+        <td><span style="font-weight:700;color:#b45309">${usedFY}日</span><div style="font-size:11px;color:#475569;margin-top:1px">${fy}年度</div></td>
         <td><span style="font-weight:700;color:${warnAvail?'#fbbf24':avail<=2?'#f43f5e':'#10b981'}">${avail}日</span></td>
         <td>${mandatoryTag(m)}</td>
         <td onclick="event.stopPropagation()">
@@ -563,7 +563,7 @@ function renderEmployeeList(){
       const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
       const m=getMandatory(emp);
       const warnAvail=avail>=AVAIL_WARN;
-      return`<div class="card" style="padding:18px;cursor:pointer;transition:all .2s;position:relative;${warnAvail?'border-color:#f59e0b44;background:#78350f0a;':''}"
+      return`<div class="card" style="padding:18px;cursor:pointer;transition:all .2s;position:relative;${warnAvail?'border-color:#fde68a;background:#fefce8;':''}"
         onmouseenter="this.style.borderColor='${warnAvail?'#f59e0b':'#6366f1'}';this.style.transform='translateY(-2px)'"
         onmouseleave="this.style.borderColor='${warnAvail?'#f59e0b44':'#e2e8f0'}';this.style.transform='none'"
         onclick="goDetail(${emp.id})">
@@ -617,7 +617,7 @@ function renderDetail(){
   const leaveRows=[...emp.leaves].sort((a,b)=>b.start_date.localeCompare(a.start_date)).map(l=>`
     <tr>
       <td style="font-family:monospace;font-size:13px;color:#64748b">${l.start_date}${l.start_date!==l.end_date?' 〜 '+l.end_date:''}</td>
-      <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span></td>
+      <td><span style="font-weight:700;color:#b45309;font-family:monospace">${l.days}日</span></td>
       <td><span class="tag" style="background:#f1f5f9;color:#64748b">${l.type==='half'?'半休':'全日'}</span></td>
       <td style="color:#64748b;font-size:13px">${l.memo||'—'}</td>
       <td style="color:#475569;font-size:12px;font-family:monospace">${l.registered_at}</td>
@@ -669,10 +669,10 @@ function renderDetail(){
         累計取得: <span style="color:#94a3b8;font-weight:600;font-family:monospace">${usedTotal}日</span>
       </div>
     </div>
-    ${warnAvail?`<div style="background:#78350f22;border:1px solid #f59e0b55;border-radius:12px;padding:16px;margin-bottom:24px;display:flex;gap:12px">
+    ${warnAvail?`<div style="background:#fefce8;border:1px solid #fde68a;border-radius:12px;padding:16px;margin-bottom:24px;display:flex;gap:12px">
       <span style="font-size:20px">🔔</span>
       <div>
-        <div style="font-weight:600;color:#fbbf24;margin-bottom:4px">残日数が${AVAIL_WARN}日以上あります（現在 ${avail}日）</div>
+        <div style="font-weight:600;color:#b45309;margin-bottom:4px">残日数が${AVAIL_WARN}日以上あります（現在 ${avail}日）</div>
         <div style="font-size:13px;color:#d97706">退職時に大量残が発生しないよう、計画的な取得を促してください。</div>
       </div>
     </div>`:''}
@@ -728,7 +728,7 @@ function renderCalendar(){
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <span class="tag" style="background:#f1f5f9;color:#64748b">${l.type==='half'?'半休':'全日'}</span>
-            <span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span>
+            <span style="font-weight:700;color:#b45309;font-family:monospace">${l.days}日</span>
           </div>
         </div>`).join('')}
       </div>`}
@@ -877,7 +877,7 @@ function openAddLeave(){
   const emp=employees.find(e=>e.id===selectedEmpId);
   if(emp){
     const avail=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
-    document.getElementById('leave-avail-msg').innerHTML=`${emp.name} — 残 <strong style="color:#10b981">${avail}日</strong>`;
+    document.getElementById('leave-avail-msg').innerHTML=`${emp.name} — 残 <strong style="color:#047857">${avail}日</strong>`;
   }
 }
 function leaveTypeChange(){
@@ -985,7 +985,7 @@ function renderRetired(){
         <td style="color:#64748b;font-family:monospace;font-size:13px">${emp.hire_date}</td>
         <td style="color:#64748b;font-family:monospace;font-size:13px">${emp.retire_date||'—'}</td>
         <td style="color:#64748b;font-size:13px">${tenure}ヶ月</td>
-        <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${usedTotal}日</span></td>
+        <td><span style="font-weight:700;color:#b45309;font-family:monospace">${usedTotal}日</span></td>
         <td><span style="font-weight:700;color:${emp.retire_remaining>0?'#f87171':'#64748b'};font-family:monospace">${emp.retire_remaining??'—'}日</span></td>
         <td onclick="event.stopPropagation()">
           <button class="btn-sm" onclick="openUnretireConfirm(${emp.id},'${emp.name}')">在籍に戻す</button>
@@ -1029,7 +1029,7 @@ function openRetiredDetail(id){
   const leaveRows=[...emp.leaves].sort((a,b)=>b.start_date.localeCompare(a.start_date)).map(l=>`
     <tr>
       <td style="font-family:monospace;font-size:13px;color:#94a3b8">${l.start_date}${l.start_date!==l.end_date?' 〜 '+l.end_date:''}</td>
-      <td><span style="font-weight:700;color:#f59e0b;font-family:monospace">${l.days}日</span></td>
+      <td><span style="font-weight:700;color:#b45309;font-family:monospace">${l.days}日</span></td>
       <td><span class="tag" style="background:#f1f5f9;color:#64748b">${l.type==='half'?'半休':'全日'}</span></td>
       <td style="color:#64748b;font-size:13px">${l.memo||'—'}</td>
     </tr>`).join('');
@@ -1071,6 +1071,7 @@ async function loadRoles(){
 }
 
 function fmtYen(n){return Number(n||0).toLocaleString('ja-JP')+'円';}
+function fmtW(n){if(!n||n===0)return null;return Number(n).toLocaleString('ja-JP');}
 function fmtPeriod(p){if(!p)return'—';const[y,m]=p.split('-');return`${y}年${parseInt(m)}月`;}
 
 function getCurrentReviewPeriod(){
@@ -1108,49 +1109,52 @@ function renderSalary(){
     const noSetting=!emp.base_salary&&!emp.role_id;
     let statusTag='';
     if(noSetting)statusTag=`<span class="tag" style="background:#f1f5f9;color:#64748b">未設定</span>`;
-    else if(atCap)statusTag=`<span class="tag" style="background:#78350f33;color:#fbbf24">上限到達</span>`;
-    else if(due)statusTag=`<span class="tag" style="background:#7c2d1233;color:#fb923c">審査待ち</span>`;
+    else if(atCap)statusTag=`<span class="tag" style="background:#fef3c7;color:#92400e">上限到達</span>`;
+    else if(due)statusTag=`<span class="tag" style="background:#ffedd5;color:#9a3412">審査待ち</span>`;
     else statusTag=`<span class="tag" style="background:#dcfce766;color:#16a34a">審査済</span>`;
-    const yen=v=>v?`<span style="font-family:monospace">${fmtYen(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
-    return`<tr style="${due&&!noSetting?'background:#7c2d1211;':''}">
-      <td style="padding:9px 14px"><div style="font-weight:600;color:#1e293b">${emp.name}</div></td>
-      <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:11px">${emp.role_name}</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
-      <td style="padding:9px 14px;color:#6366f1;font-family:monospace;font-weight:600">${emp.base_salary?fmtYen(emp.base_salary):'<span style="color:#cbd5e1">—</span>'}</td>
-      <td style="padding:9px 10px;font-size:12px">${yen(emp.business_allowance)}</td>
-      <td style="padding:9px 10px;font-size:12px">${yen(emp.duty_allowance)}</td>
-      <td style="padding:9px 10px;font-size:12px">${yen(emp.role_allowance)}</td>
-      <td style="padding:9px 10px;font-size:12px;border-left:1px solid #e2e8f0">${yen(emp.commute_allowance)}</td>
-      <td style="padding:9px 10px;font-size:12px">${yen(emp.housing_allowance)}</td>
-      <td style="padding:9px 10px;font-size:12px">${yen(emp.special_allowance)}</td>
-      <td style="padding:9px 14px;border-left:1px solid #e2e8f0"><span style="font-family:monospace;font-weight:700;color:#10b981">${total?fmtYen(total):'—'}</span></td>
-      <td style="padding:9px 14px"><span style="font-family:monospace;font-weight:600;color:#6366f1">${annualIncome?fmtYen(annualIncome):'—'}</span>${annualIncome?`<div style="font-size:10px;color:#475569">×${12+bonusMonths}ヶ月</div>`:''}</td>
-      <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:160px;white-space:normal">${emp.salary_note?`<span title="${emp.salary_note}">📌 ${emp.salary_note}</span>`:'—'}</td>
-      <td style="padding:9px 14px;border-left:1px solid #e2e8f0;color:#64748b;font-size:12px">${fmtPeriod(emp.last_review_period)}</td>
-      <td style="padding:9px 14px">${statusTag}</td>
-      <td style="padding:9px 14px" onclick="event.stopPropagation()">
-        <div style="display:flex;gap:4px">
-          ${due&&!atCap&&!noSetting?`<button class="btn-sm" style="background:rgba(251,146,60,.15);border-color:#fb923c;color:#fb923c" onclick="openSalaryReview(${emp.id})">審査</button>`:''}
-          <button class="btn-sm" onclick="openSalaryHistory(${emp.id})">履歴</button>
-          <button class="btn-sm" onclick="openSalaryEdit(${emp.id})">設定</button>
+    const w=v=>fmtW(v)?`<span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${fmtW(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
+    const P='padding:4px 5px';
+    return`<tr style="${due&&!noSetting?'background:#fff7ed;':''}">
+      <td style="${P} 4px 9px">
+        <div style="font-weight:600;color:#1e293b;font-size:12px;white-space:nowrap">${emp.name}</div>
+        ${emp.salary_note?`<div style="font-size:10px;color:#64748b;margin-top:1px">📌 ${emp.salary_note}</div>`:''}
+      </td>
+      <td style="${P}">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:10px;padding:2px 5px">${emp.role_name}</span>`:'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="${P};color:#4f46e5;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;text-align:right;white-space:nowrap">${emp.base_salary?fmtW(emp.base_salary):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="${P};text-align:right">${w(emp.business_allowance)}</td>
+      <td style="${P};text-align:right">${w(emp.duty_allowance)}</td>
+      <td style="${P};text-align:right">${w(emp.role_allowance)}</td>
+      <td style="${P};text-align:right;border-left:1px solid #e2e8f0">${w(emp.commute_allowance)}</td>
+      <td style="${P};text-align:right">${w(emp.housing_allowance)}</td>
+      <td style="${P};text-align:right">${w(emp.special_allowance)}</td>
+      <td style="${P};border-left:1px solid #e2e8f0;text-align:right;white-space:nowrap"><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#047857;font-size:11px">${total?fmtW(total):'—'}</span></td>
+      <td style="${P};text-align:right;white-space:nowrap"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4f46e5">${annualIncome?fmtW(annualIncome):'—'}</span></td>
+      <td style="${P};color:#64748b;font-size:11px;white-space:nowrap">${fmtPeriod(emp.last_review_period)||'—'}</td>
+      <td style="${P}">${statusTag}</td>
+      <td style="${P}" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:3px">
+          ${due&&!atCap&&!noSetting?`<button class="btn-sm" style="background:#fff7ed;border-color:#c2410c;color:#9a3412;font-size:11px;padding:3px 7px" onclick="openSalaryReview(${emp.id})">審査</button>`:''}
+          <button class="btn-sm" style="font-size:11px;padding:3px 7px" onclick="openSalaryHistory(${emp.id})">履歴</button>
+          <button class="btn-sm" style="font-size:11px;padding:3px 7px" onclick="openSalaryEdit(${emp.id})">設定</button>
         </div>
       </td>
     </tr>`;
   }).join('');
 
-  const dueBanner=dueEmps.length?`<div style="background:#7c2d1222;border:1px solid #fb923c55;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
+  const dueBanner=dueEmps.length?`<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start">
     <span style="font-size:20px;flex-shrink:0">📋</span>
     <div>
-      <div style="font-weight:600;color:#fb923c;margin-bottom:6px">昇給審査待ちの社員がいます（${dueEmps.length}名）— 直近審査期間: ${fmtPeriod(currentPeriod)}</div>
+      <div style="font-weight:600;color:#c2410c;margin-bottom:6px">昇給審査待ちの社員がいます（${dueEmps.length}名）— 直近審査期間: ${fmtPeriod(currentPeriod)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${dueEmps.map(e=>`<span onclick="openSalaryReview(${e.id})" style="cursor:pointer;background:#7c2d1233;border:1px solid #fb923c55;color:#fb923c;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}</span>`).join('')}
+        ${dueEmps.map(e=>`<span onclick="openSalaryReview(${e.id})" style="cursor:pointer;background:#ffedd5;border:1px solid #fed7aa;color:#9a3412;padding:3px 10px;border-radius:100px;font-size:12px;font-weight:600">${e.name}</span>`).join('')}
       </div>
     </div>
   </div>`:'';
 
   const stats=[
-    {label:'月間総人件費',val:fmtYen(totalCost),color:'#6366f1',icon:'¥'},
-    {label:'昇給審査待ち',val:dueEmps.length+'名',color:'#fb923c',icon:'📋'},
-    {label:'上限到達',val:capEmps.length+'名',color:'#fbbf24',icon:'⬆'},
+    {label:'月間総人件費',val:fmtYen(totalCost),color:'#4f46e5',icon:'¥'},
+    {label:'昇給審査待ち',val:dueEmps.length+'名',color:'#c2410c',icon:'📋'},
+    {label:'上限到達',val:capEmps.length+'名',color:'#b45309',icon:'⬆'},
   ];
 
   document.getElementById('main').innerHTML=`
@@ -1173,35 +1177,26 @@ function renderSalary(){
     ${dueBanner}
     <div class="card" style="overflow:hidden">
       <div style="overflow-x:auto">
-        <table style="white-space:nowrap;font-size:13px;width:100%">
+        <table style="font-size:12px;width:100%">
           <thead>
-            <tr style="border-bottom:none">
-              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">社員</th>
-              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">基本給</th>
-              <th colspan="6" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;border-bottom:2px solid #e2e8f0;text-align:center;text-transform:uppercase">各種手当</th>
-              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#10b981;border-bottom:2px solid #10b98133;text-align:center;text-transform:uppercase">支給額</th>
-              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#475569;border-bottom:2px solid #e2e8f0;text-align:center;text-transform:uppercase">昇給審査</th>
-              <th style="border-bottom:2px solid transparent"></th>
-            </tr>
             <tr>
-              <th style="padding:6px 14px 10px">氏名</th>
-              <th style="padding:6px 14px 10px">役職</th>
-              <th style="padding:6px 14px 10px;color:#6366f1">基本給</th>
-              <th style="padding:6px 10px 10px;font-size:11px">業務手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">職責手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">役職手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">通勤費手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">住宅手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">特別手当</th>
-              <th style="padding:6px 14px 10px;color:#10b981">月額合計</th>
-              <th style="padding:6px 14px 10px;color:#6366f1" title="（月額合計×12）＋賞与月数×賞与対象額">想定年収</th>
-              <th style="padding:6px 14px 10px">設定備考</th>
-              <th style="padding:6px 14px 10px">前回審査</th>
-              <th style="padding:6px 14px 10px">状態</th>
-              <th style="padding:6px 14px 10px"></th>
+              <th style="padding:7px 10px;white-space:nowrap">氏名</th>
+              <th style="padding:7px 6px;white-space:nowrap">役職</th>
+              <th style="padding:7px 8px;color:#4f46e5;white-space:nowrap">基本給</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="業務手当">業務</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="職責手当">職責</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="役職手当">役職手当</th>
+              <th style="padding:7px 6px;font-size:10px;border-left:1px solid #e2e8f0;white-space:nowrap" title="通勤費手当">通勤費</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="住宅手当">住宅</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="特別手当">特別</th>
+              <th style="padding:7px 8px;color:#047857;border-left:1px solid #e2e8f0;white-space:nowrap">月合計</th>
+              <th style="padding:7px 8px;color:#4f46e5;white-space:nowrap" title="（月合計−通勤費・住宅・特別）×(12+賞与月数)">年収概算</th>
+              <th style="padding:7px 8px;white-space:nowrap">前回審査</th>
+              <th style="padding:7px 8px;white-space:nowrap">状態</th>
+              <th style="padding:7px 8px"></th>
             </tr>
           </thead>
-          <tbody>${rows||'<tr><td colspan="14" style="text-align:center;padding:40px;color:#475569">社員が登録されていません</td></tr>'}</tbody>
+          <tbody>${rows||'<tr><td colspan="14" style="text-align:center;padding:40px;color:#64748b">社員が登録されていません</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -1261,36 +1256,40 @@ function renderMonthly(){
     else if(has) statusTag='<span class="tag" style="background:#dcfce766;color:#16a34a">生成済</span>';
     else statusTag='<span class="tag" style="background:#f1f5f9;color:#64748b">未生成</span>';
     const rowOpacity=excl?'opacity:0.4;':'';
-    const totalColor=excl?'#475569':'#10b981';
+    const totalColor=excl?'#94a3b8':'#047857';
     const exclBtn=excl
-      ?`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},0)" style="border-color:#10b981;color:#16a34a">復元</button>`
-      :`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},1)" style="border-color:#ef4444;color:#ef4444">除外</button>`;
+      ?`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},0)" style="border-color:#059669;color:#047857;font-size:11px;padding:3px 7px">復元</button>`
+      :`<button class="btn-sm" onclick="toggleMonthlyExclude(${emp.id},1)" style="border-color:#dc2626;color:#dc2626;font-size:11px;padding:3px 7px">除外</button>`;
+    const mw=v=>v?`<span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${Number(v).toLocaleString('ja-JP')}</span>`:'<span style="color:#cbd5e1">—</span>';
+    const P2='padding:4px 5px';
     return`<tr style="${rowOpacity}">
-      <td style="padding:9px 14px">
-        <div style="font-weight:600;color:#1e293b">${emp.name}</div>
-        ${emp.salary_note?`<div style="font-size:11px;color:#475569;margin-top:2px">📌 ${emp.salary_note}</div>`:''}
+      <td style="${P2} 4px 9px">
+        <div style="font-weight:600;color:#1e293b;font-size:12px;white-space:nowrap">${emp.name}</div>
+        ${emp.salary_note?`<div style="font-size:10px;color:#64748b;margin-top:1px">📌 ${emp.salary_note}</div>`:''}
       </td>
-      <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:11px">${emp.role_name}</span>`:'—'}</td>
-      <td style="padding:9px 14px;font-family:monospace;color:#6366f1">${fmtYen(emp.base_salary||0)}</td>
-      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.business_allowance||0)}</td>
-      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.duty_allowance||0)}</td>
-      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.role_allowance||0)}</td>
-      <td style="padding:9px 10px;font-size:12px;font-family:monospace;border-left:1px solid #e2e8f0;${isPayMonth?'color:#16a34a;background:#064e3b22;':isSemiPay&&!isPayMonth?'color:#475569;':'color:#64748b;'}">
-        ${fmtYen(commute)}
-        ${isPayMonth?'<span style="display:block;font-size:10px;color:#16a34a;font-family:sans-serif">🚌 支給月</span>':''}
-        ${isSemiPay&&!isPayMonth?'<span style="display:block;font-size:10px;color:#475569;font-family:sans-serif">半年払い(0円)</span>':''}
+      <td style="${P2}">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:10px;padding:2px 5px">${emp.role_name}</span>`:'—'}</td>
+      <td style="${P2};font-family:'IBM Plex Mono',monospace;color:#4f46e5;font-size:11px;font-weight:700;text-align:right;white-space:nowrap">${emp.base_salary?Number(emp.base_salary).toLocaleString('ja-JP'):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="${P2};text-align:right">${mw(emp.business_allowance)}</td>
+      <td style="${P2};text-align:right">${mw(emp.duty_allowance)}</td>
+      <td style="${P2};text-align:right">${mw(emp.role_allowance)}</td>
+      <td style="${P2};border-left:1px solid #e2e8f0;text-align:right;${isPayMonth?'color:#047857;background:#f0fdf4;':isSemiPay&&!isPayMonth?'color:#94a3b8;':''}">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${Number(commute).toLocaleString('ja-JP')}</span>
+        ${isPayMonth?'<span style="display:block;font-size:9px;color:#047857;font-family:sans-serif">🚌 支給月</span>':''}
+        ${isSemiPay&&!isPayMonth?'<span style="display:block;font-size:9px;color:#94a3b8;font-family:sans-serif">半年払(0)</span>':''}
       </td>
-      <td style="padding:9px 10px;font-size:12px;font-family:monospace;color:#64748b">${fmtYen(emp.housing_allowance||0)}</td>
-      <td style="padding:9px 14px;border-left:1px solid #e2e8f0">
-        <div style="font-family:monospace;font-weight:600;color:${spDiff?'#fb923c':'#64748b'}">${fmtYen(sp||0)}</div>
-        ${spDiff?`<div style="font-size:10px;color:#475569">基本: ${fmtYen(emp.special_allowance)}</div>`:''}
+      <td style="${P2};text-align:right">${mw(emp.housing_allowance)}</td>
+      <td style="${P2};border-left:1px solid #e2e8f0;text-align:right">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:${spDiff?'#c2410c':'#64748b'}">${Number(sp||0).toLocaleString('ja-JP')}</div>
+        ${spDiff?`<div style="font-size:9px;color:#64748b">基本:${Number(emp.special_allowance).toLocaleString('ja-JP')}</div>`:''}
       </td>
-      <td style="padding:9px 14px;border-left:1px solid #e2e8f0"><span style="font-family:monospace;font-weight:700;color:${totalColor}">${excl?'—':fmtYen(total||0)}</span></td>
-      <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:150px;white-space:normal">${has&&emp.ms_note?`📝 ${emp.ms_note}`:'—'}</td>
-      <td style="padding:9px 14px">${statusTag}</td>
-      <td style="padding:9px 14px;display:flex;gap:6px" onclick="event.stopPropagation()">
-        ${!excl?`<button class="btn-sm" onclick="openMonthlyEdit(${emp.id})">編集</button>`:''}
-        ${exclBtn}
+      <td style="${P2};border-left:1px solid #e2e8f0;text-align:right;white-space:nowrap"><span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:${totalColor};font-size:11px">${excl?'—':Number(total||0).toLocaleString('ja-JP')}</span></td>
+      <td style="${P2};font-size:11px;color:#64748b;max-width:110px;white-space:normal">${has&&emp.ms_note?`📝 ${emp.ms_note}`:'—'}</td>
+      <td style="${P2}">${statusTag}</td>
+      <td style="${P2};white-space:nowrap" onclick="event.stopPropagation()">
+        <div style="display:flex;gap:3px">
+          ${!excl?`<button class="btn-sm" style="font-size:11px;padding:3px 7px" onclick="openMonthlyEdit(${emp.id})">編集</button>`:''}
+          ${exclBtn}
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -1325,47 +1324,39 @@ function renderMonthly(){
         <div style="font-size:28px;color:#6366f1;opacity:.3">¥</div>
       </div>
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#10b981;font-family:'IBM Plex Mono',monospace">${generatedCount} / ${monthlyData.length}名</div></div>
-        <div style="font-size:28px;color:#10b981;opacity:.3">✓</div>
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#047857;font-family:'IBM Plex Mono',monospace">${generatedCount} / ${monthlyData.length}名</div></div>
+        <div style="font-size:28px;color:#047857;opacity:.3">✓</div>
       </div>
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">特別手当 調整あり</div>
-          <div style="font-size:24px;font-weight:700;color:#fb923c;font-family:'IBM Plex Mono',monospace">${specialCount}名</div>
+          <div style="font-size:24px;font-weight:700;color:#c2410c;font-family:'IBM Plex Mono',monospace">${specialCount}名</div>
           ${excludedCount>0?`<div style="font-size:11px;color:#ef4444;margin-top:4px">除外: ${excludedCount}名</div>`:''}
         </div>
-        <div style="font-size:28px;color:#fb923c;opacity:.3">★</div>
+        <div style="font-size:28px;color:#c2410c;opacity:.3">★</div>
       </div>
     </div>
     <div class="card" style="overflow:hidden">
       <div style="overflow-x:auto">
-        <table style="white-space:nowrap;font-size:13px;width:100%">
+        <table style="font-size:12px;width:100%">
           <thead>
-            <tr style="border-bottom:none">
-              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">社員</th>
-              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#6366f1;border-bottom:2px solid #6366f133;text-transform:uppercase">基本給</th>
-              <th colspan="5" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#64748b;border-bottom:2px solid #e2e8f0;text-align:center;text-transform:uppercase">固定手当</th>
-              <th style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#fb923c;border-bottom:2px solid #fb923c44;text-transform:uppercase">特別手当★</th>
-              <th colspan="2" style="padding:8px 14px 4px;font-size:10px;font-weight:700;color:#10b981;border-bottom:2px solid #10b98133;text-align:center;text-transform:uppercase">合計・備考</th>
-              <th colspan="2" style="border-bottom:2px solid transparent"></th>
-            </tr>
             <tr>
-              <th style="padding:6px 14px 10px">氏名</th>
-              <th style="padding:6px 14px 10px">役職</th>
-              <th style="padding:6px 14px 10px;color:#6366f1">基本給</th>
-              <th style="padding:6px 10px 10px;font-size:11px">業務手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">職責手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">役職手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">通勤費手当</th>
-              <th style="padding:6px 10px 10px;font-size:11px">住宅手当</th>
-              <th style="padding:6px 14px 10px;color:#fb923c">特別手当</th>
-              <th style="padding:6px 14px 10px;color:#10b981">月額合計</th>
-              <th style="padding:6px 14px 10px">月次備考</th>
-              <th style="padding:6px 14px 10px">状態</th>
-              <th style="padding:6px 14px 10px"></th>
+              <th style="padding:7px 10px;white-space:nowrap">氏名</th>
+              <th style="padding:7px 6px;white-space:nowrap">役職</th>
+              <th style="padding:7px 8px;color:#4f46e5;white-space:nowrap">基本給</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="業務手当">業務</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="職責手当">職責</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="役職手当">役職手当</th>
+              <th style="padding:7px 6px;font-size:10px;border-left:1px solid #e2e8f0;white-space:nowrap" title="通勤費手当">通勤費</th>
+              <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="住宅手当">住宅</th>
+              <th style="padding:7px 8px;color:#c2410c;border-left:1px solid #e2e8f0;white-space:nowrap" title="特別手当">特別</th>
+              <th style="padding:7px 8px;color:#047857;border-left:1px solid #e2e8f0;white-space:nowrap">月合計</th>
+              <th style="padding:7px 8px;white-space:nowrap">月次備考</th>
+              <th style="padding:7px 8px;white-space:nowrap">状態</th>
+              <th style="padding:7px 8px"></th>
             </tr>
           </thead>
-          <tbody>${rows||'<tr><td colspan="13" style="text-align:center;padding:40px;color:#475569">社員が登録されていません</td></tr>'}</tbody>
+          <tbody>${rows||'<tr><td colspan="13" style="text-align:center;padding:40px;color:#64748b">社員が登録されていません</td></tr>'}</tbody>
         </table>
       </div>
     </div>
@@ -1494,15 +1485,15 @@ function renderBonus(){
     else if(has) statusTag='<span class="tag" style="background:#dcfce766;color:#16a34a">生成済</span>';
     else statusTag='<span class="tag" style="background:#f1f5f9;color:#64748b">未生成</span>';
     const exclBtn=excl
-      ?`<button class="btn-sm" onclick="toggleBonusExclude(${emp.id},0)" style="border-color:#10b981;color:#16a34a">復元</button>`
+      ?`<button class="btn-sm" onclick="toggleBonusExclude(${emp.id},0)" style="border-color:#047857;color:#16a34a">復元</button>`
       :`<button class="btn-sm" onclick="toggleBonusExclude(${emp.id},1)" style="border-color:#ef4444;color:#ef4444">除外</button>`;
     return`<tr style="${excl?'opacity:0.4;':''}">
       <td style="padding:9px 14px"><div style="font-weight:600;color:#1e293b">${emp.name}</div></td>
       <td style="padding:9px 14px">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:11px">${emp.role_name}</span>`:'—'}</td>
       <td style="padding:9px 14px;font-size:12px;color:#64748b">${emp.bonus_months}ヶ月 → ×${(emp.bonus_months/2).toFixed(1)}</td>
       <td style="padding:9px 14px;font-family:monospace;color:#6366f1">${fmtYen(base)}</td>
-      <td style="padding:9px 14px;font-family:monospace;${hasRate?'color:#fb923c;font-weight:600':'color:#64748b'}">×${rate.toFixed(2)}</td>
-      <td style="padding:9px 14px;font-family:monospace;${hasAdj?'color:#f59e0b;font-weight:600':'color:#64748b'}">${adj>=0?'+':''}${fmtYen(adj)}</td>
+      <td style="padding:9px 14px;font-family:monospace;${hasRate?'color:#c2410c;font-weight:600':'color:#64748b'}">×${rate.toFixed(2)}</td>
+      <td style="padding:9px 14px;font-family:monospace;${hasAdj?'color:#b45309;font-weight:600':'color:#64748b'}">${adj>=0?'+':''}${fmtYen(adj)}</td>
       <td style="padding:9px 14px;font-family:monospace;font-weight:700;color:${excl?'#475569':'#10b981'}">${excl?'—':fmtYen(total)}</td>
       <td style="padding:9px 14px;font-size:12px;color:#64748b;max-width:150px;white-space:normal">${has&&emp.bs_note?`📝 ${emp.bs_note}`:'—'}</td>
       <td style="padding:9px 14px">${statusTag}</td>
@@ -1534,16 +1525,16 @@ function renderBonus(){
         <div style="font-size:28px;color:#6366f1;opacity:.3">¥</div>
       </div>
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#10b981;font-family:'IBM Plex Mono',monospace">${genCount} / ${bonusData.length}名</div></div>
-        <div style="font-size:28px;color:#10b981;opacity:.3">✓</div>
+        <div><div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">生成済</div><div style="font-size:24px;font-weight:700;color:#047857;font-family:'IBM Plex Mono',monospace">${genCount} / ${bonusData.length}名</div></div>
+        <div style="font-size:28px;color:#047857;opacity:.3">✓</div>
       </div>
       <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:11px;color:#64748b;font-weight:600;letter-spacing:.05em;margin-bottom:6px">インセンティブあり</div>
-          <div style="font-size:24px;font-weight:700;color:#fb923c;font-family:'IBM Plex Mono',monospace">${adjCount}名</div>
+          <div style="font-size:24px;font-weight:700;color:#c2410c;font-family:'IBM Plex Mono',monospace">${adjCount}名</div>
           ${exclCount>0?`<div style="font-size:11px;color:#ef4444;margin-top:4px">除外: ${exclCount}名</div>`:''}
         </div>
-        <div style="font-size:28px;color:#fb923c;opacity:.3">★</div>
+        <div style="font-size:28px;color:#c2410c;opacity:.3">★</div>
       </div>
     </div>
     <div class="card" style="overflow:hidden">
@@ -1555,9 +1546,9 @@ function renderBonus(){
               <th style="padding:10px 14px">役職</th>
               <th style="padding:10px 14px">賞与月数</th>
               <th style="padding:10px 14px;color:#6366f1">算定基礎賞与</th>
-              <th style="padding:10px 14px;color:#fb923c">掛け率</th>
-              <th style="padding:10px 14px;color:#f59e0b">インセンティブ</th>
-              <th style="padding:10px 14px;color:#10b981">支給額</th>
+              <th style="padding:10px 14px;color:#c2410c">掛け率</th>
+              <th style="padding:10px 14px;color:#b45309">インセンティブ</th>
+              <th style="padding:10px 14px;color:#047857">支給額</th>
               <th style="padding:10px 14px">備考</th>
               <th style="padding:10px 14px">状態</th>
               <th style="padding:10px 14px"></th>
@@ -1607,7 +1598,7 @@ function openBonusEdit(empId){
   </div>
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px">
     <div style="font-size:12px;color:#64748b;margin-bottom:4px">支給額（算定基礎 × 掛け率 ＋ インセンティブ）</div>
-    <div id="be-total-val" style="font-size:22px;font-weight:700;color:#10b981;font-family:monospace">${fmtYen(emp.bs_total||emp.bs_base||0)}</div>
+    <div id="be-total-val" style="font-size:22px;font-weight:700;color:#047857;font-family:monospace">${fmtYen(emp.bs_total||emp.bs_base||0)}</div>
   </div>
   <div class="fg"><label>備考（任意）</label><input id="be-note" value="${emp.bs_note||''}" placeholder="例：査定A、特別加算 など"></div>
   <input type="hidden" id="be-id" value="${empId}">
@@ -1762,7 +1753,7 @@ function renderRoles(){
       <td><span style="font-weight:600;color:#1e293b">${role.name}</span></td>
       <td style="font-family:monospace;color:#6366f1">${fmtYen(role.role_allowance)}</td>
       <td style="font-family:monospace;color:#94a3b8">${fmtYen(role.raise_min)} 〜 ${fmtYen(role.raise_max)}</td>
-      <td style="font-family:monospace;color:#fbbf24">${role.salary_cap?fmtYen(role.salary_cap):'<span style="color:#475569">上限なし</span>'}</td>
+      <td style="font-family:monospace;color:#b45309">${role.salary_cap?fmtYen(role.salary_cap):'<span style="color:#475569">上限なし</span>'}</td>
       <td style="color:#94a3b8;text-align:center">${role.bonus_months}ヶ月<div style="font-size:11px;color:#475569">×${12+role.bonus_months}</div></td>
       <td onclick="event.stopPropagation()">
         <button class="btn-sm" onclick="openEditRole(${role.id})" style="margin-right:4px">✏</button>
@@ -1850,7 +1841,7 @@ function salaryEditRoleChange(){
   const role=roles.find(r=>r.id===rid);
   if(role){
     info.style.display='block';
-    info.innerHTML=`役職手当: <strong style="color:#6366f1">${fmtYen(role.role_allowance)}</strong> ／ 昇給幅: <strong style="color:#94a3b8">${fmtYen(role.raise_min)}〜${fmtYen(role.raise_max)}</strong> ／ 上限: <strong style="color:#fbbf24">${role.salary_cap?fmtYen(role.salary_cap):'なし'}</strong>`;
+    info.innerHTML=`役職手当: <strong style="color:#6366f1">${fmtYen(role.role_allowance)}</strong> ／ 昇給幅: <strong style="color:#94a3b8">${fmtYen(role.raise_min)}〜${fmtYen(role.raise_max)}</strong> ／ 上限: <strong style="color:#b45309">${role.salary_cap?fmtYen(role.salary_cap):'なし'}</strong>`;
   }else{info.style.display='none';}
 }
 async function submitSalaryEdit(){
@@ -1881,7 +1872,7 @@ function openSalaryReview(id){
       <div style="font-size:12px;color:#64748b;margin-bottom:8px">役職: ${emp.role_name}</div>
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <div><div style="font-size:11px;color:#475569">昇給幅</div><div style="font-size:13px;font-weight:600;color:#94a3b8;font-family:monospace">${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div></div>
-        <div><div style="font-size:11px;color:#475569">基本給上限</div><div style="font-size:13px;font-weight:600;color:#fbbf24;font-family:monospace">${emp.salary_cap?fmtYen(emp.salary_cap):'上限なし'}</div></div>
+        <div><div style="font-size:11px;color:#475569">基本給上限</div><div style="font-size:13px;font-weight:600;color:#b45309;font-family:monospace">${emp.salary_cap?fmtYen(emp.salary_cap):'上限なし'}</div></div>
       </div>
     </div>`:'';
   openModal(`
@@ -1905,7 +1896,7 @@ function openSalaryReview(id){
   </div>
   <div id="rv-after-wrap" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px">
     <div style="font-size:12px;color:#64748b;margin-bottom:4px">昇給後の基本給</div>
-    <div id="rv-after-val" style="font-size:22px;font-weight:700;color:#10b981;font-family:monospace">—</div>
+    <div id="rv-after-val" style="font-size:22px;font-weight:700;color:#047857;font-family:monospace">—</div>
   </div>
   <div class="fg"><label>メモ（任意）</label><input id="rv-note" placeholder="例：査定A、業績貢献 など"></div>
   <input type="hidden" id="rv-id" value="${id}">
@@ -1967,7 +1958,7 @@ async function openSalaryHistory(id){
       <td>${rv.approved?'<span class="tag" style="background:#dcfce766;color:#16a34a">昇給</span>':'<span class="tag" style="background:#f1f5f9;color:#64748b">見送り</span>'}</td>
       <td style="font-family:monospace;color:#6366f1">${rv.approved&&rv.raise_amount?'+'+fmtYen(rv.raise_amount):'—'}</td>
       <td style="font-family:monospace;color:#64748b">${fmtYen(rv.salary_before)}</td>
-      <td style="font-family:monospace;font-weight:600;color:#10b981">${fmtYen(rv.salary_after)}</td>
+      <td style="font-family:monospace;font-weight:600;color:#047857">${fmtYen(rv.salary_after)}</td>
       <td style="font-size:12px;color:#64748b">${rv.note||'—'}</td>
     </tr>`).join('');
   openModal(`
