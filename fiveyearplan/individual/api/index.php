@@ -50,7 +50,7 @@ try {
                 $c['id'] = intval($c['id']);
                 $c['fiscal_year'] = intval($c['fiscal_year']);
                 foreach (['start_st','start_wd','annual_wd','open_month','max_st','rent','water','electric','phone','travel',
-                          'repair','lease_cost','insurance','sanitation','other_exp','recruit_fee','recruit_fee_part',
+                          'repair','lease_cost','insurance','sanitation','other_exp','recruit_fee','recruit_fee_oct','recruit_fee_part',
                           'staff_recruit','consume_r','promo_r','sys_per_st','sys_base',
                           'salary_pm','salary_mgr','salary_sub',
                           'salary_pm2','salary_mgr2','salary_sub2',
@@ -82,7 +82,7 @@ try {
 
                 $jsonFields = ['prices', 'enroll', 'ads'];
                 $intFields = ['start_st','start_wd','annual_wd','open_month','max_st','rent','water','electric','phone','travel',
-                              'repair','lease_cost','insurance','sanitation','other_exp','recruit_fee','recruit_fee_part','recruit_fee_part',
+                              'repair','lease_cost','insurance','sanitation','other_exp','recruit_fee','recruit_fee_oct','recruit_fee_part','recruit_fee_part',
                               'staff_recruit','consume_r','promo_r','sys_per_st','sys_base',
                               'salary_pm','salary_mgr','salary_sub',
                               'salary_pm2','salary_mgr2','salary_sub2',
