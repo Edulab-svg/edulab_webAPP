@@ -433,17 +433,194 @@ function SaveLoadBar({userName,getSnapshot,onLoad,cloudStatus,onSwitch}){
   </div>;
 }
 
+/* ─ TemplateEditScreen ─ */
+function TemplateEditScreen({template,onSave,onBack,busy}){
+  const [name,setName]=useState(template.name);
+  // tasks は {text:string, assignee:string} オブジェクト（後方互換で string も許容）
+  const [cats,setCats]=useState(JSON.parse(JSON.stringify(template.cats||[])));
+  const [newCat,setNewCat]=useState("");
+  const [newTaskText,setNewTaskText]=useState({});
+  const [newTaskAssignee,setNewTaskAssignee]=useState({});
+  const [addingTask,setAddingTask]=useState({});
+  const tText=t=>typeof t==="string"?t:(t.text||"");
+  const tAssignee=t=>typeof t==="string"?"":( t.assignee||"");
+  const addCat=()=>{const n=newCat.trim();if(!n)return;setCats(c=>[...c,{category:n,tasks:[]}]);setNewCat("");};
+  const delCat=ci=>setCats(c=>c.filter((_,i)=>i!==ci));
+  const addTask=ci=>{
+    const t=(newTaskText[ci]||"").trim();if(!t)return;
+    const a=(newTaskAssignee[ci]||"").trim();
+    setCats(c=>c.map((cat,i)=>i===ci?{...cat,tasks:[...cat.tasks,{text:t,assignee:a}]}:cat));
+    setNewTaskText(p=>({...p,[ci]:""}));setNewTaskAssignee(p=>({...p,[ci]:""}));setAddingTask(p=>({...p,[ci]:false}));
+  };
+  const delTask=(ci,ti)=>setCats(c=>c.map((cat,i)=>i===ci?{...cat,tasks:cat.tasks.filter((_,j)=>j!==ti)}:cat));
+  const setAssignee=(ci,ti,v)=>setCats(c=>c.map((cat,i)=>i===ci?{...cat,tasks:cat.tasks.map((task,j)=>j===ti?{text:tText(task),assignee:v}:task)}:cat));
+  const setText=(ci,ti,v)=>setCats(c=>c.map((cat,i)=>i===ci?{...cat,tasks:cat.tasks.map((task,j)=>j===ti?{text:v,assignee:tAssignee(task)}:task)}:cat));
+  const [dragSrc,setDragSrc]=useState(null); // "ci-ti"
+  const [dragOver,setDragOver]=useState(null); // "ci-ti"
+  const onDragStart=(e,ci,ti)=>{setDragSrc(`${ci}-${ti}`);e.dataTransfer.effectAllowed="move";};
+  const onDragOver=(e,ci,ti)=>{e.preventDefault();setDragOver(`${ci}-${ti}`);};
+  const onDrop=(e,tgtCi,tgtTi)=>{
+    e.preventDefault();setDragOver(null);
+    if(!dragSrc)return;
+    const [srcCi,srcTi]=[parseInt(dragSrc.split("-")[0]),parseInt(dragSrc.split("-")[1])];
+    if(srcCi!==tgtCi||srcTi===tgtTi)return;
+    const tasks=[...cats[srcCi].tasks];
+    const [moved]=tasks.splice(srcTi,1);
+    tasks.splice(tgtTi,0,moved);
+    setCats(c=>c.map((cat,i)=>i===srcCi?{...cat,tasks}:cat));
+    setDragSrc(null);
+  };
+  const onDragEnd=()=>{setDragSrc(null);setDragOver(null);};
+  return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#eff6ff 0%,#e0e7ff 50%,#f0fdf4 100%)",padding:16}}>
+    <div style={{maxWidth:640,margin:"0 auto",paddingTop:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+        <button onClick={onBack} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0}}>← 戻る</button>
+        <span style={{fontWeight:800,fontSize:17,color:"#1e293b"}}>{template.id?"テンプレートを編集":"テンプレートを新規作成"}</span>
+      </div>
+      <div style={{background:"#fff",borderRadius:16,padding:20,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+        <label className="form-label">テンプレート名</label>
+        <input className="form-input" value={name} onChange={e=>setName(e.target.value)} placeholder="例：標準研修コース" style={{fontSize:15,fontWeight:600}}/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr",gap:14,marginBottom:14}}>
+        {cats.map((cat,ci)=>{
+          const s=CAT_STYLES[ci%CAT_STYLES.length];
+          return <div key={ci} className="cat-card" style={{background:s.light,borderColor:s.border}}>
+            <div className="cat-header" style={{background:s.color}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:13}}>{cat.category}</span>
+              <button onClick={()=>delCat(ci)} style={{color:"rgba(255,255,255,.6)",fontSize:14,padding:"2px 6px",borderRadius:6,background:"rgba(0,0,0,.1)"}}>🗑</button>
+            </div>
+            <div style={{padding:8}}>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {cat.tasks.map((task,ti)=>{
+                  const key=`${ci}-${ti}`;
+                  const isOver=dragOver===key;
+                  return <div key={ti}
+                    draggable onDragStart={e=>onDragStart(e,ci,ti)} onDragOver={e=>onDragOver(e,ci,ti)} onDrop={e=>onDrop(e,ci,ti)} onDragEnd={onDragEnd}
+                    style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",borderRadius:8,border:isOver?"2px solid #3b82f6":"1px solid #e2e8f0",background:"#fff",transition:"border-color .1s"}}>
+                    <span className="drag-handle" style={{fontSize:13,flexShrink:0}}>⠿</span>
+                    <input value={tText(task)} onChange={e=>setText(ci,ti,e.target.value)} placeholder="タスク名"
+                      style={{flex:1,fontSize:12,color:"#334155",border:"none",background:"transparent",outline:"none",minWidth:0,padding:0,lineHeight:1.5}}/>
+                    <input value={tAssignee(task)} onChange={e=>setAssignee(ci,ti,e.target.value)} placeholder="担当者"
+                      style={{width:72,border:"1px solid #e2e8f0",borderRadius:6,padding:"2px 6px",fontSize:11,color:"#475569",outline:"none",flexShrink:0}}/>
+                    <button onClick={()=>delTask(ci,ti)} style={{background:"#fef2f2",color:"#ef4444",border:"none",borderRadius:6,padding:"2px 7px",fontSize:11,cursor:"pointer",flexShrink:0}}>🗑</button>
+                  </div>;
+                })}
+              </div>
+              {addingTask[ci]?
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 4px 2px"}}>
+                  <input className="form-input" style={{fontSize:12,flex:"2 1 120px"}} value={newTaskText[ci]||""} onChange={e=>setNewTaskText(p=>({...p,[ci]:e.target.value}))} placeholder="タスク名を入力" onKeyDown={e=>e.key==="Enter"&&addTask(ci)} autoFocus/>
+                  <input className="form-input" style={{fontSize:12,flex:"1 1 80px"}} value={newTaskAssignee[ci]||""} onChange={e=>setNewTaskAssignee(p=>({...p,[ci]:e.target.value}))} placeholder="担当者（任意）" onKeyDown={e=>e.key==="Enter"&&addTask(ci)}/>
+                  <button onClick={()=>addTask(ci)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:700,flexShrink:0,cursor:"pointer"}}>追加</button>
+                  <button onClick={()=>setAddingTask(p=>({...p,[ci]:false}))} style={{color:"#94a3b8",fontSize:18,padding:"0 4px"}}>×</button>
+                </div>:
+                <button onClick={()=>setAddingTask(p=>({...p,[ci]:true}))} style={{width:"100%",padding:"6px",marginTop:4,borderRadius:8,border:"1.5px dashed "+s.border,color:s.color,fontSize:12,fontWeight:600,background:"transparent",cursor:"pointer"}}>＋ タスクを追加</button>}
+            </div>
+          </div>;
+        })}
+      </div>
+      <div className="add-cat-box" style={{marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#64748b",marginBottom:8}}>＋ カテゴリを追加</div>
+        <div style={{display:"flex",gap:8}}>
+          <input className="form-input" value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="カテゴリ名" onKeyDown={e=>e.key==="Enter"&&addCat()}/>
+          <button onClick={addCat} style={{background:"#334155",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,flexShrink:0,cursor:"pointer"}}>追加</button>
+        </div>
+      </div>
+      <button onClick={()=>onSave({...template,name,cats})} disabled={busy||!name.trim()}
+        style={{width:"100%",padding:"14px",borderRadius:12,background:"linear-gradient(135deg,#3b82f6,#6366f1)",color:"#fff",fontSize:14,fontWeight:700,border:"none",cursor:(!name.trim()||busy)?"not-allowed":"pointer",opacity:(!name.trim()||busy)?.5:1,boxShadow:"0 4px 12px rgba(99,102,241,.3)"}}>
+        💾 保存する
+      </button>
+    </div>
+  </div>;
+}
+
+/* ─ TemplateManagerScreen ─ */
+function TemplateManagerScreen({templates,setTemplates,onBack}){
+  const [editing,setEditing]=useState(null);
+  const [confirmDel,setConfirmDel]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const doDelete=async(id)=>{
+    setBusy(true);
+    try{
+      const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"delete_template",id})});
+      const d=await r.json();
+      if(d.ok){setTemplates(t=>t.filter(x=>x.id!==id));setConfirmDel(null);}
+      else alert("削除に失敗しました");
+    }catch{alert("通信エラーが発生しました");}
+    setBusy(false);
+  };
+  const doSave=async(tmpl)=>{
+    setBusy(true);
+    try{
+      if(tmpl.id){
+        const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"update_template",id:tmpl.id,name:tmpl.name,cats:tmpl.cats})});
+        const d=await r.json();
+        if(d.ok)setTemplates(ts=>ts.map(t=>t.id===tmpl.id?{...t,name:tmpl.name,cats:tmpl.cats}:t));
+        else alert("保存に失敗しました");
+      }else{
+        const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"add_template",name:tmpl.name,cats:tmpl.cats})});
+        const d=await r.json();
+        if(d.ok)setTemplates(ts=>[...ts,d.template]);
+        else alert("作成に失敗しました");
+      }
+    }catch{alert("通信エラーが発生しました");}
+    setEditing(null);
+    setBusy(false);
+  };
+  const doCopy=async(t)=>{
+    setBusy(true);
+    try{
+      const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"add_template",name:t.name+"のコピー",cats:JSON.parse(JSON.stringify(t.cats))})});
+      const d=await r.json();
+      if(d.ok)setTemplates(ts=>[...ts,d.template]);
+      else alert("コピーに失敗しました");
+    }catch{alert("通信エラーが発生しました");}
+    setBusy(false);
+  };
+  if(editing!==null) return <TemplateEditScreen template={editing} onSave={doSave} onBack={()=>setEditing(null)} busy={busy}/>;
+  return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#eff6ff 0%,#e0e7ff 50%,#f0fdf4 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
+    {confirmDel&&<Confirm msg={`「${confirmDel.name}」を削除しますか？この操作は取り消せません。`} onOk={()=>doDelete(confirmDel.id)} onCancel={()=>setConfirmDel(null)}/>}
+    <div style={{width:"100%",maxWidth:480}}>
+      <div style={{textAlign:"center",marginBottom:28}}>
+        <div style={{width:68,height:68,background:"linear-gradient(135deg,#3b82f6,#6366f1)",borderRadius:20,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:14,boxShadow:"0 8px 24px rgba(99,102,241,.3)"}}>📝</div>
+        <h1 style={{fontSize:22,fontWeight:800,color:"#1e293b",letterSpacing:"-0.3px"}}>テンプレート管理</h1>
+        <p style={{fontSize:13,color:"#64748b",marginTop:6}}>研修タスクのテンプレートを管理します</p>
+      </div>
+      <div style={{background:"#fff",borderRadius:20,boxShadow:"0 20px 40px rgba(0,0,0,.12)",padding:24}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <button onClick={onBack} style={{fontSize:12,fontWeight:600,padding:"4px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#475569",cursor:"pointer"}}>← 戻る</button>
+          <button onClick={()=>setEditing({name:"",cats:[]})} style={{fontSize:12,fontWeight:700,padding:"6px 14px",borderRadius:8,background:"#3b82f6",color:"#fff",border:"none",cursor:"pointer"}}>＋ 新規作成</button>
+        </div>
+        {templates.length===0?
+          <div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>テンプレートがありません<br/>「＋ 新規作成」から作成してください</div>:
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {templates.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"#f8fafc"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#1e293b"}}>{t.name}</div>
+                <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>{t.cats.length}カテゴリ・{t.cats.reduce((s,c)=>s+c.tasks.length,0)}タスク</div>
+              </div>
+              <button onClick={()=>setEditing({...t,cats:JSON.parse(JSON.stringify(t.cats))})} style={{padding:"6px 12px",borderRadius:8,background:"#eff6ff",border:"1px solid #bfdbfe",color:"#3b82f6",fontSize:12,fontWeight:600,cursor:"pointer",flexShrink:0}}>✏️ 編集</button>
+              <button onClick={()=>doCopy(t)} disabled={busy} style={{padding:"6px 10px",borderRadius:8,background:"#f0fdf4",border:"1px solid #bbf7d0",color:"#16a34a",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>📋 複製</button>
+              <button onClick={()=>setConfirmDel(t)} disabled={busy} style={{padding:"6px 10px",borderRadius:8,background:"#fef2f2",border:"1px solid #fecaca",color:"#ef4444",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>🗑</button>
+            </div>)}
+          </div>}
+      </div>
+    </div>
+  </div>;
+}
+
 /* ─ UserSelectScreen ─ */
 function UserSelectScreen({onSelect}){
   const [users,setUsers]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [manageMode,setManageMode]=useState(false);
   const [newName,setNewName]=useState("");
   const [adding,setAdding]=useState(false);
-  const [confirmDel,setConfirmDel]=useState(null); // {id,display_name}
+  const [selectedTmplId,setSelectedTmplId]=useState("");
+  const [confirmDel,setConfirmDel]=useState(null);
   const [busy,setBusy]=useState(false);
+  const [templates,setTemplates]=useState([]);
+  const [showTmplMgr,setShowTmplMgr]=useState(false);
 
-  const load=()=>{
+  const loadUsers=()=>{
     setLoading(true);
     fetch(`${API}?action=get_users&_=${Date.now()}`,{credentials:"same-origin"})
       .then(r=>r.json())
@@ -451,7 +628,11 @@ function UserSelectScreen({onSelect}){
       .catch(()=>{})
       .finally(()=>setLoading(false));
   };
-  useEffect(load,[]);
+  const loadTemplates=()=>{
+    fetch(`${API}?action=get_templates&_=${Date.now()}`,{credentials:"same-origin"})
+      .then(r=>r.json()).then(d=>{if(d.ok)setTemplates(d.templates||[]);}).catch(()=>{});
+  };
+  useEffect(()=>{loadUsers();loadTemplates();},[]);
 
   const addUser=async()=>{
     const name=newName.trim();if(!name)return;
@@ -459,8 +640,26 @@ function UserSelectScreen({onSelect}){
     try{
       const r=await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"add_user",name})});
       const d=await r.json();
-      if(d.ok){setUsers(u=>[...u,d.user]);setNewName("");setAdding(false);}
-      else alert("追加に失敗しました");
+      if(d.ok){
+        if(selectedTmplId){
+          const tmpl=templates.find(t=>String(t.id)===String(selectedTmplId));
+          if(tmpl){
+            // tasks が {text,assignee} オブジェクトの場合は文字列に変換（buildTasks互換）
+            const tmplCats=tmpl.cats.map(c=>({...c,tasks:c.tasks.map(t=>typeof t==="string"?t:(t.text||""))}));
+            const freshMeta=buildMeta(buildTasks(tmplCats));
+            // テンプレートの担当者設定を meta に反映
+            buildTasks(tmplCats).forEach(taskObj=>{
+              const orig=tmpl.cats[taskObj.ci]?.tasks[taskObj.ti];
+              if(orig&&typeof orig==="object"&&orig.assignee){
+                freshMeta[taskObj.id]={...freshMeta[taskObj.id],assignee:orig.assignee};
+              }
+            });
+            const snap={profile:{name:"",classroom:"",startYear:"",startMonth:"",endYear:"",endMonth:""},cats:tmplCats,meta:freshMeta,inqs:[newInq()],lecs:[newLec()],savedAt:new Date().toISOString()};
+            await fetch(API,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"save",user_id:d.user.id,data:snap})});
+          }
+        }
+        setUsers(u=>[...u,d.user]);setNewName("");setAdding(false);setSelectedTmplId("");
+      }else alert("追加に失敗しました");
     }catch{alert("通信エラーが発生しました");}
     setBusy(false);
   };
@@ -478,8 +677,9 @@ function UserSelectScreen({onSelect}){
 
   const COLORS=["#3b82f6","#22c55e","#f59e0b","#ec4899","#a855f7","#f97316","#14b8a6","#6366f1","#ef4444","#84cc16"];
 
+  if(showTmplMgr) return <TemplateManagerScreen templates={templates} setTemplates={setTemplates} onBack={()=>setShowTmplMgr(false)}/>;
+
   return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#eff6ff 0%,#e0e7ff 50%,#f0fdf4 100%)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
-    {/* 削除確認 */}
     {confirmDel&&<Confirm msg={`「${confirmDel.display_name}」のデータをすべて削除しますか？\nこの操作は取り消せません。`} onOk={()=>deleteUser(confirmDel.id)} onCancel={()=>setConfirmDel(null)}/>}
 
     <div style={{width:"100%",maxWidth:480}}>
@@ -494,42 +694,48 @@ function UserSelectScreen({onSelect}){
       <div style={{background:"#fff",borderRadius:20,boxShadow:"0 20px 40px rgba(0,0,0,.12)",padding:24}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <span style={{fontSize:13,fontWeight:700,color:"#334155"}}>👥 社員一覧</span>
-          <button onClick={()=>{setManageMode(m=>!m);setAdding(false);}} style={{fontSize:11,fontWeight:600,padding:"4px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:manageMode?"#334155":"#f8fafc",color:manageMode?"#fff":"#475569",cursor:"pointer",transition:"all .15s"}}>
-            {manageMode?"✕ 管理終了":"⚙️ 管理"}
-          </button>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={()=>setShowTmplMgr(true)} style={{fontSize:11,fontWeight:600,padding:"4px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#475569",cursor:"pointer",transition:"all .15s"}}>📝 テンプレート</button>
+            <button onClick={()=>setAdding(a=>!a)} style={{fontSize:11,fontWeight:600,padding:"4px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:adding?"#334155":"#3b82f6",color:"#fff",cursor:"pointer",transition:"all .15s"}}>
+              {adding?"✕ キャンセル":"＋ 追加"}
+            </button>
+          </div>
         </div>
 
         {loading?<div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>読み込み中…</div>:
-        users.length===0?<div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>社員が登録されていません<br/>「＋ 社員を追加」から登録してください</div>:
+        users.length===0?<div style={{textAlign:"center",padding:"24px 0",color:"#94a3b8",fontSize:13}}>社員が登録されていません<br/>「＋ 追加」から登録してください</div>:
         <div style={{display:"flex",flexDirection:"column",gap:8,maxHeight:300,overflowY:"auto",marginBottom:16}}>
           {users.map((u,i)=>{
             const col=COLORS[i%COLORS.length];
             return <div key={u.id} style={{display:"flex",alignItems:"center",gap:12}}>
-              <button onClick={()=>!manageMode&&onSelect(u)} disabled={manageMode}
-                style={{flex:1,display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"#f8fafc",cursor:manageMode?"default":"pointer",textAlign:"left",transition:"all .15s",opacity:manageMode?.7:1}}
-                onMouseEnter={e=>{if(!manageMode)e.currentTarget.style.cssText+=";background:#eff6ff;border-color:#bfdbfe"}}
-                onMouseLeave={e=>{if(!manageMode)e.currentTarget.style.cssText+=";background:#f8fafc;border-color:#e2e8f0"}}>
+              <button onClick={()=>onSelect(u)}
+                style={{flex:1,display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:"1.5px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",textAlign:"left",transition:"all .15s"}}
+                onMouseEnter={e=>e.currentTarget.style.cssText+=";background:#eff6ff;border-color:#bfdbfe"}
+                onMouseLeave={e=>e.currentTarget.style.cssText+=";background:#f8fafc;border-color:#e2e8f0"}>
                 <div style={{width:36,height:36,borderRadius:10,background:col,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#fff",flexShrink:0}}>
                   {u.display_name.charAt(0)}
                 </div>
                 <span style={{fontWeight:600,fontSize:14,color:"#1e293b"}}>{u.display_name}</span>
               </button>
-              {manageMode&&<button onClick={()=>setConfirmDel(u)} disabled={busy}
+              <button onClick={()=>setConfirmDel(u)} disabled={busy}
                 style={{padding:"8px 12px",borderRadius:10,background:"#fef2f2",border:"1px solid #fecaca",color:"#ef4444",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>
-                🗑 削除
-              </button>}
+                🗑
+              </button>
             </div>;
           })}
         </div>}
 
-        {/* 追加エリア */}
-        {manageMode&&!adding&&<button onClick={()=>setAdding(true)} style={{width:"100%",padding:"10px",borderRadius:12,border:"2px dashed #cbd5e1",background:"transparent",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer"}}>
-          ＋ 社員を追加
-        </button>}
-        {manageMode&&adding&&<div style={{display:"flex",gap:8,marginTop:4}}>
-          <input className="form-input" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="社員名（例：山田 太郎）" onKeyDown={e=>e.key==="Enter"&&addUser()} autoFocus style={{flex:1}}/>
-          <button onClick={addUser} disabled={busy||!newName.trim()} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"8px 16px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,opacity:(!newName.trim()||busy)?.5:1}}>追加</button>
-          <button onClick={()=>{setAdding(false);setNewName("");}} style={{color:"#94a3b8",fontSize:20,padding:"0 4px"}}>×</button>
+        {/* 追加フォーム */}
+        {adding&&<div style={{borderTop:users.length?"1px solid #f1f5f9":"none",paddingTop:users.length?12:0,display:"flex",flexDirection:"column",gap:8}}>
+          <input className="form-input" value={newName} onChange={e=>setNewName(e.target.value)} placeholder="社員名（例：山田 太郎）" onKeyDown={e=>e.key==="Enter"&&addUser()} autoFocus/>
+          <select className="form-input" value={selectedTmplId} onChange={e=>setSelectedTmplId(e.target.value)} style={{color:selectedTmplId?"#1e293b":"#94a3b8"}}>
+            <option value="">テンプレートなし（空白で作成）</option>
+            {templates.map(t=><option key={t.id} value={t.id}>{t.name}（{t.cats.length}カテゴリ・{t.cats.reduce((s,c)=>s+c.tasks.length,0)}タスク）</option>)}
+          </select>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={addUser} disabled={busy||!newName.trim()} style={{flex:1,background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"10px 16px",fontSize:13,fontWeight:700,cursor:"pointer",opacity:(!newName.trim()||busy)?.5:1}}>追加</button>
+            <button onClick={()=>{setAdding(false);setNewName("");setSelectedTmplId("");}} style={{color:"#94a3b8",fontSize:20,padding:"0 8px"}}>×</button>
+          </div>
         </div>}
       </div>
     </div>
@@ -543,6 +749,7 @@ function TaskListTab({cats,meta,onToggle,onUpdate,onCatsChange,onMetaChange}){
   const [newCat,setNewCat]=useState("");
   const [addTask,setAddTask]=useState({});
   const [newTaskText,setNewTaskText]=useState({});
+  const [newTaskAssignee,setNewTaskAssignee]=useState({});
   const [dragSrc,setDragSrc]=useState(null);
   const [dragOver,setDragOver]=useState(null);
 
@@ -557,8 +764,12 @@ function TaskListTab({cats,meta,onToggle,onUpdate,onCatsChange,onMetaChange}){
   const delCategory=ci=>onCatsChange(c=>c.filter((_,i)=>i!==ci));
   const addTaskTocat=(ci)=>{
     const t=(newTaskText[ci]||"").trim();if(!t)return;
+    const assignee=(newTaskAssignee[ci]||"").trim();
+    const newTi=cats[ci].tasks.length;
+    const newId=`t_${ci}_${newTi}_${t.slice(0,3)}`;
     onCatsChange(c=>c.map((cat,i)=>i===ci?{...cat,tasks:[...cat.tasks,t]}:cat));
-    setNewTaskText(p=>({...p,[ci]:""}));setAddTask(p=>({...p,[ci]:false}));
+    onMetaChange({...meta,[newId]:{done:false,assignee,date:""}});
+    setNewTaskText(p=>({...p,[ci]:""}));setNewTaskAssignee(p=>({...p,[ci]:""}));setAddTask(p=>({...p,[ci]:false}));
   };
   const delTask=(ci,ti)=>onCatsChange(c=>c.map((cat,i)=>i===ci?{...cat,tasks:cat.tasks.filter((_,j)=>j!==ti)}:cat));
 
@@ -600,7 +811,7 @@ function TaskListTab({cats,meta,onToggle,onUpdate,onCatsChange,onMetaChange}){
       <div className="progress-track"><div className="progress-bar" style={{width:(total?Math.round(done/total*100):0)+"%"}}/></div>
     </div>
 
-    <div className="cat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(380px,1fr))",gap:14}}>
+    <div className="cat-grid" style={{display:"grid",gridTemplateColumns:"1fr",gap:14}}>
       {cats.map((cat,ci)=>{
         const style=CAT_STYLES[ci%CAT_STYLES.length];
         const catTasks=buildTasks([cat]).map(t=>({...t,id:`t_${ci}_${t.ti}_${t.task.slice(0,3)}`,ci,meta:meta[`t_${ci}_${t.ti}_${t.task.slice(0,3)}`]||{done:false,assignee:"",date:""}}));
@@ -636,8 +847,9 @@ function TaskListTab({cats,meta,onToggle,onUpdate,onCatsChange,onMetaChange}){
                 </div>
               </div>)}
             </div>
-            {addTask[ci]?<div style={{display:"flex",gap:6,padding:"6px 4px 2px"}}>
-              <input className="form-input" style={{fontSize:12}} value={newTaskText[ci]||""} onChange={e=>setNewTaskText(p=>({...p,[ci]:e.target.value}))} placeholder="タスク名を入力" onKeyDown={e=>e.key==="Enter"&&addTaskTocat(ci)} autoFocus/>
+            {addTask[ci]?<div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 4px 2px"}}>
+              <input className="form-input" style={{fontSize:12,flex:"2 1 120px"}} value={newTaskText[ci]||""} onChange={e=>setNewTaskText(p=>({...p,[ci]:e.target.value}))} placeholder="タスク名を入力" onKeyDown={e=>e.key==="Enter"&&addTaskTocat(ci)} autoFocus/>
+              <input className="form-input" style={{fontSize:12,flex:"1 1 72px"}} value={newTaskAssignee[ci]||""} onChange={e=>setNewTaskAssignee(p=>({...p,[ci]:e.target.value}))} placeholder="担当者（任意）" onKeyDown={e=>e.key==="Enter"&&addTaskTocat(ci)}/>
               <button onClick={()=>addTaskTocat(ci)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,padding:"4px 12px",fontSize:12,fontWeight:700,flexShrink:0}}>追加</button>
               <button onClick={()=>setAddTask(p=>({...p,[ci]:false}))} style={{color:"#94a3b8",fontSize:18,padding:"0 4px"}}>×</button>
             </div>:

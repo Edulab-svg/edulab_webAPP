@@ -55,6 +55,19 @@ function valid_uid($v) {
     return $v > 0 ? $v : false;
 }
 
+// templates テーブルが無ければ作成
+function ensure_templates_table($pdo) {
+    $pdo->exec('
+        CREATE TABLE IF NOT EXISTS templates (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            name       VARCHAR(200) NOT NULL,
+            cats_data  MEDIUMTEXT   NOT NULL,
+            created_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) DEFAULT CHARSET=utf8mb4
+    ');
+}
+
 // ================================================================
 switch ($action) {
 
@@ -145,6 +158,74 @@ switch ($action) {
               updated_at    = NOW()
         ');
         $stmt->execute([$uid, $json]);
+        echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+        break;
+
+    // ---- テンプレート一覧 ----
+    case 'get_templates':
+        ensure_templates_table($pdo);
+        $rows = $pdo->query(
+            'SELECT id, name, cats_data, created_at FROM templates ORDER BY id ASC'
+        )->fetchAll();
+        $templates = array_map(function($r) {
+            return [
+                'id'         => (int)$r['id'],
+                'name'       => $r['name'],
+                'cats'       => json_decode($r['cats_data'], true) ?: [],
+                'created_at' => $r['created_at'],
+            ];
+        }, $rows);
+        echo json_encode(['ok' => true, 'templates' => $templates], JSON_UNESCAPED_UNICODE);
+        break;
+
+    // ---- テンプレート追加 ----
+    case 'add_template':
+        ensure_templates_table($pdo);
+        $name = isset($body['name']) ? trim((string)$body['name']) : '';
+        $cats = isset($body['cats']) && is_array($body['cats']) ? $body['cats'] : [];
+        if (!$name) {
+            echo json_encode(['ok' => false, 'error' => 'name_required']);
+            break;
+        }
+        if (mb_strlen($name) > 200) {
+            echo json_encode(['ok' => false, 'error' => 'name_too_long']);
+            break;
+        }
+        $catsJson = json_encode($cats, JSON_UNESCAPED_UNICODE);
+        $stmt = $pdo->prepare('INSERT INTO templates (name, cats_data) VALUES (?, ?)');
+        $stmt->execute([$name, $catsJson]);
+        $newId = (int)$pdo->lastInsertId();
+        echo json_encode([
+            'ok'       => true,
+            'template' => ['id' => $newId, 'name' => $name, 'cats' => $cats],
+        ], JSON_UNESCAPED_UNICODE);
+        break;
+
+    // ---- テンプレート更新 ----
+    case 'update_template':
+        ensure_templates_table($pdo);
+        $id   = intval($body['id'] ?? 0);
+        $name = isset($body['name']) ? trim((string)$body['name']) : '';
+        $cats = isset($body['cats']) && is_array($body['cats']) ? $body['cats'] : [];
+        if (!$id || !$name) {
+            echo json_encode(['ok' => false, 'error' => 'invalid_params']);
+            break;
+        }
+        $stmt = $pdo->prepare('UPDATE templates SET name = ?, cats_data = ? WHERE id = ?');
+        $stmt->execute([$name, json_encode($cats, JSON_UNESCAPED_UNICODE), $id]);
+        echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+        break;
+
+    // ---- テンプレート削除 ----
+    case 'delete_template':
+        ensure_templates_table($pdo);
+        $id = intval($body['id'] ?? 0);
+        if (!$id) {
+            echo json_encode(['ok' => false, 'error' => 'invalid_id']);
+            break;
+        }
+        $stmt = $pdo->prepare('DELETE FROM templates WHERE id = ?');
+        $stmt->execute([$id]);
         echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
         break;
 
