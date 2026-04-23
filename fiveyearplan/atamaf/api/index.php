@@ -59,7 +59,7 @@ try {
             $intF   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
                        'consume_r','promo_r','recruit_fee','sys_per_st','fee_r','welfare_r',
                        'repair','lease_cost','insurance','sanitation','other_exp',
-                       'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_part'];
+                       'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_part','recruit_fee_oct'];
             $floatF = ['wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
             $strF   = ['salary_name'];
 
@@ -88,7 +88,7 @@ try {
                 $intF   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
                            'consume_r','promo_r','recruit_fee','recruit_fee_part','sys_per_st','fee_r','welfare_r',
                            'repair','lease_cost','insurance','sanitation','other_exp',
-                           'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost'];
+                           'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_oct'];
                 $floatF = ['wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
                 $strF   = ['name','salary_name'];
                 $allowed = array_merge($jsonF,$intF,$floatF,$strF);
