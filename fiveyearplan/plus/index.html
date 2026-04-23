@@ -117,7 +117,10 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
 
     <div id="main-tab-1" class="card" style="display:none">
       <div class="card-header">⚙ パラメータ編集</div>
-      <div class="card-body"><div id="param-area"></div></div>
+      <div class="card-body">
+        <div class="classroom-list" id="param-classroom-list"></div>
+        <div id="param-area"></div>
+      </div>
     </div>
 
     <div id="main-tab-2" style="display:none">
@@ -174,6 +177,9 @@ let _saveTimer = null;
 const _pendingSaves = {}; // {id_field: {id, field, value}}
 
 function saveField(id, field, value) {
+  // 仮ID（例: '2027-5'）はDBに存在しない。intval変換で他レコードを誤更新するのを防ぐためスキップ
+  const idNum = Number(id);
+  if (!id || isNaN(idNum) || idNum <= 0) return;
   // 同じid+fieldの保存はキューで上書き（無駄なリクエストを排除）
   _pendingSaves[id + '::' + field] = { id, field, value };
   clearTimeout(_saveTimer);
@@ -1076,6 +1082,27 @@ function renderClassroomList(){
   }
 }
 
+function renderParamClassroomList(){
+  const el=document.getElementById('param-classroom-list');
+  if(!el)return;
+  const cls=curClassrooms();
+  const results=curResults();
+  const fy=curYear().fiscal_year;
+  el.innerHTML='';
+  cls.forEach((c,i)=>{
+    const btn=document.createElement('div');
+    const isActive=i===STATE.clIdx;
+    btn.className='cl-btn'+(isActive?' active':'');
+    const r=results[i];
+    const yn=getYearNum(c,fy);
+    const isNew=yn===1;
+    const bdgCls=isNew?'year-badge new-badge':'year-badge';
+    btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">入会:'+(c.enroll_annual??c.enroll.reduce((s,v)=>s+v,0))+'名 | '+(r?.endStudents||0)+'名在籍</span>';
+    btn.onclick=()=>{STATE.clIdx=i;renderParamClassroomList();renderParamArea()};
+    el.appendChild(btn);
+  });
+}
+
 function calcConsolidatedMonths(){
   const cls=curClassrooms();
   const results=curResults();
@@ -1221,6 +1248,7 @@ function getBaseRef(row,p){
 // パラメータ編集
 // ============================================================
 function renderParamArea(){
+  renderParamClassroomList();
   const p=curClassrooms()[STATE.clIdx];
   if(!p)return;
   const el=document.getElementById('param-area');
@@ -1328,9 +1356,15 @@ function renderParamArea(){
   const annEnroll=p.enroll.reduce((s,v)=>s+v,0);
   // ============ 入会・退会（まんてん個別と同じUI） ============
   const actualEnroll = p.enroll.reduce((s,v)=>s+v, 0);
-  const om2 = (p.open_month != null && p.open_month >= 0) ? p.open_month : -1;
-  // enroll_annualがあればそれを表示、なければenroll合計
-  const annualEnroll = p.enroll_annual != null ? p.enroll_annual : actualEnroll;
+  const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
+  // 開校月がある場合は開校月以降の比率合計で割り戻してフル年換算値を表示（individualと同じ方式）
+  let annualEnroll = actualEnroll;
+  if (om2 > 0) {
+    const base3 = (p.enroll_base && p.enroll_base.length === 12) ? p.enroll_base : ENROLL_BASE_DEFAULT;
+    const baseTotal = base3.reduce((s,v)=>s+v, 0);
+    const activeSum = base3.filter((_, i) => i >= om2).reduce((s,v)=>s+v, 0);
+    annualEnroll = activeSum > 0 ? Math.round(actualEnroll * baseTotal / activeSum) : actualEnroll;
+  }
   const wdRate = (p.wd_rate||0)*100;
   // 退会数の再計算（表示用）
   let estTotalSt=0, tmpSt2=p.start_st;
@@ -1354,7 +1388,7 @@ function renderParamArea(){
   html+='<div style="flex:1;min-width:250px;padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
   html+=`<label style="font-weight:700;font-size:13px;color:#2D6A4F">年間入会数</label>`;
   html+=`<input type="number" value="${annualEnroll}" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">`;
-  html+=`<span style="font-size:11px;color:#666">名${om2>=0?' (開校月以降に配分)':''}</span></div>`;
+  html+=`<span style="font-size:11px;color:#666">名${om2>0?' (開校年は'+actualEnroll+'名)':''}</span></div>`;
   html+='<div style="flex:1;min-width:300px;padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
   html+=`<label style="font-weight:700;font-size:13px;color:#C1292E">年間退会率</label>`;
   html+=`<input type="number" value="${wdRate.toFixed(2)}" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_wd_rate_pct" onchange="onWdRateChange(this)">`;
@@ -1755,6 +1789,7 @@ function applyBulkChange() {
         if (c.name !== name) return;
         if (special === 'enroll') {
           c.enroll_annual = val;
+          saveField(c.id, 'enroll_annual', val);
           c.enroll = distributeEnroll(val, c.open_month >= 0 ? c.open_month : undefined, c.enroll_base);
           saveField(c.id, 'enroll', c.enroll);
         } else if (special === 'wd') {
@@ -1813,6 +1848,7 @@ function onMasterEnrollChange(el){
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
       if(c.name===name){
         c.enroll_annual=annual;
+        saveField(c.id,'enroll_annual',annual);
         c.enroll=distributeEnroll(annual,c.open_month>=0?c.open_month:undefined,c.enroll_base);
         saveField(c.id,'enroll',c.enroll);
       }
@@ -1893,6 +1929,7 @@ function switchMainTab(idx){
   STATE.mainTab=idx;
   document.querySelectorAll('[id^="main-tab-"]').forEach((el,i)=>{el.style.display=i===idx?'':'none'});
   document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
+  if(idx===1)renderParamArea();
   if(idx===2)renderMasterTable();
   if(idx===3)renderYearSummary();
 }
@@ -2036,7 +2073,12 @@ async function loadFromAPI() {
           ? distributeEnroll(30, om, base.enroll_base)
           : distributeEnroll(30, undefined, base.enroll_base);
         // DB上のIDを持つ教室があれば引き継ぐ（パラメータ編集のsaveFieldのため）
-        const dbCl = data.classrooms[fy]?.find(c => c.name === name);
+        // sort_order（配列インデックス i）でDB行をid照合する。
+        // 名前ベース照合は教室名が変わると失敗するため、位置ベースを優先する。
+        const dbCl = (data.classrooms[fy] && i < data.classrooms[fy].length)
+          ? data.classrooms[fy][i] : null;
+        // DB側の名前が現在の期待名と異なる場合は更新予約（ロード後のflushSavesで送信）
+        if (dbCl?.id && dbCl.name !== name) saveField(dbCl.id, 'name', name);
         const result = {
           id: dbCl ? dbCl.id : `${fy}-${i}`,
           name, open_month:om, start_st:pr.start_st||0,
@@ -2076,6 +2118,7 @@ async function loadFromAPI() {
           conv_r:   dbCl ? dbCl.conv_r   : (base.conv_r||0.6),
           enroll_base: dbCl ? dbCl.enroll_base?.slice() : (base.enroll_base?.slice() || ENROLL_BASE_DEFAULT.slice()),
           wd_base:     dbCl ? dbCl.wd_base?.slice()     : (base.wd_base?.slice() || WD_BASE_DEFAULT.slice()),
+          enroll_annual: dbCl ? (dbCl.enroll_annual != null ? dbCl.enroll_annual : null) : null,
         };
         return result;
       });
@@ -2096,10 +2139,12 @@ async function loadFromAPI() {
         }
       });
     });
-    // enroll_annualをDBのenroll合計からそのまま設定（逆算・再計算しない）
+    // enroll_annualをDBから取得。未設定の場合はenroll合計からフォールバック
     STATE.years.forEach(ys => {
       (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
-        c.enroll_annual = (c.enroll||[]).reduce((s,v)=>s+v, 0);
+        if (c.enroll_annual == null) {
+          c.enroll_annual = (c.enroll||[]).reduce((s,v)=>s+v, 0);
+        }
       });
     });
     // ロード時の自動保存をすべてフラッシュ
