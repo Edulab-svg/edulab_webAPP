@@ -212,7 +212,7 @@ const INITIAL_DATA = {
        fee_r:0,welfare_r:0,repair:10000,lease_cost:0,insurance:1000,sanitation:1500,other_exp:5000,
        recruit_fee:0,recruit_fee_oct:0,recruit_fee_part:0,teacher_monthly:50000,
        salary1:257500,salary2:0,salary_name:'大瀧',
-       legal_welf_r:0.15,tax_r:0.07,
+       legal_welf_r:0.15,tax_r:0.05,
        wd_rate:0.07,start_wd:0,max_st:50,conv_r:0.4,
        enroll_base:[81,59,75,148,35,70,54,57,73,60,95,132],
        wd_base:[24,15,16,32,33,23,30,22,33,32,144,239],
@@ -527,7 +527,7 @@ function calcClassroom(p, fiscalYear) {
       const parttime = p.parttime_cost || 0;
       const teacherPay = p.teacher_monthly || 0; // 講師人件費（固定月額）
       const labor = salary + legalW + parttime + teacherPay;
-      const tax = revenue * (p.tax_r || 0.07);
+      const tax = revenue * (p.tax_r || 0.05);
       const expTotal = adminTotal + labor + tax;
       const profit = revenue - expTotal;
       const cpo = enr > 0 ? (p.ads[m]||0) / enr : 0;
@@ -1076,7 +1076,7 @@ function getBaseRef(row,p){
     case 34: return f(p.parttime_cost||0)+'/月';
     case 35: return'-';
     // 合計
-    case 36: return'売上×'+(p.tax_r||0.07);
+    case 36: return'売上×'+(p.tax_r||0.05);
     case 37: return'-';
     case 38: return'-';
     default: return'-';
@@ -1110,7 +1110,7 @@ function makeNewClassroom(fy, idx, openMonth) {
     fee_r: 150, welfare_r: 0, repair: 10000, lease_cost: 0,
     insurance: 1000, sanitation: 1500, other_exp: 0,
     salary1: 275000, salary2: 0,
-    legal_welf_r: 0.15, tax_r: 0.07,
+    legal_welf_r: 0.15, tax_r: 0.05,
     wd_rate: 0.07, start_wd: 0, max_st: 80,
     conv_r: 0.6, parttime_cost: 0,
     enroll_base: base.enroll_base ? base.enroll_base.slice() : ENROLL_BASE_DEFAULT.slice(),
@@ -1622,7 +1622,7 @@ async function loadFromAPI() {
           recruit_fee:0, recruit_fee_oct:0, recruit_fee_part:0, teacher_monthly:base.teacher_monthly||50000,
           salary1:pr.salary1||base.salary1||300000, salary2:0,
           salary_name:base.salary_name||'', parttime_cost:0,
-          legal_welf_r:0.15, tax_r:0.07, enroll_fee:base.enroll_fee||22000, exam_sell_r:0,
+          legal_welf_r:0.15, tax_r:0.05, enroll_fee:base.enroll_fee||22000, exam_sell_r:0,
           wd_rate:base.wd_rate||0.07, start_wd:0, max_st:base.max_st||50, conv_r:base.conv_r||0.4,
           enroll_base:base.enroll_base?.slice()||[81,59,75,148,35,70,54,57,73,60,95,132],
           wd_base:base.wd_base?.slice()||[24,15,16,32,33,23,30,22,33,32,144,239],
