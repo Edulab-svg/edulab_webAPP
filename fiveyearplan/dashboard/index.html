@@ -124,10 +124,10 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f0f2f5;min-height:100vh;c
 
   <!-- シミュレーターリンク -->
   <div class="sim-links">
-    <a class="sim-link" style="background:#eef4fb;color:#1B4965;border-color:#b3cde0" href="../individual/" target="_blank">📚 まんてん個別</a>
-    <a class="sim-link" style="background:#eaf5e8;color:#2D5016;border-color:#8cb87a" href="../plus/" target="_blank">🌿 まんてん個別プラス</a>
-    <a class="sim-link" style="background:#fff8f0;color:#92400e;border-color:#f59e0b" href="../atamaf/" target="_blank">📱 atama+FC</a>
-    <a class="sim-link" style="background:#f0f4f8;color:#1B4965;border-color:#9ab" href="../honbu/" target="_blank">🏢 本部</a>
+    <a class="sim-link" style="background:#eef4fb;color:#1B4965;border-color:#b3cde0" href="../individual/">📚 まんてん個別</a>
+    <a class="sim-link" style="background:#eaf5e8;color:#2D5016;border-color:#8cb87a" href="../plus/">🌿 まんてん個別プラス</a>
+    <a class="sim-link" style="background:#fff8f0;color:#92400e;border-color:#f59e0b" href="../atamaf/">📱 atama+FC</a>
+    <a class="sim-link" style="background:#f0f4f8;color:#1B4965;border-color:#9ab" href="../honbu/">🏢 本部</a>
     <div class="sim-link" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;margin-left:auto" onclick="loadAll()">🔄 再読込</div>
   </div>
 
@@ -224,7 +224,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f0f2f5;min-height:100vh;c
 const API = 'api/index.php';
 
 async function apiGet(route) {
-  const token = sessionStorage.getItem('sim_token') || '';
+  const token = localStorage.getItem('sim_token') || '';
   const r = await fetch(API + '?route=' + route + '&_t=' + Date.now(), {
     headers: { 'X-Sim-Token': token }
   });
@@ -232,7 +232,7 @@ async function apiGet(route) {
 }
 
 async function apiPost(route, data) {
-  const token = sessionStorage.getItem('sim_token') || '';
+  const token = localStorage.getItem('sim_token') || '';
   const fd = new FormData();
   fd.append('route', route);
   for (const [k, v] of Object.entries(data))
@@ -301,12 +301,12 @@ const INDIVIDUAL_BASELINE = {
 
 async function loadAll() {
   try {
-    const token = sessionStorage.getItem('sim_token');
+    const token = localStorage.getItem('sim_token');
     if (!token) { showLoginScreen(); return; }
 
     const data = await apiGet('all');
     if (data.error) {
-      if (data.error === 'Unauthorized') { showLoginScreen(); return; }
+      if (data.error === 'Unauthorized') { localStorage.removeItem('sim_token'); showLoginScreen(); return; }
       console.warn('Dashboard API error:', data.error);
       loadFallback();
       return;
@@ -365,52 +365,6 @@ function loadFallback() {
   renderAll();
 }
 
-function showLoginScreen() {
-  // 既存コンテンツを非表示
-  document.querySelectorAll('body > *').forEach(el => {
-    if (el.id !== 'login-overlay') el.style.display = 'none';
-  });
-  // ログイン画面を表示
-  let overlay = document.getElementById('login-overlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'login-overlay';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#f8fafc;display:flex;align-items:center;justify-content:center;z-index:9999';
-    document.body.appendChild(overlay);
-  }
-  overlay.innerHTML = '<div style="max-width:340px;width:90%;padding:40px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)">' +
-    '<div style="font-size:36px;margin-bottom:16px">🌿</div>' +
-    '<div style="font-size:18px;font-weight:700;margin-bottom:8px">全社合算ダッシュボード</div>' +
-    '<div style="font-size:13px;color:#888;margin-bottom:24px">まんてん個別グループ</div>' +
-    '<input type="password" id="pw-input" placeholder="パスワードを入力"' +
-    ' style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;margin-bottom:12px;text-align:center;box-sizing:border-box"' +
-    '>' +
-    '<button onclick="doLogin()" style="width:100%;padding:10px;background:#2c5364;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">ログイン</button>' +
-    '<div id="pw-error" style="color:#c53030;font-size:13px;margin-top:10px;display:none">パスワードが違います</div>' +
-    '</div>';
-  setTimeout(function(){
-    const inp = document.getElementById('pw-input');
-    if(inp){ inp.focus(); inp.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); }); }
-  }, 100);
-}
-
-async function doLogin() {
-  const pw = document.getElementById('pw-input').value;
-  try {
-    // GETパラメータで送信（より確実）
-    const r = await fetch(API + '?route=auth&password=' + encodeURIComponent(pw));
-    const d = await r.json();
-    if (d.ok) {
-      sessionStorage.setItem('sim_token', pw);
-      location.reload();
-    } else {
-      document.getElementById('pw-error').style.display = 'block';
-    }
-  } catch(e) {
-    document.getElementById('pw-error').textContent = '接続エラー: ' + e.message;
-    document.getElementById('pw-error').style.display = 'block';
-  }
-}
 function getConsolidated(fy) {
   const ind  = STATE.individual[fy] || {revenue:0,expense:0,profit:0};
   const plus = STATE.plus[fy]       || {revenue:0,expense:0,profit:0};
@@ -884,11 +838,55 @@ function switchNav(idx, el){
   renderTab();
 }
 
+function showLoginScreen() {
+  document.querySelectorAll('body > *').forEach(el => {
+    if (el.id !== 'login-overlay') el.style.display = 'none';
+  });
+  let overlay = document.getElementById('login-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'login-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#f8fafc;display:flex;align-items:center;justify-content:center;z-index:9999';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML =
+    '<div style="max-width:340px;width:90%;padding:40px;background:#fff;border-radius:16px;border:1px solid #e2e8f0;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.08)">' +
+    '<div style="font-size:36px;margin-bottom:16px">📊</div>' +
+    '<div style="font-size:18px;font-weight:700;margin-bottom:8px">全社合算ダッシュボード</div>' +
+    '<div style="font-size:13px;color:#888;margin-bottom:24px">まんてん個別グループ</div>' +
+    '<input type="password" id="pw-input" placeholder="パスワードを入力"' +
+    ' style="width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:15px;margin-bottom:12px;text-align:center;box-sizing:border-box">' +
+    '<button onclick="doLogin()" style="width:100%;padding:10px;background:#2c5364;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">ログイン</button>' +
+    '<div id="pw-error" style="color:#c53030;font-size:13px;margin-top:10px;display:none">パスワードが違います</div>' +
+    '</div>';
+  setTimeout(function() {
+    const inp = document.getElementById('pw-input');
+    if (inp) { inp.focus(); inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') doLogin(); }); }
+  }, 100);
+}
+
+async function doLogin() {
+  const pw = document.getElementById('pw-input').value;
+  try {
+    const r = await fetch(API + '?route=auth&password=' + encodeURIComponent(pw));
+    const d = await r.json();
+    if (d.ok) {
+      localStorage.setItem('sim_token', pw);
+      location.reload();
+    } else {
+      document.getElementById('pw-error').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('pw-error').textContent = '接続エラー: ' + e.message;
+    document.getElementById('pw-error').style.display = 'block';
+  }
+}
+
 // ============================================================
 // 起動
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('sim_token')) {
+  if (localStorage.getItem('sim_token')) {
     loadAll();
   } else {
     showLoginScreen();

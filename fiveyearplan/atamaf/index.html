@@ -84,7 +84,7 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
       <div class="sub" id="header-sub"></div>
     </div>
     <div style="margin-left:auto">
-      <button onclick="if(confirm('再読み込みしますか？')){sessionStorage.removeItem('sim_token');location.reload();}" style="padding:5px 12px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;font-size:11px;cursor:pointer">🔄 初期化</button>
+      <button onclick="if(confirm('再読み込みしますか？')){localStorage.removeItem('sim_token');location.reload();}" style="padding:5px 12px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:6px;font-size:11px;cursor:pointer">🔄 初期化</button>
     </div>
   </div>
 </div>
@@ -151,12 +151,12 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
 // API設定・認証
 const API = 'api/index.php';
 async function apiGet(route) {
-  const token = sessionStorage.getItem('sim_token') || '';
+  const token = localStorage.getItem('sim_token') || '';
   const r = await fetch(API + '?route=' + route + '&_t=' + Date.now(), {headers: {'X-Sim-Token': token}});
   return r.json();
 }
 async function apiPost(route, data) {
-  const token = sessionStorage.getItem('sim_token') || '';
+  const token = localStorage.getItem('sim_token') || '';
   const fd = new FormData();
   fd.append('route', route);
   for (const [k, v] of Object.entries(data))
@@ -1534,35 +1534,9 @@ function toggleCard(header){
 // Start
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
-  if (sessionStorage.getItem('sim_token')) { loadFromAPI(); }
-  else { showLoginScreen(); }
+  if (localStorage.getItem('sim_token')) { loadFromAPI(); }
+  else { location.href = '../dashboard/'; }
 });
-
-function showLoginScreen() {
-  document.getElementById('loading').innerHTML = `
-    <div style="max-width:340px;margin:0 auto;padding:40px 20px;text-align:center">
-      <div style="font-size:36px;margin-bottom:16px">🌿</div>
-      <div style="font-size:18px;font-weight:700;margin-bottom:8px;color:#92400e">atama+FC</div>
-      <div style="font-size:13px;color:#888;margin-bottom:24px">シミュレーター</div>
-      <input type="password" id="pw-input" placeholder="パスワードを入力"
-        style="width:100%;padding:10px 14px;border:2px solid #ddd;border-radius:8px;font-size:15px;margin-bottom:12px;text-align:center"
-        onkeydown="if(event.key==='Enter')doLogin()">
-      <button onclick="doLogin()"
-        style="width:100%;padding:10px;background:#92400e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer">
-        ログイン
-      </button>
-      <div id="pw-error" style="color:#C1292E;font-size:13px;margin-top:10px;display:none">パスワードが違います</div>
-    </div>`;
-  setTimeout(() => document.getElementById('pw-input')?.focus(), 100);
-}
-async function doLogin() {
-  const pw = document.getElementById('pw-input').value;
-  const fd = new FormData(); fd.append('route','auth'); fd.append('password',pw);
-  const r = await fetch(API, {method:'POST', body:fd});
-  const d = await r.json();
-  if (d.ok) { sessionStorage.setItem('sim_token', pw); loadFromAPI(); }
-  else { document.getElementById('pw-error').style.display = 'block'; }
-}
 async function loadFromAPI() {
   document.getElementById('loading').innerHTML = 'データを読み込み中...';
   document.getElementById('loading').style.display = 'block';
@@ -1570,7 +1544,7 @@ async function loadFromAPI() {
   try {
     const data = await apiGet('all');
     if (data.error) {
-      if (data.error === 'Unauthorized') { sessionStorage.removeItem('sim_token'); showLoginScreen(); return; }
+      if (data.error === 'Unauthorized') { localStorage.removeItem('sim_token'); location.href = '../dashboard/'; return; }
       document.getElementById('loading').innerHTML = '<div style="color:#C1292E">APIエラー: '+data.error+'</div>';
       return;
     }
