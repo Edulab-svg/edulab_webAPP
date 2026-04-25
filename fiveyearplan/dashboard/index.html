@@ -200,11 +200,12 @@ body{font-family:'Noto Sans JP',sans-serif;background:#f0f2f5;min-height:100vh;c
     <div class="section">
       <div class="section-header">累計損益・キャッシュフロー</div>
       <div class="section-body">
+        <div id="cum-filter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px"></div>
         <div class="chart-wrap"><canvas id="cum-chart"></canvas></div>
       </div>
     </div>
     <div class="section">
-      <div class="section-header">累計損益テーブル</div>
+      <div class="section-header"><span id="cum-table-title">累計損益テーブル</span></div>
       <div class="section-body">
         <div style="overflow-x:auto">
           <table class="summary-table" id="cum-table"></table>
@@ -267,6 +268,7 @@ const SIM_COLORS = {
 let STATE = {
   yearIdx: 0,
   navIdx: 0,
+  cumView: 'all',
   trendChart: null,
   segChart: null,
   cumChart: null,
@@ -765,11 +767,32 @@ function renderMonthly(){
 
 // ---- 累計損益 ----
 function renderCum(){
+  const views = {
+    all: { label: '全社合算', key: null, color: '#1B4965' },
+    individual: { label: 'まんてん個別', key: 'individual', color: SIM_COLORS.individual },
+    plus: { label: '個別プラス', key: 'plus', color: SIM_COLORS.plus },
+    fc: { label: 'atama+FC', key: 'fc', color: SIM_COLORS.fc },
+    honbu: { label: '本部', key: 'honbu', color: SIM_COLORS.honbu },
+  };
+  if (!views[STATE.cumView]) STATE.cumView = 'all';
+  const active = views[STATE.cumView];
+
+  const filterHtml = Object.entries(views).map(([id, v]) => {
+    const isActive = id === STATE.cumView;
+    const bg = isActive ? v.color : '#fff';
+    const color = isActive ? '#fff' : v.color;
+    const border = isActive ? v.color : '#dbe2ea';
+    return `<button type="button" onclick="setCumView('${id}')" style="padding:6px 12px;border-radius:999px;border:1.5px solid ${border};background:${bg};color:${color};font-size:12px;font-weight:700;cursor:pointer">${v.label}</button>`;
+  }).join('');
+  document.getElementById('cum-filter').innerHTML = filterHtml;
+
+  const annPro = YEARS.map(fy =>
+    active.key ? (STATE[active.key][fy]?.profit || 0) : getConsolidated(fy).profit
+  );
+  const annProArr = annPro.map(v => Math.round(v / 1e6));
   const cumPro = [];
   let cum = 0;
-  const annPro = YEARS.map(fy=>getConsolidated(fy).profit);
-  const annProArr = annPro.map(v=>Math.round(v/1e6));
-  annPro.forEach(v=>{ cum+=v; cumPro.push(Math.round(cum/1e6)); });
+  annPro.forEach(v => { cum += v; cumPro.push(Math.round(cum / 1e6)); });
 
   if(STATE.cumChart) STATE.cumChart.destroy();
   STATE.cumChart = new Chart(document.getElementById('cum-chart'), {
@@ -777,8 +800,8 @@ function renderCum(){
     data:{ labels:YEARS.map(y=>y+'年度'),
       datasets:[
         {label:'年間利益(百万)',data:annProArr,backgroundColor:annProArr.map(v=>v>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'),order:2},
-        {label:'累計損益(百万)',data:cumPro,type:'line',borderColor:'#1B4965',backgroundColor:'rgba(27,73,101,0.08)',
-         fill:true,tension:.35,order:1,pointRadius:5,pointBackgroundColor:'#1B4965',borderWidth:2.5},
+        {label:'累計損益(百万)',data:cumPro,type:'line',borderColor:active.color,backgroundColor:active.color+'22',
+         fill:true,tension:.35,order:1,pointRadius:5,pointBackgroundColor:active.color,borderWidth:2.5},
       ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'M'}}},
@@ -786,18 +809,15 @@ function renderCum(){
   });
 
   // テーブル
-  let html='<thead><tr><th>年度</th><th>個別</th><th>プラス</th><th>FC</th><th>本部</th><th>年間利益</th><th>累計損益</th></tr></thead><tbody>';
+  document.getElementById('cum-table-title').textContent = active.label + ' 累計損益テーブル';
+  let html='<thead><tr><th>年度</th><th>年間利益</th><th>累計損益</th></tr></thead><tbody>';
   let cumVal=0;
   YEARS.forEach((fy,i)=>{
-    const pro=getConsolidated(fy).profit;
+    const pro = active.key ? (STATE[active.key][fy]?.profit||0) : getConsolidated(fy).profit;
     cumVal+=pro;
     const bg=i===STATE.yearIdx?'background:#eef4fb':'';
     html+=`<tr style="${bg}" onclick="STATE.yearIdx=${i};renderAll()">
       <td>${fy}年度</td>
-      <td class="${(STATE.individual[fy]?.profit||0)>=0?'pos':'neg'}">${fS(STATE.individual[fy]?.profit||0)}</td>
-      <td class="${(STATE.plus[fy]?.profit||0)>=0?'pos':'neg'}">${fS(STATE.plus[fy]?.profit||0)}</td>
-      <td class="${(STATE.fc[fy]?.profit||0)>=0?'pos':'neg'}">${fS(STATE.fc[fy]?.profit||0)}</td>
-      <td class="${(STATE.honbu[fy]?.profit||0)>=0?'pos':'neg'}">${fS(STATE.honbu[fy]?.profit||0)}</td>
       <td class="${pro>=0?'pos':'neg'}" style="font-weight:700">${fS(pro)}</td>
       <td class="${cumVal>=0?'pos':'neg'}" style="font-weight:700">${fS(cumVal)}</td>
     </tr>`;
@@ -806,6 +826,11 @@ function renderCum(){
   document.getElementById('cum-table').innerHTML=html;
 
   
+}
+
+function setCumView(view){
+  STATE.cumView = view;
+  renderCum();
 }
 
 // ============================================================
