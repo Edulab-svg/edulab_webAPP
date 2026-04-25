@@ -1,3 +1,6 @@
 SetEnvIf Request_URI ".*" Ngx_Cache_NoCacheMode=off
 SetEnvIf Request_URI ".*" Ngx_Cache_AllCacheMode
 
+# ルートは index.php 優先（トップのポータル認証）。子ディレクトリは index.html も有効（index.php が無い場合の403防止）
+DirectoryIndex index.php index.html
+

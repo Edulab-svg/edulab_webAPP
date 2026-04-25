@@ -1,0 +1,4 @@
+# 直アクセス不可（PHP の require はファイルシステムのため有効のまま）
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
