@@ -3,6 +3,7 @@
 # ============================================================
 
 Options -Indexes
+DirectoryIndex index.php index.html
 RewriteEngine On
 
 # api/ 以下はそのまま通す
@@ -13,8 +14,8 @@ RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# それ以外は index.html へ
-RewriteRule ^ index.html [L]
+# それ以外は index.php（ポータル認証のあと index.html を配信）
+RewriteRule ^ index.php [L]
 
 # セキュリティヘッダー
 <IfModule mod_headers.c>
