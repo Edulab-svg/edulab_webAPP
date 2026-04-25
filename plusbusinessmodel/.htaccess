@@ -4,13 +4,13 @@
 
 Options -Indexes
 
-# --- index.html をデフォルトドキュメントに ---
-DirectoryIndex index.html
+# --- ポータル認証: index.php → index.html 配信 ---
+DirectoryIndex index.php index.html
 
-# --- api/ 以外のリクエストは index.html へ ---
+# --- api/ 以外のリクエストは index.php（未認証は /login.php へ）---
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
+    RewriteBase /plusbusinessmodel/
 
     # api/ へのアクセスはそのまま通す
     RewriteRule ^api/ - [L]
@@ -19,8 +19,8 @@ DirectoryIndex index.html
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
 
-    # それ以外は index.html へ
-    RewriteRule ^ index.html [L]
+    # それ以外は index.php へ
+    RewriteRule ^ index.php [L]
 </IfModule>
 
 # --- キャッシュ制御 ---

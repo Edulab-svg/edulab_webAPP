@@ -19,8 +19,8 @@ AddDefaultCharset UTF-8
     </FilesMatch>
 </IfModule>
 
-# index.html をデフォルトに
-DirectoryIndex index.html
+# index.php 優先（ポータル認証のあと index.html）
+DirectoryIndex index.php index.html
 
 # セキュリティ: config.phpへの直接アクセス禁止
 <Files "config.php">

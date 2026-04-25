@@ -1,3 +1,4 @@
+DirectoryIndex index.php index.html
 RewriteEngine On
 
 # API routing: /api/xxx → /api/index.php?route=xxx

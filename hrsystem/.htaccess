@@ -1,8 +1,8 @@
 # 文字コード
 AddDefaultCharset UTF-8
 
-# index.html をデフォルトに
-DirectoryIndex index.html
+# index.php 優先（ポータル認証のあと index.html）
+DirectoryIndex index.php index.html
 
 # api/ ディレクトリ直打ちアクセス拒否（index.php 経由のみ許可）
 <Files "config.php">

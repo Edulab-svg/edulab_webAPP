@@ -1,11 +1,12 @@
 Options -Indexes
+DirectoryIndex index.php index.html
 
-# api/ 以外はすべて index.html へ
+# api/ 以外はすべて index.php 経由（ポータル認証）
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteCond %{REQUEST_URI} !^/api/
+  RewriteRule ^api/ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteRule ^ index.html [L]
+  RewriteRule ^ index.php [L]
 </IfModule>
 
 # config.php への直接アクセスを禁止

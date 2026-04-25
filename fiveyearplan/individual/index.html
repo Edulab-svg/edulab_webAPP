@@ -154,6 +154,25 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
       </div>
     </div>
 
+    <!-- 2026 MG確認タブ -->
+    <div id="main-tab-10" style="display:none">
+      <div class="card">
+        <div class="card-header" style="background:linear-gradient(135deg,#7B2D8B,#a04db5);color:#fff">
+          📋 2026年度 MG確認用 合算P&L
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+            <button onclick="mgSelectAll(true)" style="padding:5px 12px;background:#7B2D8B;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600">全選択</button>
+            <button onclick="mgSelectAll(false)" style="padding:5px 12px;background:#fff;color:#666;border:1px solid #ddd;border-radius:6px;font-size:12px;cursor:pointer">全解除</button>
+            <span id="mg-selected-count" style="font-size:12px;color:#7B2D8B;font-weight:700"></span>
+          </div>
+          <div id="mg-classroom-checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:10px;background:#faf0fc;border-radius:8px;border:1px solid #e1b0eb"></div>
+          <div id="mg-kpi-area" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:12px"></div>
+          <div class="table-wrap" id="mg-pl-table-wrap"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -164,7 +183,7 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
 // 定数
 // ============================================
 const MONTHS = ["4月","5月","6月","7月","8月","9月","10月","11月","12月","1月","2月","3月"];
-const SEM_RATES = [0.3, 0, 0, 0, 1.7, 0, 0, 0, 0, 1.5, 0, 0];
+const SEM_RATES_DEFAULT = [0.3, 0, 0, 0, 1.7, 0, 0, 0, 0, 1.5, 0, 0]; // 4月30%・8月170%・1月150%
 const BONUS_MONTHS = [0, 6];
 const API = 'api/index.php';
 const ENROLL_BASE = [92, 64, 91, 152, 43, 43, 39, 27, 66, 67, 80, 128]; // 2025年実績
@@ -189,11 +208,25 @@ function distributeAds(annual, openMonth) {
 const WD_BASE = [18, 20, 21, 38, 36, 28, 39, 43, 46, 47, 127, 304]; // 2025年実績
 const WD_TOTAL = WD_BASE.reduce((s,v)=>s+v, 0);
 const WD_RATIOS = WD_BASE.map(v=>v/WD_TOTAL);
+
+// 月別比率 2025年実績ベース（5週目・教材・模試）
+// 各値は実績金額。比率はここから動的に計算する
+const FIFTH_BASE_DEFAULT = [0, 2622383.5, 13970, 1134353, 5940, 2502637.5, 3707918.5, 2200, 0, 0, 0, 2063765];
+const MAT_BASE_DEFAULT   = [2181740, 1084028, 532510, 981071.3, 6149462, 632170, 419155, 230010, 324940, 2409275, 555391.1, 8596390];
+const EXAM_BASE_DEFAULT  = [3400.1, 2871116.6, 20374.2, 4900.5, 74780.2, 4226393.6, 16100.7, 3500.2, 1773480.5, 0, 1471360, 7500.9];
+
+function normRatios(base) {
+  const total = base.reduce((s,v)=>s+v, 0);
+  if(total === 0) return Array(12).fill(1/12);
+  return base.map(v => v/total);
+}
+
 const SALARY_RAISE = 2500;
 const SALARY_RAISE_PM = 4000;
 const MASTER_FIELDS = ['conv_r','rent','water','electric','phone','travel','consume_r','promo_r',
   'staff_recruit','sys_per_st','sys_base','mat_buy_r','exam_buy_r',
   'fee_r','welfare_r','repair','lease_cost','insurance','sanitation','other_exp',
+  'recruit_fee','recruit_fee_oct','recruit_fee_part',
   'teacher_r','salary_pm','salary_mgr','salary_sub','salary_pm2','salary_mgr2','salary_sub2',
   'legal_welf_r','tax_r','max_st'];
 const GROUP_NAMES = {kpi:"KPI・生徒数",rev:"売上",admin:"経費（管理費）",labor:"経費（人件費）",summary:"合計"};
@@ -211,6 +244,12 @@ let STATE = {
   results: {},      // 計算結果キャッシュ
   yearChart: null,
   scope: 'all',     // 'all' or '19'
+  mgChecked: new Set(), // MG確認タブで選択中の教室名
+  // 月別比率（パラメータタブで編集可能）
+  fifthBase:  [...FIFTH_BASE_DEFAULT],
+  matBase:    [...MAT_BASE_DEFAULT],
+  examBase:   [...EXAM_BASE_DEFAULT],
+  semRates:   [...SEM_RATES_DEFAULT], // 講習会売上比率（倍率）
 };
 
 // ============================================
@@ -328,19 +367,27 @@ function calcClassroom(p, bonusMult, fiscalYear) {
       const salSub = baseSub;
       const legalW = (salPm + salMgr + salSub) * p.legal_welf_r;
       const laborTotal = salPm + salMgr + salSub + legalW;
-      const expTotal = laborTotal;
+      const recruitFeePreOpen = m===0 ? (p.recruit_fee||0) : 0;
+      // isPreOpen期間（4〜9月）はアルバイト求人費0円
+      const expTotal = laborTotal + recruitFeePreOpen;
       const profit = -expTotal;
       months.push([0,0,0,0,0,0, 0,0,0,0,0,0,0, 0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,
-        0, salPm, salMgr, salSub, legalW, laborTotal, 0, expTotal, profit, 0]); // [44]=recruit_fee_part
+        0,0,0,0,0,0,0,recruitFeePreOpen,0,0,0,0,0,0,0,0,0,0,0,0, recruitFeePreOpen,
+        0, salPm, salMgr, salSub, legalW, laborTotal, 0, expTotal, profit, 0]);
     } else {
       const inq = p.conv_r > 0 ? Math.round(enr / p.conv_r) : 0;
       const price = p.prices[m];
       const tuition = active * price - enr * price / 2;
-      const fifth = tuition * 0.03;
-      const seminar = tuition * SEM_RATES[m];
-      const matSale = tuition * 0.075;
-      const examSale = tuition * 0.03;
+
+      // 月別比率で配分: 年間合計(tuition×固定率)を各月の比率×12で月次に振り分け
+      const fifthRatios = normRatios(STATE.fifthBase);
+      const matRatios   = normRatios(STATE.matBase);
+      const examRatios  = normRatios(STATE.examBase);
+
+      const fifth    = tuition * 0.03  * (fifthRatios[m] * 12);
+      const seminar  = tuition * STATE.semRates[m];
+      const matSale  = tuition * 0.075 * (matRatios[m]   * 12);
+      const examSale = tuition * 0.03  * (examRatios[m]  * 12);
       const otherSale = tuition * 0.005;
       const revenue = tuition + fifth + seminar + matSale + examSale + otherSale;
       const consume = active * p.consume_r;
@@ -351,7 +398,12 @@ function calcClassroom(p, bonusMult, fiscalYear) {
       const fee = active * p.fee_r;
       const welfare = active * p.welfare_r;
       const otherExpM = p.other_exp + (isOpenMonth ? INIT_COST : 0);
-      const adminTotal = p.rent + p.water + p.electric + p.phone + p.travel + consume + promo + (m===0?(p.recruit_fee||0):0) + (m===6?(p.recruit_fee_oct||0):0) + (p.recruit_fee_part||0) + p.ads[m] + p.staff_recruit + sys + matBuy + examBuy + fee + welfare + (yearNum >= 4 ? p.repair : 0) + p.lease_cost + p.insurance + p.sanitation + otherExpM;
+      const recruitFeeM = m===0 ? (p.recruit_fee||0) : (m===6 ? (p.recruit_fee_oct||0) : 0);
+      // 新教室1年目（open_monthが設定されている）の4〜9月はアルバイト求人費0円
+      const isNewFirstYear = (om >= 0) && (yearNum === 1);
+      const recruitFeePart = (isNaN(Number(p.recruit_fee_part)) ? 0 : Number(p.recruit_fee_part))
+        * (isNewFirstYear && m < 6 ? 0 : 1);
+      const adminTotal = p.rent + p.water + p.electric + p.phone + p.travel + consume + promo + recruitFeeM + recruitFeePart + p.ads[m] + p.staff_recruit + sys + matBuy + examBuy + fee + welfare + (yearNum >= 4 ? p.repair : 0) + p.lease_cost + p.insurance + p.sanitation + otherExpM;
       const teacherPay = (tuition + seminar + otherSale) * p.teacher_r;
       const skipBonus = (om >= 0 && isOpenMonth);
       const bMul = BONUS_MONTHS.includes(m) && !skipBonus ? bm : 1;
@@ -364,10 +416,10 @@ function calcClassroom(p, bonusMult, fiscalYear) {
       const expTotal = adminTotal + laborTotal + tax;
       const profit = revenue - expTotal;
       const cpo = enr > 0 ? p.ads[m] / enr : 0;
-      months.push([inq,enr,cpo,wd,active,price,tuition,fifth,seminar,SEM_RATES[m],matSale,examSale,otherSale,revenue,
-        p.rent,p.water,p.electric,p.phone,p.travel,consume,promo,(m===0?(p.recruit_fee||0):(m===6?(p.recruit_fee_oct||0):0)),p.ads[m],p.staff_recruit,sys,matBuy,examBuy,fee,welfare,
+      months.push([inq,enr,cpo,wd,active,price,tuition,fifth,seminar,STATE.semRates[m],matSale,examSale,otherSale,revenue,
+        p.rent,p.water,p.electric,p.phone,p.travel,consume,promo,recruitFeeM,p.ads[m],p.staff_recruit,sys,matBuy,examBuy,fee,welfare,
         (yearNum>=4?p.repair:0),p.lease_cost,p.insurance,p.sanitation,otherExpM,adminTotal,teacherPay,salPm,salMgr,salSub,legalW,laborTotal,tax,expTotal,profit,
-        p.recruit_fee_part||0]); // [44]=recruit_fee_part
+        recruitFeePart]); // [44]=recruit_fee_part
     }
   }
   const sum = (idx) => months.reduce((s,r) => s + r[idx], 0);
@@ -437,6 +489,7 @@ const PL_ROWS = [
   {label:"授業料売上",idx:6,fmt:"yen",group:"rev"},
   {label:"5週目請求",idx:7,fmt:"yen",group:"rev"},
   {label:"講習会売上",idx:8,fmt:"yen",group:"rev"},
+  {label:"講習会売上比率",idx:-1,fmt:"pct",group:"rev",special:"seminarRate"},
   {label:"教材売上",idx:10,fmt:"yen",group:"rev"},
   {label:"模試売上",idx:11,fmt:"yen",group:"rev"},
   {label:"その他売上",idx:12,fmt:"yen",group:"rev"},
@@ -515,11 +568,11 @@ function calcConsolidated19Months() {
   const results = curResults();
   const merged = [];
   for(let m=0; m<12; m++){
-    const row = new Array(44).fill(0);
+    const row = new Array(45).fill(0);
     cls.forEach((c,ci)=>{
       const mrow = results[ci]?.months[m];
       if(!mrow) return;
-      for(let k=0;k<44;k++) row[k] += mrow[k];
+      for(let k=0;k<45;k++) row[k] += mrow[k];
     });
     merged.push(row);
   }
@@ -617,11 +670,8 @@ function hideSaving(){document.getElementById('saving-indicator').style.display=
 
 async function saveField(id,field,value){
   showSaving();
-  clearTimeout(saveTimer);
-  saveTimer=setTimeout(async()=>{
-    await apiPost('classroom',{action:'update',id,field,value:typeof value==='object'?JSON.stringify(value):value});
-    hideSaving();
-  },500);
+  await apiPost('classroom',{action:'update',id,field,value:typeof value==='object'?JSON.stringify(value):value});
+  hideSaving();
 }
 
 // ============================================
@@ -641,20 +691,6 @@ async function init(){
     }
     STATE.years=data.years;
     STATE.classrooms=data.classrooms;
-    // 全教室のadsをADS_BASEの比率で強制再計算
-    STATE.years.forEach(ys => {
-      (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
-        const annAds = (c.ads||[]).reduce((s,v)=>s+v, 0);
-        if (annAds > 0) {
-          const newAds = distributeAds(annAds, undefined);
-          const isSame = newAds.every((v,i) => v === (c.ads[i]||0));
-          if (!isSame) {
-            c.ads = newAds;
-            if (c.id) saveField(c.id, 'ads', c.ads);
-          }
-        }
-      });
-    });
     calcAllResults();
     document.getElementById('loading').style.display='none';
     document.getElementById('app').style.display='block';
@@ -681,11 +717,25 @@ function renderYearTabs(){
   STATE.years.forEach((ys,i)=>{
     const cls=STATE.classrooms[ys.fiscal_year]||[];
     const btn=document.createElement('div');
-    btn.className='tab'+(i===STATE.yearIdx?' active':'');
+    btn.className='tab'+(i===STATE.yearIdx&&STATE.mainTab!==10?' active':'');
     btn.textContent=ys.fiscal_year+'年度 '+cls.length+'室';
-    btn.onclick=()=>{STATE.yearIdx=i;STATE.clIdx=0;renderYearTabs();renderAll()};
+    btn.onclick=()=>{STATE.yearIdx=i;STATE.clIdx=0;STATE.mainTab=0;renderYearTabs();renderAll();switchMainTab(0)};
     el.appendChild(btn);
   });
+  // 2026年度が存在する場合のみMGタブを追加
+  const has2026 = STATE.years.some(y=>y.fiscal_year===2026);
+  if(has2026){
+    const sep=document.createElement('span');
+    sep.style.cssText='display:inline-block;width:1px;background:#ddd;margin:4px 6px';
+    el.appendChild(sep);
+    const mgBtn=document.createElement('div');
+    const mgActive=STATE.mainTab===10;
+    mgBtn.className='tab'+(mgActive?' active':'');
+    mgBtn.style.cssText='border-color:#7B2D8B;color:'+(mgActive?'#fff':'#7B2D8B')+';background:'+(mgActive?'#7B2D8B':'#faf0fc')+';font-weight:700';
+    mgBtn.textContent='📋 2026 MG確認';
+    mgBtn.onclick=()=>{STATE.mainTab=10;renderYearTabs();switchMainTab(10)};
+    el.appendChild(mgBtn);
+  }
 }
 
 function renderAll(){
@@ -819,6 +869,34 @@ function renderPLTable(){
       data.slice(6,12).forEach(md=>{ const r=md[4]>0?md[3]/md[4]:0; html+=`<td>${(r*100).toFixed(1)}%</td>`; });
       html+=`<td class="sem-col">${stH2>0?(wdH2/stH2*100).toFixed(2):'0.00'}%</td>`;
       html+=`<td class="annual-col">${(annRate*100).toFixed(2)}%</td></tr>`;
+      return;
+    }
+
+    // 講習会売上比率 特殊行（4月・8月・1月のみ表示、他は0）
+    const SEMINAR_RATE_MONTHS = [0, 4, 9]; // 4月=0, 8月=4, 1月=9
+    if(row.special==='seminarRate'){
+      const semH1 = data.slice(0,6).reduce((s,m)=>s+m[8],0);
+      const tutH1 = data.slice(0,6).reduce((s,m)=>s+m[6],0);
+      const semH2 = data.slice(6,12).reduce((s,m)=>s+m[8],0);
+      const tutH2 = data.slice(6,12).reduce((s,m)=>s+m[6],0);
+      const semAnn = data.reduce((s,m)=>s+m[8],0);
+      const tutAnn = data.reduce((s,m)=>s+m[6],0);
+      html+=`<tr class="wd-rate-row"><td style="color:#1565C0;font-style:normal;font-weight:600">${row.label}</td>`;
+      if(!isConsolidated) html+='<td class="base-col">-</td>';
+      data.slice(0,6).forEach((md,mi)=>{
+        const show = SEMINAR_RATE_MONTHS.includes(mi);
+        const r = show && md[6]>0 ? md[8]/md[6]*100 : 0;
+        html+=`<td style="color:#1565C0;font-weight:${show?'700':'400'}">${r.toFixed(1)}%</td>`;
+      });
+      html+=`<td class="sem-col" style="color:#1565C0">${tutH1>0?(semH1/tutH1*100).toFixed(1):'0.0'}%</td>`;
+      data.slice(6,12).forEach((md,mi)=>{
+        const mIdx = mi + 6;
+        const show = SEMINAR_RATE_MONTHS.includes(mIdx);
+        const r = show && md[6]>0 ? md[8]/md[6]*100 : 0;
+        html+=`<td style="color:#1565C0;font-weight:${show?'700':'400'}">${r.toFixed(1)}%</td>`;
+      });
+      html+=`<td class="sem-col" style="color:#1565C0">${tutH2>0?(semH2/tutH2*100).toFixed(1):'0.0'}%</td>`;
+      html+=`<td class="annual-col" style="color:#1565C0">${tutAnn>0?(semAnn/tutAnn*100).toFixed(1):'0.0'}%</td></tr>`;
       return;
     }
 
@@ -1121,7 +1199,112 @@ function renderParamArea(){
   html+='<td style="background:#f8f8f8;font-size:10px;color:#888">'+annAds_ind.toLocaleString()+'</td></tr>';
   html+='</tbody></table></div>';
 
+  // ============ 月別比率編集セクション ============
+  html += '<h3 style="font-size:14px;margin:20px 0 8px">📊 月別売上比率設定（全教室共通）</h3>';
+  html += '<div style="font-size:12px;color:#666;margin-bottom:10px;padding:8px 12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0">';
+  html += '※ 退会率と同じ仕組みで、年間合計を月別比率で配分します。2025年実績を初期値として設定。<br>';
+  html += '比率（%）を編集すると全教室・全年度のP&Lに即時反映されます。「リセット」で2025年実績値に戻ります。';
+  html += '</div>';
+
+  const ratioGroups = [
+    { key: 'fifthBase',  label: '5週目請求',      color: '#1565C0', bg: '#e3f2fd', border: '#90caf9', default: FIFTH_BASE_DEFAULT },
+    { key: 'matBase',    label: '教材売上',        color: '#2E7D32', bg: '#e8f5e9', border: '#a5d6a7', default: MAT_BASE_DEFAULT },
+    { key: 'examBase',   label: '模試売上',        color: '#6A1B9A', bg: '#f3e5f5', border: '#ce93d8', default: EXAM_BASE_DEFAULT },
+  ];
+
+  ratioGroups.forEach(g => {
+    const base  = STATE[g.key];
+    const total = base.reduce((s,v)=>s+v, 0);
+    const ratios = total > 0 ? base.map(v => v/total*100) : Array(12).fill(0);
+    html += `<div style="margin-bottom:14px;padding:12px;background:${g.bg};border-radius:10px;border:1px solid ${g.border}">`;
+    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">`;
+    html += `<span style="font-weight:700;font-size:13px;color:${g.color}">${g.label} 月別比率</span>`;
+    html += `<button onclick="resetMonthlyRatio('${g.key}')" style="padding:3px 10px;font-size:11px;border:1px solid ${g.border};border-radius:5px;background:#fff;color:${g.color};cursor:pointer">↺ リセット</button>`;
+    html += `<span style="font-size:11px;color:#888">合計: <b style="color:${g.color}">${ratios.reduce((s,v)=>s+v,0).toFixed(1)}%</b>（100%になるよう自動正規化）</span>`;
+    html += '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    MONTHS.forEach((m, mi) => {
+      html += `<div style="text-align:center;min-width:58px">`;
+      html += `<div style="font-size:10px;color:#666;margin-bottom:2px">${m}</div>`;
+      html += `<input type="number" value="${ratios[mi].toFixed(2)}" step="0.01" min="0"
+        style="width:58px;padding:4px 4px;border:1px solid ${g.border};border-radius:5px;font-size:12px;text-align:right;background:#fff"
+        data-key="${g.key}" data-mi="${mi}" onchange="onMonthlyRatioChange(this)">`;
+      html += `<div style="font-size:9px;color:#999;margin-top:1px">${fmtShort(base[mi])}</div>`;
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  // 講習会売上比率（授業料売上に対する%）
+  {
+    const color = '#B71C1C', bg = '#fff8e1', border = '#ffcc80';
+    html += `<div style="margin-bottom:14px;padding:12px;background:${bg};border-radius:10px;border:1px solid ${border}">`;
+    html += `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">`;
+    html += `<span style="font-weight:700;font-size:13px;color:${color}">📚 講習会売上比率（授業料売上に対する%）</span>`;
+    html += `<button onclick="resetSemRates()" style="padding:3px 10px;font-size:11px;border:1px solid ${border};border-radius:5px;background:#fff;color:${color};cursor:pointer">↺ リセット</button>`;
+    html += `<span style="font-size:11px;color:#888">4月・8月・1月のみ値を入力。他の月は0のまま。</span>`;
+    html += '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    MONTHS.forEach((m, mi) => {
+      const pct = (STATE.semRates[mi] * 100).toFixed(1);
+      const isActive = [0, 4, 9].includes(mi); // 4月・8月・1月
+      html += `<div style="text-align:center;min-width:58px">`;
+      html += `<div style="font-size:10px;color:${isActive ? color : '#aaa'};margin-bottom:2px;font-weight:${isActive?'700':'400'}">${m}</div>`;
+      html += `<input type="number" value="${pct}" step="0.1" min="0"
+        style="width:58px;padding:4px 4px;border:1px solid ${isActive ? border : '#e0e0e0'};border-radius:5px;font-size:12px;text-align:right;background:${isActive?'#fff':'#f8f8f8'};color:${isActive?color:'#aaa'}"
+        data-mi="${mi}" onchange="onSemRateChange(this)">`;
+      html += `<div style="font-size:9px;color:#aaa;margin-top:1px">%</div>`;
+      html += '</div>';
+    });
+    html += '</div></div>';
+  }
+
   el.innerHTML=html;
+}
+
+// 月別比率（5週目・教材・模試）変更ハンドラ
+function onMonthlyRatioChange(el) {
+  const key = el.dataset.key;
+  const mi  = parseInt(el.dataset.mi);
+  const val = parseFloat(el.value) || 0;
+  // %入力値を実績値スケールで保存（正規化は normRatios() に委ねる）
+  const base = STATE[key];
+  const total = base.reduce((s,v)=>s+v, 0) || 1;
+  // 入力%→実績値スケールに変換して保存
+  base[mi] = val / 100 * total;
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList();
+  // 比率表示を再描画（合計表示の更新のみ）
+  const container = el.closest('[data-key]') || el.parentElement?.parentElement;
+  // 合計%を更新
+  const siblings = el.closest('div[style*="margin-bottom:14px"]')?.querySelectorAll('input[data-key]');
+  if(siblings){
+    const vals = [...siblings].map(s=>parseFloat(s.value)||0);
+    const sum  = vals.reduce((a,b)=>a+b,0);
+    const sumEl = el.closest('div[style*="margin-bottom:14px"]')?.querySelector('b');
+    if(sumEl) sumEl.textContent = sum.toFixed(1) + '%';
+  }
+}
+
+function resetMonthlyRatio(key) {
+  const defaults = { fifthBase: FIFTH_BASE_DEFAULT, matBase: MAT_BASE_DEFAULT, examBase: EXAM_BASE_DEFAULT };
+  STATE[key] = [...defaults[key]];
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList(); renderParamArea();
+}
+
+function onSemRateChange(el) {
+  const mi  = parseInt(el.dataset.mi);
+  const pct = parseFloat(el.value) || 0;
+  STATE.semRates[mi] = pct / 100; // %→倍率に変換して保存
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList();
+}
+
+function resetSemRates() {
+  STATE.semRates = [...SEM_RATES_DEFAULT];
+  calcAllResults();
+  renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList(); renderParamArea();
 }
 
 function onParamChange(el){
@@ -1513,7 +1696,7 @@ function onMasterChange(el){
   const step = el.step;
   const val = step && parseFloat(step) < 1 ? parseFloat(el.value)||0 : parseInt(el.value)||0;
 
-  // Update all years for this classroom
+  // 全年度の同名教室を更新・保存
   STATE.years.forEach(ys=>{
     const fy = ys.fiscal_year;
     const cls = STATE.classrooms[fy] || [];
@@ -1531,7 +1714,6 @@ function onMasterChange(el){
 function onMasterEnrollChange(el){
   const clName = el.dataset.name;
   const annual = parseInt(el.value)||0;
-  // Sync to ALL years (smart: opening year gets partial distribution)
   STATE.years.forEach(ys=>{
     const cls = STATE.classrooms[ys.fiscal_year] || [];
     const match = cls.find(c => c.name === clName);
@@ -1548,7 +1730,6 @@ function onMasterEnrollChange(el){
 function onMasterWdRateChange(el){
   const clName = el.dataset.name;
   const rate = parseFloat(el.value)||0;
-  // Sync to ALL years
   STATE.years.forEach(ys=>{
     const cls = STATE.classrooms[ys.fiscal_year] || [];
     const match = cls.find(c => c.name === clName);
@@ -1562,14 +1743,194 @@ function onMasterWdRateChange(el){
 }
 
 // ============================================
-// UI操作
+// 2026 MG確認タブ
 // ============================================
+function renderMGTab(){
+  const FY_MG = 2026;
+  const cls = STATE.classrooms[FY_MG] || [];
+  const results = STATE.results[FY_MG] || [];
+
+  // チェックボックス一覧
+  const checksEl = document.getElementById('mg-classroom-checks');
+  checksEl.innerHTML = '';
+  cls.forEach((c, i) => {
+    const r = results[i];
+    const isChecked = STATE.mgChecked.has(c.name);
+    const yearNum = getYearNum(c, FY_MG);
+    const isNew = yearNum === 1;
+    const wrapper = document.createElement('label');
+    wrapper.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:5px 10px;background:'+(isChecked?'#7B2D8B':'#fff')+';color:'+(isChecked?'#fff':'#333')+';border:1px solid '+(isChecked?'#7B2D8B':'#ddd')+';border-radius:8px;cursor:pointer;font-size:12px;user-select:none;transition:.2s';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = isChecked;
+    cb.style.cssText = 'accent-color:#7B2D8B;width:14px;height:14px';
+    cb.onchange = () => {
+      if(cb.checked) STATE.mgChecked.add(c.name);
+      else STATE.mgChecked.delete(c.name);
+      renderMGTab();
+    };
+    wrapper.appendChild(cb);
+    const badgeCls = isNew ? 'year-badge new-badge' : 'year-badge';
+    // innerHTML+= はcbのonchangeを破壊するのでspanで追記
+    const nameSpan = document.createElement('span');
+    nameSpan.innerHTML = c.name + `<span class="${badgeCls}" style="margin-left:3px">${yearNum}年目</span>`;
+    wrapper.appendChild(nameSpan);
+    if(r){
+      const profitSpan = document.createElement('span');
+      profitSpan.style.cssText = 'font-size:10px;opacity:.8;margin-left:4px';
+      profitSpan.textContent = fmtShort(r.profit);
+      wrapper.appendChild(profitSpan);
+    }
+    checksEl.appendChild(wrapper);
+  });
+
+  // 選択数表示
+  const countEl = document.getElementById('mg-selected-count');
+  countEl.textContent = STATE.mgChecked.size > 0 ? STATE.mgChecked.size + '教室選択中' : '教室を選択してください';
+
+  if(STATE.mgChecked.size === 0){
+    document.getElementById('mg-kpi-area').innerHTML = '<div style="color:#aaa;font-size:13px;padding:20px">教室を選択するとP&Lが表示されます</div>';
+    document.getElementById('mg-pl-table-wrap').innerHTML = '';
+    return;
+  }
+
+  // 選択教室の合算月次データを作成
+  const merged = [];
+  for(let m=0; m<12; m++){
+    const row = new Array(45).fill(0);
+    cls.forEach((c, ci) => {
+      if(!STATE.mgChecked.has(c.name)) return;
+      const mrow = results[ci]?.months[m];
+      if(!mrow) return;
+      for(let k=0; k<45; k++) row[k] += (mrow[k]||0);
+    });
+    // 単価を生徒数加重平均で再計算
+    row[5] = row[4] > 0 ? Math.round(row[6] / row[4]) : 0;
+    merged.push(row);
+  }
+
+  // KPI表示
+  const totalRev = merged.reduce((s,r)=>s+r[13],0);
+  const totalExp = merged.reduce((s,r)=>s+r[42],0);
+  const totalPro = merged.reduce((s,r)=>s+r[43],0);
+  const totalEnr = merged.reduce((s,r)=>s+r[1],0);
+  const totalWd  = merged.reduce((s,r)=>s+r[3],0);
+  const endSt    = merged[11][4];
+  const totalSt  = merged.reduce((s,r)=>s+r[4],0);
+  const wdRate   = totalSt>0?(totalWd/totalSt*100).toFixed(2):0;
+  document.getElementById('mg-kpi-area').innerHTML = `
+    <div class="kpi"><div class="kpi-label">売上合計</div><div class="kpi-value" style="color:#7B2D8B">${fmtShort(totalRev)}</div><div class="kpi-sub">${STATE.mgChecked.size}教室</div></div>
+    <div class="kpi"><div class="kpi-label">経費合計</div><div class="kpi-value" style="color:#E07A5F">${fmtShort(totalExp)}</div><div class="kpi-sub">&nbsp;</div></div>
+    <div class="kpi"><div class="kpi-label">営業利益</div><div class="kpi-value" style="color:${totalPro>=0?'#2D6A4F':'#C1292E'}">${fmtShort(totalPro)}</div><div class="kpi-sub">利益率 ${totalRev>0?(totalPro/totalRev*100).toFixed(1):0}%</div></div>
+    <div class="kpi"><div class="kpi-label">入会/退会</div><div class="kpi-value" style="color:#00796B">${totalEnr}/${totalWd}</div><div class="kpi-sub">退会率 ${wdRate}% | 純増${totalEnr-totalWd}名</div></div>
+    <div class="kpi"><div class="kpi-label">年度末生徒数</div><div class="kpi-value" style="color:#3D5A80">${endSt}名</div><div class="kpi-sub">&nbsp;</div></div>
+  `;
+
+  // P&Lテーブル（合算モードと同じ形式、基準値列なし）
+  let html = '<table><thead><tr>';
+  html += '<th style="min-width:120px;position:sticky;left:0;z-index:3;background:#f8f9fa">項目</th>';
+  MONTHS.slice(0,6).forEach(m=>{ html += `<th>${m}</th>`; });
+  html += '<th class="sem-col-h">上期計</th>';
+  MONTHS.slice(6,12).forEach(m=>{ html += `<th>${m}</th>`; });
+  html += '<th class="sem-col-h">下期計</th>';
+  html += '<th style="min-width:80px;background:#e8eef4;color:#1B4965;font-weight:700;border-left:2px solid #9ab;font-size:10px">年計</th>';
+  html += '</tr></thead><tbody>';
+
+  let lastGroup = '';
+  PL_ROWS.forEach(row => {
+    if(row.group !== lastGroup){
+      lastGroup = row.group;
+      html += `<tr class="grp-header"><td colspan="21">${GROUP_NAMES[row.group]}</td></tr>`;
+    }
+    if(row.special === 'wdRate'){
+      const twD=merged.reduce((s,m)=>s+m[3],0), twS=merged.reduce((s,m)=>s+m[4],0);
+      const wH1=merged.slice(0,6).reduce((s,m)=>s+m[3],0), sH1=merged.slice(0,6).reduce((s,m)=>s+m[4],0);
+      const wH2=merged.slice(6,12).reduce((s,m)=>s+m[3],0), sH2=merged.slice(6,12).reduce((s,m)=>s+m[4],0);
+      html += `<tr class="wd-rate-row"><td>${row.label}</td>`;
+      merged.slice(0,6).forEach(md=>{ const r=md[4]>0?md[3]/md[4]:0; html+=`<td>${(r*100).toFixed(1)}%</td>`; });
+      html += `<td class="sem-col">${sH1>0?(wH1/sH1*100).toFixed(2):'0.00'}%</td>`;
+      merged.slice(6,12).forEach(md=>{ const r=md[4]>0?md[3]/md[4]:0; html+=`<td>${(r*100).toFixed(1)}%</td>`; });
+      html += `<td class="sem-col">${sH2>0?(wH2/sH2*100).toFixed(2):'0.00'}%</td>`;
+      html += `<td class="annual-col">${twS>0?(twD/twS*100).toFixed(2):'0.00'}%</td></tr>`;
+      return;
+    }
+    // 講習会売上比率 特殊行（4月・8月・1月のみ表示）
+    const SEMINAR_RATE_MONTHS_MG = [0, 4, 9];
+    if(row.special === 'seminarRate'){
+      const semH1 = merged.slice(0,6).reduce((s,m)=>s+m[8],0);
+      const tutH1 = merged.slice(0,6).reduce((s,m)=>s+m[6],0);
+      const semH2 = merged.slice(6,12).reduce((s,m)=>s+m[8],0);
+      const tutH2 = merged.slice(6,12).reduce((s,m)=>s+m[6],0);
+      const semAnn = merged.reduce((s,m)=>s+m[8],0);
+      const tutAnn = merged.reduce((s,m)=>s+m[6],0);
+      html += `<tr class="wd-rate-row"><td style="color:#1565C0;font-style:normal;font-weight:600">${row.label}</td>`;
+      merged.slice(0,6).forEach((md,mi)=>{
+        const show = SEMINAR_RATE_MONTHS_MG.includes(mi);
+        const r = show && md[6]>0 ? md[8]/md[6]*100 : 0;
+        html+=`<td style="color:#1565C0;font-weight:${show?'700':'400'}">${r.toFixed(1)}%</td>`;
+      });
+      html += `<td class="sem-col" style="color:#1565C0">${tutH1>0?(semH1/tutH1*100).toFixed(1):'0.0'}%</td>`;
+      merged.slice(6,12).forEach((md,mi)=>{
+        const mIdx = mi + 6;
+        const show = SEMINAR_RATE_MONTHS_MG.includes(mIdx);
+        const r = show && md[6]>0 ? md[8]/md[6]*100 : 0;
+        html+=`<td style="color:#1565C0;font-weight:${show?'700':'400'}">${r.toFixed(1)}%</td>`;
+      });
+      html += `<td class="sem-col" style="color:#1565C0">${tutH2>0?(semH2/tutH2*100).toFixed(1):'0.0'}%</td>`;
+      html += `<td class="annual-col" style="color:#1565C0">${tutAnn>0?(semAnn/tutAnn*100).toFixed(1):'0.0'}%</td></tr>`;
+      return;
+    }
+    const clsRow = row.highlight ? 'row-highlight' : '';
+    const s0 = calcSemester(merged, row.idx, 0);
+    const s1 = calcSemester(merged, row.idx, 1);
+    const annVal = getAnnual(row.idx, merged);
+    html += `<tr class="${row.bold?'row-bold':''} ${clsRow}">`;
+    html += `<td>${row.label}</td>`;
+    merged.slice(0,6).forEach(md=>{
+      const v = md[row.idx]||0;
+      const col = row.profitColor ? (v>=0?'profit-pos':'profit-neg') : '';
+      html += `<td class="${col}">${fmtCell(row.fmt, v)}</td>`;
+    });
+    const sc0 = row.profitColor ? (s0>=0?'profit-pos':'profit-neg') : '';
+    html += `<td class="sem-col ${sc0}">${s0==null?'-':fmtCell(row.fmt,s0)}</td>`;
+    merged.slice(6,12).forEach(md=>{
+      const v = md[row.idx]||0;
+      const col = row.profitColor ? (v>=0?'profit-pos':'profit-neg') : '';
+      html += `<td class="${col}">${fmtCell(row.fmt, v)}</td>`;
+    });
+    const sc1 = row.profitColor ? (s1>=0?'profit-pos':'profit-neg') : '';
+    html += `<td class="sem-col ${sc1}">${s1==null?'-':fmtCell(row.fmt,s1)}</td>`;
+    const ac = row.profitColor ? (annVal>=0?'profit-pos':'profit-neg') : '';
+    html += `<td class="annual-col ${ac}">${annVal==null?'-':fmtCell(row.fmt,annVal)}</td></tr>`;
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('mg-pl-table-wrap').innerHTML = html;
+}
+
+function mgSelectAll(checked){
+  const FY_MG = 2026;
+  const cls = STATE.classrooms[FY_MG] || [];
+  STATE.mgChecked = checked ? new Set(cls.map(c=>c.name)) : new Set();
+  renderMGTab();
+}
 function switchMainTab(idx){
   STATE.mainTab=idx;
-  document.querySelectorAll('[id^="main-tab-"]').forEach((el,i)=>{el.style.display=i===idx?'':'none'});
-  document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
+  // main-tab-0〜3 は既存タブ、main-tab-10はMGタブ
+  [0,1,2,3,10].forEach(n=>{
+    const el=document.getElementById('main-tab-'+n);
+    if(el) el.style.display=(n===idx?'':'none');
+  });
+  // メインタブのアクティブ切替（0〜3のみ）
+  if(idx<=3){
+    document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
+  } else {
+    // MGタブ選択中はメインタブを全部非アクティブ
+    document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach(el=>{el.className='tab'});
+  }
   if(idx===2)renderMasterTable();
   if(idx===3)renderYearSummary();
+  if(idx===10)renderMGTab();
 }
 
 function toggleCard(header){

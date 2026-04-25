@@ -1,4 +1,5 @@
 Options -Indexes
+DirectoryIndex index.php index.html
 
 # アップロードディレクトリのPHP実行を禁止（セキュリティ）
 <Files ~ "\.php$">
@@ -7,12 +8,12 @@ Options -Indexes
     </IfModule>
 </Files>
 
-# SPA用：存在しないパスはindex.htmlへ
+# SPA用：存在しないパスは index.php 経由（ポータル認証）
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /jobinterview/
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} !^/jobinterview/api/
-    RewriteRule ^ index.html [L]
+    RewriteRule ^ index.php [L]
 </IfModule>
