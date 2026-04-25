@@ -104,8 +104,6 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .eval-category-score { font-size: 12px; color: var(--text2); }
 .eval-category-score span { font-weight: 700; color: var(--accent); font-size: 14px; }
 .eval-item { border-bottom: 1px solid var(--border); padding: 11px 18px; display: grid; grid-template-columns: 1fr auto auto auto auto; align-items: center; gap: 14px; }
-.eval-item.no-self { grid-template-columns: 1fr auto auto auto; }
-.self-divider { width: 1px; height: 30px; background: var(--border); align-self: center; }
 .eval-item:last-child { border-bottom: none; }
 .eval-item:hover { background: var(--surface2); }
 .eval-item-name { font-size: 13px; font-weight: 500; line-height: 1.4; }
@@ -212,8 +210,7 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 .half-lower { background: #fff0e0; color: var(--accent2); border: 1px solid var(--accent-border); }
 @media (max-width: 768px) {
   .main { padding: 14px; }
-  .eval-item, .eval-item.no-self { grid-template-columns: 1fr; gap: 8px; }
-  .self-divider { display: none; }
+  .eval-item { grid-template-columns: 1fr; gap: 8px; }
   .charts-grid { grid-template-columns: 1fr; }
   .header-inner { flex-wrap: wrap; height: auto; padding: 10px 0; }
 }
@@ -222,7 +219,10 @@ body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: va
 <body>
 <div class="header">
   <div class="header-inner">
-    <div class="header-title">2026年度　<span>人事考課（まんてん個別</span><span class="plus-badge">PLUS</span><span>）</span></div>
+    <div class="header-title">
+      <select id="yearSelect" onchange="changeYear(this.value)" style="font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:16px;letter-spacing:.04em;background:none;border:none;color:var(--text);cursor:pointer;outline:none;padding:0 4px 0 0;"></select>
+      　<span>人事考課（まんてん個別</span><span class="plus-badge">PLUS</span><span>）</span>
+    </div>
     <div class="header-nav">
       <button class="nav-btn active" onclick="showView('staff',this)">👥 スタッフ管理</button>
       <button class="nav-btn" onclick="showView('eval',this)" id="evalNavBtn">📋 評価入力</button>
@@ -456,12 +456,29 @@ var ITEMS_LOWER = [
 var CATEGORIES_UPPER = ['集計','教務','教室運営'];
 var CATEGORIES_LOWER = ['集計','教務','AIツールの活用','教室運営'];
 
+// 数値入力＋自動判定の設定
+var NUMERIC_ITEMS = {
+  'c01': {type:'pct', unit:'%', placeholder:'例: 85',  judge: function(v){ return v>=90?'A':v>=80?'B':'C'; }},
+  'c02': {type:'pct', unit:'%', placeholder:'例: 85',  judge: function(v){ return v>=90?'A':v>=80?'B':'C'; }},
+  'c03': {type:'pct', unit:'%', placeholder:'例: 12',  judge: function(v){ return v<10?'A':v<15?'B':'C'; }},
+  'c04': {type:'pct', unit:'%', placeholder:'例: 2.5', judge: function(v){ return v<3.0?'A':v<3.5?'B':'C'; }},
+  'c05': {type:'yen', unit:'円', placeholder:'例: 26000',judge: function(v){ return v>=27000?'A':v>=25000?'B':'C'; }},
+  'c07': {type:'pct', unit:'%', placeholder:'例: 105', judge: function(v){ return v>=110?'A':v>=100?'B':'C'; }},
+  'c08': {type:'pct', unit:'%', placeholder:'例: 30',  judge: function(v){ return v>=40?'A':v>=25?'B':'C'; }},
+  'e03': {type:'pct', unit:'%', placeholder:'例: 85',  judge: function(v){ return v>=90?'A':v>=80?'B':'C'; }},
+  'e08': {type:'pct', unit:'%', placeholder:'例: 92',  judge: function(v){ return v>=95?'A':v>=90?'B':'C'; }},
+  'e09': {type:'pct', unit:'%', placeholder:'例: 45',  judge: function(v){ return v>=50?'A':v>=40?'B':'C'; }},
+  'e10': {type:'count',unit:'枚',placeholder:'例: 3',  judge: function(v){ return v>=4?'A':v>=3?'B':'C'; }},
+  'e11': {type:'pct', unit:'%', placeholder:'例: 92',  judge: function(v){ return v>=100?'A':v>=90?'B':'C'; }},
+  'a01': {type:'pct', unit:'%', placeholder:'例: 97',  judge: function(v){ return v>=100?'A':v>=95?'B':'C'; }},
+};
+
 // 昇給ライン（上半期94点・下半期102点）
 var RAISE_LINE_UPPER = 94;
 var RAISE_LINE_LOWER = 102;
 
 var PERIODS = ['第1回（4月〜6月）','第2回（上期全体）','第3回（10月〜12月）','第4回（通期全体）'];
-var AREAS = ['神戸東エリア','神戸エリア','神戸北エリア','垂水エリア','明石エリア','加古川エリア','本部'];
+var AREAS = [];
 
 // エリアリストをselectに動的反映
 function rebuildAreaSelects() {
@@ -497,20 +514,21 @@ function getMasterRaiseLine(period) {
 // ============================================================
 // アプリ状態
 // ============================================================
-var app = {staff:[], evals:{}, masterData:{}, currentStaffId:null, currentPeriod:0, selectedArea:null};
+var app = {staff:[], evals:{}, nums:{}, masterData:{}, locks:{0:false,1:false,2:false,3:false}, currentStaffId:null, currentPeriod:0, selectedArea:null, currentYear: new Date().getFullYear(), viewOnly: false};
 
 // ============================================================
 // API
 // ============================================================
 async function apiGet(action, params) {
-  var qs = new URLSearchParams(Object.assign({action, _t:Date.now()}, params||{}));
+  var qs = new URLSearchParams(Object.assign({action, year: app.currentYear, _t:Date.now()}, params||{}));
   var res = await fetch(API+'?'+qs);
   var json = await res.json();
   if (!json.ok) throw new Error(json.error);
   return json.data;
 }
 async function apiPost(body) {
-  var res = await fetch(API+'?_t='+Date.now(), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  var b = Object.assign({year: app.currentYear}, body);
+  var res = await fetch(API+'?_t='+Date.now(), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b)});
   var json = await res.json();
   if (!json.ok) throw new Error(json.error);
   return json.data;
@@ -548,7 +566,6 @@ function scCol(score, period) {
 
 // ============================================================
 // 起動
-// ============================================================
 // ============================================================
 // エリア管理
 // ============================================================
@@ -608,24 +625,85 @@ function moveArea(i, dir) {
   rebuildAreaSelects();
 }
 
-async function boot() {
+// ============================================================
+// 年度管理
+// ============================================================
+function buildYearSelector(years) {
+  var sel = document.getElementById('yearSelect');
+  if (!sel) return;
+  sel.innerHTML = years.map(function(y){
+    return '<option value="'+y+'"'+(y===app.currentYear?' selected':'')+'>'+y+'年度</option>';
+  }).join('');
+}
+
+async function changeYear(y) {
+  var year = parseInt(y);
+  if (year === app.currentYear) return;
+  app.currentYear = year;
+  app.currentStaffId = null;
+  app.currentPeriod = 0;
+  app.selectedArea = null;
+  // 過去年度は閲覧のみ
+  app.viewOnly = (year < new Date().getFullYear());
+  await reloadData();
+  showView('staff', document.querySelector('.nav-btn'));
+  if (app.viewOnly) showNotif('📖 '+year+'年度（閲覧のみ）');
+}
+
+async function reloadData() {
   try {
     var results = await Promise.all([
       apiGet('get_staff'),
       apiGet('get_evals'),
-      apiGet('get_master_all')
+      apiGet('get_master_all'),
+      apiGet('get_locks')
     ]);
     app.staff = results[0];
     var raw = results[1];
-    app.evals = {};
+    app.evals = {}; app.nums = {};
     Object.entries(raw).forEach(function(e){
       var sid=e[0], periods=e[1];
-      app.evals[sid]={};
-      Object.entries(periods).forEach(function(f){app.evals[sid][f[0]]=f[1];});
+      app.evals[sid]={}; app.nums[sid]={};
+      Object.entries(periods).forEach(function(f){
+        var p=f[0], items=f[1];
+        app.evals[sid][p]={}; app.nums[sid][p]={};
+        Object.entries(items).forEach(function(g){
+          var iid=g[0], val=g[1];
+          if(iid.indexOf('_num_')===0){ app.nums[sid][p][iid.replace('_num_','')]=val; }
+          else { app.evals[sid][p][iid]=val; }
+        });
+      });
     });
     app.masterData = results[2];
+    app.locks = results[3]||{0:false,1:false,2:false,3:false};
+    app.staff.forEach(function(s){ if(s.area&&AREAS.indexOf(s.area)<0) AREAS.push(s.area); });
     rebuildAreaSelects();
     renderStaffGrid();
+    history.replaceState({view:'staff', area:null}, '');
+  } catch(e) { showNotif('読み込み失敗: '+e.message, true); }
+}
+
+async function startNewYear() {
+  var fromYear = app.currentYear;
+  var toYear = fromYear + 1;
+  if (!confirm(fromYear+'年度から'+toYear+'年度を作成します。\nスタッフの名前を引き継ぎ、教室・エリアはリセットされます。\nよろしいですか？')) return;
+  try {
+    await apiPost({action:'new_year', from_year: fromYear, to_year: toYear});
+    showNotif('✓ '+toYear+'年度を作成しました');
+    // 新年度に切り替え
+    app.currentYear = toYear;
+    app.viewOnly = false;
+    var years = await apiGet('get_years');
+    buildYearSelector(years);
+    await reloadData();
+  } catch(e) { showNotif('エラー: '+e.message, true); }
+}
+
+async function boot() {
+  try {
+    var years = await apiGet('get_years');
+    buildYearSelector(years);
+    await reloadData();
   } catch(e) { showNotif('サーバーに接続できません: '+e.message, true); }
 }
 
@@ -731,15 +809,56 @@ async function deleteMasterItem(itemId) {
 // ============================================================
 // スタッフ管理
 // ============================================================
+// 履歴管理（ブラウザ「←」ボタン対応）
+// ============================================================
+function pushState(state) {
+  try { history.pushState(state, ''); } catch(e) {}
+}
+
+window.addEventListener('popstate', function(e) {
+  var state = e.state;
+  if (!state || !state.view) return;
+  document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
+  document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
+  var viewEl = document.getElementById('view-'+state.view);
+  if (viewEl) viewEl.classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(function(btn){
+    var oc = btn.getAttribute('onclick')||'';
+    if (oc.indexOf("'"+state.view+"'") >= 0) btn.classList.add('active');
+  });
+  if (state.view === 'staff') {
+    app.selectedArea = (state.area !== undefined) ? state.area : null;
+    renderStaffGrid();
+  } else if (state.view === 'eval') {
+    if (state.staffId) app.currentStaffId = state.staffId;
+    app.currentPeriod = state.period || 0;
+    renderEvalStaffBar(); renderEval();
+  } else if (state.view === 'dashboard') {
+    renderDashboard();
+  } else if (state.view === 'master') {
+    loadMaster();
+  }
+});
+
 function showView(v, btn) {
   document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
   document.getElementById('view-'+v).classList.add('active');
   if (btn) btn.classList.add('active');
-  if (v==='staff') app.selectedArea=null;
-  if (v==='eval') { renderEvalStaffBar(); renderEval(); }
-  if (v==='dashboard') renderDashboard();
-  if (v==='master') loadMaster();
+  if (v==='staff') {
+    app.selectedArea=null;
+    renderStaffGrid();
+    pushState({view:'staff', area:null});
+  } else if (v==='eval') {
+    renderEvalStaffBar(); renderEval();
+    pushState({view:'eval', staffId:app.currentStaffId, period:app.currentPeriod});
+  } else if (v==='dashboard') {
+    renderDashboard();
+    pushState({view:'dashboard'});
+  } else if (v==='master') {
+    loadMaster();
+    pushState({view:'master'});
+  }
 }
 
 function toggleAddForm() { var f=document.getElementById('addStaffForm'); f.style.display=f.style.display==='none'?'block':'none'; }
@@ -751,7 +870,7 @@ async function addStaff() {
   if (!name) { alert('氏名を入力してください'); return; }
   try {
     var ns = await apiPost({action:'add_staff', name, room, area});
-    app.staff.push(ns); app.evals[ns.id]={};
+    app.staff.push(ns); app.evals[ns.id]={}; app.nums[ns.id]={};
     renderStaffGrid();
     document.getElementById('newName').value='';
     document.getElementById('newRoom').value='';
@@ -775,27 +894,34 @@ async function deleteStaff(id) {
 function renderStaffGrid() {
   var grid = document.getElementById('staffGrid');
   var empty = document.getElementById('staffEmpty');
-  if (!app.staff.length) {
-    grid.innerHTML='';
-    if (empty) empty.style.display='block';
-    return;
-  }
   if (empty) empty.style.display='none';
 
   if (app.selectedArea === null) {
-    // エリア一覧ビュー
-    var areaKeys = AREAS.slice();
-    if (app.staff.some(function(s){return !s.area;})) areaKeys.push('');
+    // AREAS配列 ＋ スタッフに実際に設定されているエリアをマージして表示
+    var areaSet = {};
+    AREAS.forEach(function(a){ areaSet[a] = true; });
+    app.staff.forEach(function(s){ if(s.area) areaSet[s.area] = true; });
+    var areaKeys = Object.keys(areaSet);
+    // エリア未設定スタッフがいれば末尾に追加
+    if (app.staff.some(function(s){ return !s.area; })) areaKeys.push('');
+
+    if (!app.staff.length && !areaKeys.length) {
+      grid.innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">'
+        +'<button class="btn btn-ghost" style="font-size:12px" onclick="openAreaModal()">⚙️ エリアを管理</button>'
+        +'</div>'
+        +'<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">スタッフが登録されていません</div><div class="empty-sub">「スタッフ追加」ボタンから登録してください</div></div>';
+      return;
+    }
     var cards = areaKeys.map(function(area){
-      var members = app.staff.filter(function(s){return (s.area||'')===area;});
-      if (!members.length) return '';
-      var label = area||'エリア未設定';
+      var members = app.staff.filter(function(s){ return (s.area||'') === area; });
+      var label = area || 'エリア未設定';
       return '<div class="area-card" onclick="selectArea(\''+escHtml(area)+'\')">'+
         '<div class="area-card-name">📍 '+escHtml(label)+'</div>'+
         '<div><span style="font-size:22px;font-weight:900;font-family:\'Zen Kaku Gothic New\',sans-serif;color:var(--accent)">'+members.length+'</span> <span style="font-size:12px;color:var(--text2)">名</span></div>'+
       '</div>';
     }).join('');
-    grid.innerHTML=
+    grid.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:12px">'
         +'<button class="btn btn-ghost" style="font-size:12px" onclick="openAreaModal()">⚙️ エリアを管理</button>'
       +'</div>'
@@ -837,15 +963,21 @@ function renderStaffGrid() {
   }
 }
 
-function selectArea(area) { app.selectedArea=area; renderStaffGrid(); }
+function selectArea(area) {
+  app.selectedArea=area;
+  pushState({view:'staff', area:area});
+  renderStaffGrid();
+}
 function selectStaff(id) {
-  app.currentStaffId=id; app.currentPeriod=0;
+  app.currentStaffId=id;
+  // 現在の回をそのまま維持（リセットしない）
   renderStaffGrid();
   document.querySelectorAll('.nav-btn').forEach(function(el){el.classList.remove('active');});
   document.querySelectorAll('.view').forEach(function(el){el.classList.remove('active');});
   document.getElementById('view-eval').classList.add('active');
   document.getElementById('evalNavBtn').classList.add('active');
   renderEvalStaffBar(); renderEval();
+  pushState({view:'eval', staffId:id, period:0});
 }
 
 function openEditModal(id) {
@@ -902,11 +1034,16 @@ async function addStaffFromEval() {
   if (!name) { alert('氏名を入力してください'); return; }
   try {
     var ns=await apiPost({action:'add_staff', name, room, area:''});
-    app.staff.push(ns); app.evals[ns.id]={}; app.currentStaffId=ns.id;
+    app.staff.push(ns); app.evals[ns.id]={}; app.nums[ns.id]={}; app.currentStaffId=ns.id;
     renderEvalStaffBar(); renderEval(); renderStaffGrid(); showNotif('✓ '+name+' を追加しました');
   } catch(e) { showNotif('エラー: '+e.message, true); }
 }
-function switchEvalStaff(id) { app.currentStaffId=id; app.currentPeriod=0; renderEvalStaffBar(); renderEval(); }
+function switchEvalStaff(id) {
+  app.currentStaffId=id;
+  // 現在の回をそのまま維持（リセットしない）
+  pushState({view:'eval', staffId:id, period:app.currentPeriod});
+  renderEvalStaffBar(); renderEval();
+}
 
 function renderEval() {
   var content=document.getElementById('evalContent');
@@ -942,9 +1079,10 @@ function renderEval() {
   '</div>';
 
   var tabs='<div class="period-tabs">'+PERIODS.map(function(p,i){
+    var lockBadge=app.locks[i]?'<span style="font-size:9px;background:#edfaf5;color:var(--green);border:1px solid #a0ddc8;border-radius:3px;padding:1px 5px;margin-left:4px;font-weight:700">確定済</span>':'';
     return '<div class="period-tab '+(i===period?'active':'')+'" onclick="switchPeriod('+i+')">'+
       '<div class="period-tab-label">評価期間</div>'+
-      '<div class="period-tab-name">'+p+(i<2?'<span class="half-note half-upper" style="margin-left:4px">上期</span>':'<span class="half-note half-lower" style="margin-left:4px">下期</span>')+'</div>'+
+      '<div class="period-tab-name">'+p+(i<2?'<span class="half-note half-upper" style="margin-left:4px">上期</span>':'<span class="half-note half-lower" style="margin-left:4px">下期</span>')+lockBadge+'</div>'+
     '</div>';
   }).join('')+'</div>';
 
@@ -953,42 +1091,68 @@ function renderEval() {
     var cs=ci.reduce(function(sum,item){return sum+calcScore(getEval(s.id,period,item.id),item.rate);},0);
     var isAI=catName==='AIツールの活用';
     var headerCls=isAI?'eval-category-header ai-cat':'eval-category-header';
-    var hasSelf = (catName==='教務' || catName==='教室運営');
     var rows=ci.map(function(item){
       var val=getEval(s.id,period,item.id); var iscore=calcScore(val,item.rate);
-      var btns=['A','B','C'].map(function(abc){
-        var sel=val===abc?'selected-'+abc:'';
-        return '<button class="abc-btn '+sel+'" onclick="setEval('+s.id+','+period+',\''+item.id+'\',\''+abc+'\')">'+abc+'</button>';
-      }).join('');
-      if (item.cA==='評価なし') { var s2=val==='評価なし'?'selected-評価なし':''; btns+='<button class="abc-btn '+s2+'" onclick="setEval('+s.id+','+period+',\''+item.id+'\',\'評価なし\')">—</button>'; }
-      var criteriaHtml='<div class="criteria-inline">'+
-        '<span class="ci-a">A: '+item.cA+'</span>'+
-        '<span class="ci-b">B: '+item.cB+'</span>'+
-        '<span class="ci-c">C: '+item.cC+'</span>'+
-      '</div>';
-      var isBonusItem=item.id==='c07';
-      var selfHtml='';
-      if (hasSelf) {
-        var selfId=item.id+'_self';
-        var selfVal=getEval(s.id,period,selfId);
-        var selfBtns=['A','B','C'].map(function(abc){
-          var sel=selfVal===abc?'selected-'+abc:'';
-          return '<button class="abc-btn '+sel+'" onclick="setEval('+s.id+','+period+',\''+selfId+'\',\''+abc+'\')">'+abc+'</button>';
-        }).join('');
-        selfHtml='<div class="self-divider"></div>'+
-          '<div><div class="eval-type-label" style="color:var(--accent)">自己評価</div><div class="abc-selector">'+selfBtns+'</div></div>';
+      var iid=item.id; var sid=s.id;
+      var numConf=NUMERIC_ITEMS[iid];
+
+      // 数値入力欄
+      var numHtml='';
+      if(numConf){
+        var curNum=(app.nums[sid]&&app.nums[sid][period]&&app.nums[sid][period][iid]!=null)?app.nums[sid][period][iid]:'';
+        numHtml='<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
+          +'<input type="text" inputmode="decimal" placeholder="'+numConf.placeholder+'"'
+            +' value="'+curNum+'"'
+            +' style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:13px;padding:5px 8px;width:110px;outline:none;"'
+            +' onchange="setNum('+sid+','+period+',\''+iid+'\',this.value)"'
+            +' onfocus="this.style.borderColor=\'var(--accent)\'" onblur="this.style.borderColor=\'var(--border)\'"'
+          +'/>'
+          +'<span style="font-size:12px;color:var(--text2)">'+numConf.unit+'</span>'
+          +(val?'<span style="font-size:11px;color:var(--text3)">→ 自動判定: <b style="color:'+(val==='A'?'var(--A)':val==='B'?'var(--B)':'var(--C)')+'">'+val+'</b></span>':'<span style="font-size:11px;color:var(--text3)">数値を入力すると自動判定</span>')
+        +'</div>';
       }
-      return '<div class="eval-item'+(hasSelf?'':' no-self')+'">'+
-        '<div>'+
-          '<div class="eval-item-name">'+item.name+(isBonusItem?' <span style="font-size:10px;background:#fffbe0;color:var(--yellow);border:1px solid #e8d060;border-radius:4px;padding:1px 5px">A/B→＋5点</span>':'')+'</div>'+
-          (item.note?'<div class="eval-item-criteria">'+item.note+'</div>':'')+
-          criteriaHtml+
-        '</div>'+
-        '<div class="eval-item-rate">掛け率: <span>'+(item.rate!==null?item.rate:'—')+'</span></div>'+
-        '<div><div class="eval-type-label">監査評価</div><div class="abc-selector">'+btns+'</div></div>'+
-        selfHtml+
-        '<div class="eval-item-score"><div class="item-score-value '+(iscore>0?'pos':'zero')+'">'+iscore+'</div></div>'+
-      '</div>';
+
+      // ABCボタン（評価なしのAは表示しない）
+      var noA=item.cA==='評価なし';
+      var btns='';
+      if(!noA){ var sA=val==='A'?'selected-A':''; btns+='<button class="abc-btn '+sA+'" onclick="setEval('+sid+','+period+',\''+iid+'\',\'A\')">A</button>'; }
+      var sB=val==='B'?'selected-B':''; btns+='<button class="abc-btn '+sB+'" onclick="setEval('+sid+','+period+',\''+iid+'\',\'B\')">B</button>';
+      var sC=val==='C'?'selected-C':''; btns+='<button class="abc-btn '+sC+'" onclick="setEval('+sid+','+period+',\''+iid+'\',\'C\')">C</button>';
+      if(noA){ var sN=val==='評価なし'?'selected-評価なし':''; btns+='<button class="abc-btn '+sN+'" onclick="setEval('+sid+','+period+',\''+iid+'\',\'評価なし\')">—</button>'; }
+
+      var criteriaHtml='<div class="criteria-inline">'
+        +(noA?'':'<span class="ci-a">A: '+item.cA+'</span>')
+        +'<span class="ci-b">B: '+item.cB+'</span>'
+        +'<span class="ci-c">C: '+item.cC+'</span>'
+      +'</div>';
+      var isBonusItem=item.id==='c07';
+
+      // 自己評価欄（集計カテゴリと数値入力項目は非表示）
+      var showSelf = catName !== '集計' && !numConf;
+      var selfHtml='';
+      if(showSelf){
+        var selfId=iid+'_self';
+        var selfVal=getEval(sid,period,selfId);
+        var selfNoA=item.cA==='評価なし';
+        var selfBtns='';
+        if(!selfNoA){ var ssA=selfVal==='A'?'selected-A':''; selfBtns+='<button class="abc-btn '+ssA+'" onclick="setEval('+sid+','+period+',\''+selfId+'\',\'A\')">A</button>'; }
+        var ssB=selfVal==='B'?'selected-B':''; selfBtns+='<button class="abc-btn '+ssB+'" onclick="setEval('+sid+','+period+',\''+selfId+'\',\'B\')">B</button>';
+        var ssC=selfVal==='C'?'selected-C':''; selfBtns+='<button class="abc-btn '+ssC+'" onclick="setEval('+sid+','+period+',\''+selfId+'\',\'C\')">C</button>';
+        if(selfNoA){ var ssN=selfVal==='評価なし'?'selected-評価なし':''; selfBtns+='<button class="abc-btn '+ssN+'" onclick="setEval('+sid+','+period+',\''+selfId+'\',\'評価なし\')">—</button>'; }
+        selfHtml='<div><div class="eval-type-label" style="color:var(--accent)">自己評価</div><div class="abc-selector">'+selfBtns+'</div></div>';
+      }
+
+      return '<div class="eval-item">'
+        +'<div>'
+          +'<div class="eval-item-name">'+item.name+(isBonusItem?' <span style="font-size:10px;background:#fffbe0;color:var(--yellow);border:1px solid #e8d060;border-radius:4px;padding:1px 5px">A/B→＋5点</span>':'')+'</div>'
+          +(item.note?'<div class="eval-item-criteria">'+item.note+'</div>':'')
+          +criteriaHtml+numHtml
+        +'</div>'
+        +'<div class="eval-item-rate">掛け率: <span>'+(item.rate!==null?item.rate:'—')+'</span></div>'
+        +selfHtml
+        +'<div><div class="eval-type-label">監査評価</div><div class="abc-selector">'+btns+'</div></div>'
+        +'<div class="eval-item-score"><div class="item-score-value '+(iscore>0?'pos':'zero')+'">'+iscore+'</div></div>'
+      +'</div>';
     }).join('');
     return '<div class="eval-category">'+
       '<div class="'+headerCls+'">'+
@@ -997,7 +1161,53 @@ function renderEval() {
       '</div>'+rows+'</div>';
   }).join('');
 
-  content.innerHTML=h+tabs+catHtml+'<div style="height:28px"></div>';
+  // 閲覧のみモード
+  var viewOnlyBar = app.viewOnly
+    ? '<div style="background:#fff8e0;border:1px solid #e8d060;border-radius:var(--radius);padding:10px 18px;margin-bottom:14px;font-size:13px;color:#a87800;font-weight:500">📖 '+app.currentYear+'年度は閲覧のみです（編集不可）</div>'
+    : '';
+
+  // 保存ボタン
+  var saveBar = app.viewOnly ? '' :
+    '<div style="position:sticky;bottom:16px;display:flex;justify-content:flex-end;margin-top:14px;margin-bottom:8px">'
+    +'<button onclick="saveAllEvals()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:12px 28px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 2px 12px rgba(224,120,48,0.35);">💾 保存する</button>'
+    +'</div>';
+
+  content.innerHTML=h+tabs+viewOnlyBar+catHtml+saveBar+'<div style="height:28px"></div>';
+  // ロック中は全入力を無効化
+  if(locked){
+    content.querySelectorAll('button.abc-btn, input[type="text"]').forEach(function(el){
+      el.disabled=true;
+      el.style.opacity='0.4';
+      el.style.cursor='not-allowed';
+      el.style.pointerEvents='none';
+    });
+  }
+}
+
+// 一括保存（保存ボタン押下時）
+async function saveAllEvals() {
+  var sid = app.currentStaffId;
+  var p = app.currentPeriod;
+  if (!sid) return;
+  var items = [];
+  // evalデータを収集
+  if (app.evals[sid] && app.evals[sid][p]) {
+    Object.entries(app.evals[sid][p]).forEach(function(e){
+      items.push({staff_id:sid, period:p, item_id:e[0], eval_value:e[1]});
+    });
+  }
+  // numsデータも収集（_num_プレフィックス付き）
+  if (app.nums[sid] && app.nums[sid][p]) {
+    Object.entries(app.nums[sid][p]).forEach(function(e){
+      if (e[1] !== '' && e[1] !== null && e[1] !== undefined) {
+        items.push({staff_id:sid, period:p, item_id:'_num_'+e[0], eval_value:String(e[1])});
+      }
+    });
+  }
+  try {
+    await apiPost({action:'save_evals_bulk', items:items});
+    showNotif('✓ 保存しました');
+  } catch(e) { showNotif('保存失敗: '+e.message, true); }
 }
 
 async function setEval(sid, period, iid, val) {
@@ -1006,15 +1216,54 @@ async function setEval(sid, period, iid, val) {
   var prev=app.evals[sid][period][iid]; var nv=prev===val?'':val;
   if (nv==='') { delete app.evals[sid][period][iid]; } else { app.evals[sid][period][iid]=nv; }
   renderEval(); renderEvalStaffBar();
+  // 自動保存（即時）
   try {
     await apiPost({action:'set_eval', staff_id:sid, period:period, item_id:iid, eval_value:nv});
-    showNotif('✓ 保存しました');
-  } catch(e) {
-    if (prev) { app.evals[sid][period][iid]=prev; } else { delete app.evals[sid][period][iid]; }
-    renderEval(); showNotif('保存失敗: '+e.message, true);
-  }
+  } catch(e) { showNotif('保存失敗: '+e.message, true); }
 }
-function switchPeriod(p) { app.currentPeriod=p; renderEvalStaffBar(); renderEval(); }
+
+async function setNum(sid, period, iid, rawVal) {
+  if (!app.nums[sid]) app.nums[sid]={};
+  if (!app.nums[sid][period]) app.nums[sid][period]={};
+  app.nums[sid][period][iid] = rawVal;
+  var cleaned = rawVal.replace(/[^\d.]/g, '');
+  var v = cleaned==='' ? null : parseFloat(cleaned);
+  if (v !== null && !isNaN(v)) v = Math.round(v * 10) / 10;
+  var conf = NUMERIC_ITEMS[iid];
+  if (conf && v !== null && !isNaN(v)) {
+    var judged = conf.judge(v);
+    if (!app.evals[sid]) app.evals[sid]={};
+    if (!app.evals[sid][period]) app.evals[sid][period]={};
+    app.evals[sid][period][iid] = judged;
+  } else if (v === null || rawVal === '') {
+    if (app.evals[sid] && app.evals[sid][period]) delete app.evals[sid][period][iid];
+  }
+  // ローカル状態のみ更新（保存ボタンでDB保存）
+  renderEval(); renderEvalStaffBar();
+}
+function switchPeriod(p) {
+  app.currentPeriod=p;
+  pushState({view:'eval', staffId:app.currentStaffId, period:p});
+  renderEvalStaffBar(); renderEval();
+}
+
+async function toggleLock(period) {
+  var locked=app.locks[period]||false;
+  var msg=locked
+    ?'第'+(period+1)+'回のロックを解除しますか？\n解除すると評価の編集が再び可能になります。'
+    :'第'+(period+1)+'回を確定しますか？\n確定すると評価が編集できなくなります。';
+  if(!confirm(msg)) return;
+  var newLocked=!locked;
+  try {
+    await apiPost({action:'set_lock', period:period, locked:newLocked});
+    app.locks[period]=newLocked;
+    showNotif(newLocked?'✓ 第'+(period+1)+'回を確定しました':'🔓 第'+(period+1)+'回のロックを解除しました');
+    // ダッシュボードが表示中なら再描画、評価入力中なら評価も再描画
+    var dashView=document.getElementById('view-dashboard');
+    if(dashView&&dashView.classList.contains('active')) renderDashboard();
+    else renderEval();
+  } catch(e){ showNotif('エラー: '+e.message, true); }
+}
 
 // ============================================================
 // ダッシュボード
@@ -1023,78 +1272,118 @@ var chartInstances=[];
 function renderDashboard() {
   var content=document.getElementById('dashboardContent');
   if (!app.staff.length) { content.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">データがありません</div></div>'; return; }
+
+  // データが入っている最新の回を基準回として自動選択（3→2→1→0の順）
+  var baseP = 0;
+  for (var pi=3; pi>=0; pi--) {
+    if (app.staff.some(function(s){ return getTotalScore(s.id, pi) > 0; })) { baseP = pi; break; }
+  }
+  var baseLine = getMasterRaiseLine(baseP);
+  var basePLabel = PERIODS[baseP];
+
   var sd=app.staff.map(function(s){
-    return {s:s, j0:getTotalScore(s.id,0), j1:getTotalScore(s.id,1), j2:getTotalScore(s.id,2), j3:getTotalScore(s.id,3), line2:getMasterRaiseLine(2), line3:getMasterRaiseLine(3)};
-  }).sort(function(a,b){return b.j2-a.j2;});
-  var avg2=sd.reduce(function(sum,x){return sum+x.j2;},0)/sd.length;
-  var achieved=sd.filter(function(x){return x.j2>=x.line2;}).length;
+    var scores=[0,1,2,3].map(function(p){return getTotalScore(s.id,p);});
+    return {s:s, j0:scores[0], j1:scores[1], j2:scores[2], j3:scores[3],
+            jBase:scores[baseP], line:baseLine};
+  }).sort(function(a,b){return b.jBase-a.jBase;});
+
+  var avgBase=sd.reduce(function(sum,x){return sum+x.jBase;},0)/sd.length;
+  var achieved=sd.filter(function(x){return x.jBase>=x.line;}).length;
 
   var scoreRows=app.staff.map(function(s){
     var scores=[0,1,2,3].map(function(p){return getTotalScore(s.id,p);});
-    var line2=getMasterRaiseLine(2); var ok=scores[2]>=line2;
     var cells=scores.map(function(sc,i){
-      if (sc===0) return '<td class="sc-none" style="text-align:center">—</td>';
       var line=getMasterRaiseLine(i);
-      var cls=sc>=line?'sc-good':sc>=line*0.7?'sc-warn':'sc-bad';
-      return '<td class="'+cls+'" style="text-align:center">'+sc+'</td>';
+      var hasData=sc>0;
+      var scoreCell = hasData
+        ? '<td class="'+(sc>=line?'sc-good':sc>=line*0.7?'sc-warn':'sc-bad')+'" style="text-align:center">'+sc+'</td>'
+        : '<td class="sc-none" style="text-align:center">—</td>';
+      var judgeCell = hasData
+        ? '<td style="text-align:center"><span class="'+(sc>=line?'badge-ok':'badge-ng')+'">'+(sc>=line?'✓':'✗')+'</span></td>'
+        : '<td style="text-align:center;color:var(--text3);font-size:11px">—</td>';
+      return scoreCell + judgeCell;
     }).join('');
     return '<tr><td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="goToEval('+s.id+')">'+s.name+'</td>'+
       '<td style="color:var(--text2);font-size:12px">'+(s.room||'—')+'</td>'+
-      cells+
-      '<td style="text-align:center"><span class="'+(ok?'badge-ok':'badge-ng')+'">'+(ok?'✓ 達成':'✗ 未達成')+'</span></td></tr>';
+      cells+'</tr>';
   }).join('');
 
   var rankRows=sd.map(function(x,i){
     var rc=i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-n';
-    var ok=x.j2>=x.line2; var maxJ=sd[0].j2||1; var pct=Math.round(x.j2/maxJ*100);
-    var fc=ok?'good':x.j2>=x.line2*0.7?'warn':'bad';
+    var ok=x.jBase>=x.line; var maxJ=sd[0].jBase||1; var pct=Math.round(x.jBase/maxJ*100);
+    var fc=ok?'good':x.jBase>=x.line*0.7?'warn':'bad';
     return '<tr><td><div class="rank-badge '+rc+'">'+(i+1)+'</div></td>'+
       '<td style="font-weight:700;cursor:pointer;color:var(--accent)" onclick="goToEval('+x.s.id+')">'+x.s.name+'</td>'+
       '<td style="color:var(--text2)">'+(x.s.room||'—')+'</td>'+
-      '<td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill '+fc+'" style="width:'+pct+'%"></div></div><div class="progress-pct" style="color:var(--'+fc+')">'+x.j2+'点</div></div></td>'+
-      '<td style="font-weight:700">'+(x.j3>0?x.j3+'点':'—')+'</td>'+
-      '<td><span class="'+(ok?'badge-ok':'badge-ng')+'">'+(ok?'✓ 達成':'✗ 未達成')+'</span></td></tr>';
+      '<td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill '+fc+'" style="width:'+pct+'%"></div></div><div class="progress-pct" style="color:var(--'+fc+')">'+x.jBase+'点</div></div></td>'+
+      '<td style="text-align:center"><span class="'+(ok?'badge-ok':'badge-ng')+'">'+(ok?'✓ 達成':'✗ 未達成')+'</span></td></tr>';
   }).join('');
 
   content.innerHTML=
+    (app.viewOnly ? '<div style="background:#fff8e0;border:1px solid #e8d060;border-radius:var(--radius);padding:10px 18px;margin-bottom:14px;font-size:13px;color:#a87800;font-weight:500">📖 '+app.currentYear+'年度（閲覧のみ）</div>' : '')+
     '<div class="dashboard-top">'+
       '<div class="kpi-card"><div class="kpi-label">スタッフ数</div><div class="kpi-value" style="color:var(--accent)">'+app.staff.length+'</div><div class="kpi-sub">名</div></div>'+
-      '<div class="kpi-card"><div class="kpi-label">第3回 平均スコア</div><div class="kpi-value" style="color:var(--yellow)">'+Math.round(avg2)+'</div><div class="kpi-sub">点</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">'+basePLabel+' 平均スコア</div><div class="kpi-value" style="color:var(--yellow)">'+Math.round(avgBase)+'</div><div class="kpi-sub">点</div></div>'+
       '<div class="kpi-card"><div class="kpi-label">昇給ライン達成</div><div class="kpi-value" style="color:var(--green)">'+achieved+'</div><div class="kpi-sub">名 / '+app.staff.length+'名</div></div>'+
-      '<div class="kpi-card"><div class="kpi-label">達成率</div><div class="kpi-value" style="color:'+(achieved/app.staff.length>=0.5?'var(--green)':'var(--red)')+'">'+Math.round(achieved/app.staff.length*100)+'%</div><div class="kpi-sub">昇給ライン到達率</div></div>'+
+      '<div class="kpi-card"><div class="kpi-label">達成率</div><div class="kpi-value" style="color:'+(achieved/app.staff.length>=0.5?'var(--green)':'var(--red)')+'">'+Math.round(achieved/app.staff.length*100||0)+'%</div><div class="kpi-sub">'+basePLabel+' 昇給ライン到達率</div></div>'+
       '<div class="kpi-card"><div class="kpi-label">上半期昇給ライン</div><div class="kpi-value" style="color:var(--text2)">'+getMasterRaiseLine(0)+'</div><div class="kpi-sub">点（第1・2回）</div></div>'+
       '<div class="kpi-card"><div class="kpi-label">下半期昇給ライン</div><div class="kpi-value" style="color:var(--text2)">'+getMasterRaiseLine(2)+'</div><div class="kpi-sub">点（第3・4回）</div></div>'+
+    '</div>'+
+    '<div class="section-header" style="margin-bottom:10px">'
+      +'<div class="section-title">回別 確定管理</div>'
+      +(!app.viewOnly ? '<button onclick="startNewYear()" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:7px;padding:7px 16px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;">🎉 '+(app.currentYear+1)+'年度を作成する</button>' : '')
+    +'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">'+
+      [0,1,2,3].map(function(p){
+        var locked=app.locks[p]||false;
+        var rl=getMasterRaiseLine(p);
+        var halfLabel=p<2?'上半期':'下半期';
+        return '<div style="background:'+(locked?'#edfaf5':'var(--surface)')+';border:1px solid '+(locked?'#a0ddc8':'var(--border)')+';border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);text-align:center">'
+          +'<div style="font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">'+PERIODS[p]+'</div>'
+          +'<div style="font-size:10px;color:var(--text3);margin-bottom:10px">'+halfLabel+' 昇給ライン: '+rl+'点</div>'
+          +'<div style="font-size:13px;font-weight:700;color:'+(locked?'var(--green)':'var(--text3)')+';margin-bottom:10px">'+(locked?'✓ 確定済み':'未確定')+'</div>'
+          +(!app.viewOnly ? '<button onclick="toggleLock('+p+')" style="width:100%;background:'+(locked?'var(--surface2)':'var(--accent)')+';color:'+(locked?'var(--text2)':'#fff')+';border:1px solid '+(locked?'var(--border)':'var(--accent)')+';border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">'+(locked?'🔓 ロック解除':'🔒 確定する')+'</button>' : '')
+        +'</div>';
+      }).join('')+
     '</div>'+
     '<div class="section-header" style="margin-bottom:10px"><div class="section-title">人事スコア一覧（回別）</div></div>'+
     '<div class="data-table" style="margin-bottom:18px"><table><thead><tr>'+
       '<th>氏名</th><th>教室</th>'+
-      '<th class="accent-head" style="text-align:center">第1回<br><small style="font-weight:400;font-size:10px">上期</small></th>'+
-      '<th class="accent-head" style="text-align:center">第2回<br><small style="font-weight:400;font-size:10px">上期全体</small></th>'+
-      '<th class="accent-head" style="text-align:center">第3回<br><small style="font-weight:400;font-size:10px">下期</small></th>'+
-      '<th class="accent-head" style="text-align:center">第4回<br><small style="font-weight:400;font-size:10px">下期全体</small></th>'+
-      '<th style="text-align:center">昇給判定</th></tr></thead><tbody>'+scoreRows+'</tbody></table></div>'+
+      '<th class="accent-head" style="text-align:center">第1回<br><small style="font-weight:400;font-size:10px">スコア</small></th>'+
+      '<th class="accent-head" style="text-align:center">第1回<br><small style="font-weight:400;font-size:10px">判定</small></th>'+
+      '<th class="accent-head" style="text-align:center">第2回<br><small style="font-weight:400;font-size:10px">スコア</small></th>'+
+      '<th class="accent-head" style="text-align:center">第2回<br><small style="font-weight:400;font-size:10px">判定</small></th>'+
+      '<th class="accent-head" style="text-align:center">第3回<br><small style="font-weight:400;font-size:10px">スコア</small></th>'+
+      '<th class="accent-head" style="text-align:center">第3回<br><small style="font-weight:400;font-size:10px">判定</small></th>'+
+      '<th class="accent-head" style="text-align:center">第4回<br><small style="font-weight:400;font-size:10px">スコア</small></th>'+
+      '<th class="accent-head" style="text-align:center">第4回<br><small style="font-weight:400;font-size:10px">判定</small></th>'+
+    '</tr></thead><tbody>'+scoreRows+'</tbody></table></div>'+
     '<div class="charts-grid">'+
-      '<div class="chart-card"><div class="chart-card-title">スタッフ別スコア比較（第3回）</div><canvas id="barChart" height="200"></canvas></div>'+
-      '<div class="chart-card"><div class="chart-card-title">第3回 vs 第4回 推移</div><canvas id="lineChart" height="200"></canvas></div>'+
+      '<div class="chart-card"><div class="chart-card-title">スタッフ別スコア比較（'+basePLabel+'）</div><canvas id="barChart" height="200"></canvas></div>'+
+      '<div class="chart-card"><div class="chart-card-title">回別スコア推移</div><canvas id="lineChart" height="200"></canvas></div>'+
     '</div>'+
-    '<div class="section-header" style="margin-bottom:10px"><div class="section-title">順位別一覧</div></div>'+
-    '<div class="data-table"><table><thead><tr><th>順位</th><th>氏名</th><th>教室</th><th>第3回スコア</th><th>第4回スコア</th><th>昇給判定</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>';
+    '<div class="section-header" style="margin-bottom:10px"><div class="section-title">順位別一覧（'+basePLabel+'基準）</div></div>'+
+    '<div class="data-table"><table><thead><tr><th>順位</th><th>氏名</th><th>教室</th><th>'+basePLabel+'スコア</th><th>昇給判定</th></tr></thead><tbody>'+rankRows+'</tbody></table></div>';
 
   chartInstances.forEach(function(c){c.destroy();}); chartInstances=[];
   var names=sd.map(function(x){return x.s.name;});
-  var s2=sd.map(function(x){return x.j2;});
-  var s3=sd.map(function(x){return x.j3;});
-  var line2=getMasterRaiseLine(2);
+  var sBase=sd.map(function(x){return x.jBase;});
+  var s0=sd.map(function(x){return x.j0>0?x.j0:null;});
+  var s1=sd.map(function(x){return x.j1>0?x.j1:null;});
+  var s2=sd.map(function(x){return x.j2>0?x.j2:null;});
+  var s3=sd.map(function(x){return x.j3>0?x.j3:null;});
   chartInstances.push(new Chart(document.getElementById('barChart').getContext('2d'),{
-    type:'bar', data:{labels:names, datasets:[{label:'第3回',data:s2,backgroundColor:sd.map(function(x){return x.j2>=x.line2?'rgba(15,173,122,0.7)':'rgba(224,120,48,0.7)';}),borderRadius:4}]},
+    type:'bar', data:{labels:names, datasets:[{label:basePLabel,data:sBase,backgroundColor:sd.map(function(x){return x.jBase>=x.line?'rgba(15,173,122,0.7)':'rgba(224,120,48,0.7)';}),borderRadius:4}]},
     options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#5a6380',font:{family:'Noto Sans JP'}},grid:{color:'#e0e4ef'}},y:{ticks:{color:'#5a6380'},grid:{color:'#e0e4ef'},beginAtZero:true}}}
   }));
   chartInstances.push(new Chart(document.getElementById('lineChart').getContext('2d'),{
     type:'line', data:{labels:names, datasets:[
-      {label:'第3回',data:s2,borderColor:'#e07830',backgroundColor:'rgba(224,120,48,0.07)',tension:0.3,pointRadius:5,fill:true},
-      {label:'第4回',data:s3.map(function(v){return v>0?v:null;}),borderColor:'#0fad7a',backgroundColor:'rgba(15,173,122,0.07)',tension:0.3,pointRadius:5,fill:true,borderDash:[4,2]}
+      {label:'第1回',data:s0,borderColor:'#9aa0b8',backgroundColor:'rgba(154,160,184,0.05)',tension:0.3,pointRadius:4,fill:false},
+      {label:'第2回',data:s1,borderColor:'#3a6ff8',backgroundColor:'rgba(58,111,248,0.05)',tension:0.3,pointRadius:4,fill:false},
+      {label:'第3回',data:s2,borderColor:'#e07830',backgroundColor:'rgba(224,120,48,0.07)',tension:0.3,pointRadius:5,fill:false},
+      {label:'第4回',data:s3,borderColor:'#0fad7a',backgroundColor:'rgba(15,173,122,0.07)',tension:0.3,pointRadius:5,fill:false,borderDash:[4,2]}
     ]},
-    options:{responsive:true,plugins:{legend:{labels:{color:'#5a6380',font:{family:'Noto Sans JP'}}}},scales:{x:{ticks:{color:'#5a6380',font:{family:'Noto Sans JP'}},grid:{color:'#e0e4ef'}},y:{ticks:{color:'#5a6380'},grid:{color:'#e0e4ef'},beginAtZero:true}}}
+    options:{responsive:true,plugins:{legend:{labels:{color:'#5a6380',font:{family:'Noto Sans JP'},filter:function(item,data){return data.datasets[item.datasetIndex].data.some(function(v){return v!==null;});}}}},scales:{x:{ticks:{color:'#5a6380',font:{family:'Noto Sans JP'}},grid:{color:'#e0e4ef'}},y:{ticks:{color:'#5a6380'},grid:{color:'#e0e4ef'},beginAtZero:true}}}
   }));
 }
 
@@ -1105,6 +1394,67 @@ function goToEval(sid) {
   document.getElementById('view-eval').classList.add('active');
   document.getElementById('evalNavBtn').classList.add('active');
   renderEvalStaffBar(); renderEval();
+  pushState({view:'eval', staffId:sid, period:app.currentPeriod});
+}
+
+// ============================================================
+// エリア管理
+// ============================================================
+function openAreaModal() {
+  renderAreaList();
+  document.getElementById('areaModal').classList.add('open');
+}
+function closeAreaModal() {
+  document.getElementById('areaModal').classList.remove('open');
+}
+function renderAreaList() {
+  var list = document.getElementById('areaList');
+  if (!AREAS.length) {
+    list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0">エリアが登録されていません</div>';
+    return;
+  }
+  list.innerHTML = AREAS.map(function(a, i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="flex:1;font-size:13px">'+escHtml(a)+'</span>'
+      +'<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="moveArea('+i+',-1)" '+(i===0?'disabled':'')+'title="上へ">↑</button>'
+      +'<button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="moveArea('+i+',1)" '+(i===AREAS.length-1?'disabled':'')+'title="下へ">↓</button>'
+      +'<button style="background:#fff0f0;border:1px solid #f0b0b0;color:var(--red);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer" onclick="deleteArea('+i+')" title="削除">削除</button>'
+    +'</div>';
+  }).join('');
+}
+function addArea() {
+  var inp = document.getElementById('newAreaName');
+  var name = inp.value.trim();
+  if (!name) { alert('エリア名を入力してください'); return; }
+  if (AREAS.indexOf(name) >= 0) { alert('同じ名前のエリアがすでに存在します'); return; }
+  AREAS.push(name);
+  inp.value = '';
+  renderAreaList();
+  rebuildAreaSelects();
+  if (app.selectedArea === null) renderStaffGrid();
+  showNotif('✓ エリアを追加しました');
+}
+function deleteArea(i) {
+  var name = AREAS[i];
+  var inUse = app.staff.some(function(s){ return s.area === name; });
+  if (inUse) {
+    if (!confirm('「'+name+'」はスタッフに設定されています。削除するとそのスタッフのエリアが「未設定」になります。削除しますか？')) return;
+    app.staff.forEach(function(s){ if(s.area===name) s.area=''; });
+  } else {
+    if (!confirm('「'+name+'」を削除しますか？')) return;
+  }
+  AREAS.splice(i, 1);
+  renderAreaList();
+  rebuildAreaSelects();
+  if (app.selectedArea === null) renderStaffGrid();
+  showNotif('✓ 削除しました');
+}
+function moveArea(i, dir) {
+  var j = i + dir;
+  if (j < 0 || j >= AREAS.length) return;
+  var tmp = AREAS[i]; AREAS[i] = AREAS[j]; AREAS[j] = tmp;
+  renderAreaList();
+  rebuildAreaSelects();
 }
 
 boot();

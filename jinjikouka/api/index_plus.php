@@ -60,6 +60,11 @@ switch ($action) {
     case 'del_master_item': handleDeleteMasterItem($body); break;
     case 'get_evals':       handleGetEvals();              break;
     case 'set_eval':        handleSetEval($body);          break;
+    case 'save_evals_bulk': handleSaveEvalsBulk($body);    break;
+    case 'get_locks':       handleGetLocks();              break;
+    case 'set_lock':        handleSetLock($body);          break;
+    case 'get_years':       handleGetYears();              break;
+    case 'new_year':        handleNewYear($body);          break;
     default: jsonError('Unknown action', 400);
 }
 
@@ -67,31 +72,55 @@ switch ($action) {
 // テーブル初期化
 // ============================================================
 
+function getCurrentYear() {
+    // GETまたはPOSTから年度を取得、なければ現在年
+    global $body;
+    if (isset($_GET['year']) && ctype_digit($_GET['year'])) return (int)$_GET['year'];
+    if (isset($body['year']) && is_numeric($body['year'])) return (int)$body['year'];
+    return (int)date('Y');
+}
+
 function ensureStaffTable() {
     static $done = false;
     if ($done) return;
-    getPDO()->exec("CREATE TABLE IF NOT EXISTS `" . TABLE_PREFIX . "staff` (
+    $pdo = getPDO();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `" . TABLE_PREFIX . "staff` (
         `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . ",
         `name` VARCHAR(100) NOT NULL,
         `room` VARCHAR(100) NOT NULL DEFAULT '',
         `area` VARCHAR(50) NOT NULL DEFAULT '',
-        PRIMARY KEY (`id`)
+        PRIMARY KEY (`id`),
+        KEY `idx_year` (`year`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    // 既存テーブルにyearカラムがない場合は追加
+    try {
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "staff` ADD COLUMN `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . " AFTER `id`");
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "staff` ADD KEY `idx_year` (`year`)");
+    } catch (Exception $e) { /* already exists */ }
     $done = true;
 }
 
 function ensureEvalsTable() {
     static $done = false;
     if ($done) return;
-    getPDO()->exec("CREATE TABLE IF NOT EXISTS `" . TABLE_PREFIX . "evaluations` (
+    $pdo = getPDO();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `" . TABLE_PREFIX . "evaluations` (
         `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+        `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . ",
         `staff_id` INT UNSIGNED NOT NULL,
         `period` TINYINT UNSIGNED NOT NULL,
-        `item_id` VARCHAR(16) NOT NULL,
-        `eval_value` VARCHAR(10) NOT NULL,
+        `item_id` VARCHAR(32) NOT NULL,
+        `eval_value` VARCHAR(20) NOT NULL,
         PRIMARY KEY (`id`),
-        UNIQUE KEY `uq_eval` (`staff_id`, `period`, `item_id`)
+        UNIQUE KEY `uq_eval` (`year`, `staff_id`, `period`, `item_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    // 既存テーブルにyearカラムがない場合は追加
+    try {
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "evaluations` ADD COLUMN `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . " AFTER `id`");
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "evaluations` DROP KEY `uq_eval`");
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "evaluations` ADD UNIQUE KEY `uq_eval` (`year`, `staff_id`, `period`, `item_id`)");
+    } catch (Exception $e) { /* already exists */ }
     $done = true;
 }
 
@@ -218,11 +247,12 @@ function seedMasterIfEmpty($period) {
 // ============================================================
 function handleGetStaff() {
     ensureStaffTable();
+    $year = getCurrentYear();
     $tbl = TABLE_PREFIX . 'staff';
-    $rows = getPDO()->query("SELECT * FROM `$tbl` ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as &$r) {
-        $r['area'] = $r['area'] ?? '';
-    }
+    $stmt = getPDO()->prepare("SELECT * FROM `$tbl` WHERE year=? ORDER BY id ASC");
+    $stmt->execute([$year]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$r) { $r['area'] = $r['area'] ?? ''; }
     jsonOk($rows);
 }
 
@@ -230,13 +260,14 @@ function handleAddStaff($body) {
     $name = isset($body['name']) ? trim($body['name']) : '';
     $room = isset($body['room']) ? trim($body['room']) : '';
     $area = isset($body['area']) ? trim($body['area']) : '';
+    $year = getCurrentYear();
     if (!$name) { jsonError('Name required', 400); return; }
     ensureStaffTable();
     $tbl = TABLE_PREFIX . 'staff';
     $pdo = getPDO();
-    $pdo->prepare("INSERT INTO `$tbl` (name, room, area) VALUES (?,?,?)")->execute([$name, $room, $area]);
+    $pdo->prepare("INSERT INTO `$tbl` (year, name, room, area) VALUES (?,?,?,?)")->execute([$year, $name, $room, $area]);
     $id = (int)$pdo->lastInsertId();
-    jsonOk(['id' => $id, 'name' => $name, 'room' => $room, 'area' => $area]);
+    jsonOk(['id' => $id, 'year' => $year, 'name' => $name, 'room' => $room, 'area' => $area]);
 }
 
 function handleUpdateStaff($body) {
@@ -265,8 +296,11 @@ function handleDeleteStaff($body) {
 // ============================================================
 function handleGetEvals() {
     ensureEvalsTable();
+    $year = getCurrentYear();
     $tbl = TABLE_PREFIX . 'evaluations';
-    $rows = getPDO()->query("SELECT staff_id, period, item_id, eval_value FROM `$tbl`")->fetchAll(PDO::FETCH_ASSOC);
+    $stmt = getPDO()->prepare("SELECT staff_id, period, item_id, eval_value FROM `$tbl` WHERE year=?");
+    $stmt->execute([$year]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $result = [];
     foreach ($rows as $r) {
         $result[$r['staff_id']][$r['period']][$r['item_id']] = $r['eval_value'];
@@ -275,6 +309,7 @@ function handleGetEvals() {
 }
 
 function handleSetEval($body) {
+    $year    = getCurrentYear();
     $staffId = isset($body['staff_id'])   ? (int)$body['staff_id']   : 0;
     $period  = isset($body['period'])     ? (int)$body['period']      : -1;
     $itemId  = isset($body['item_id'])    ? trim($body['item_id'])    : '';
@@ -283,14 +318,44 @@ function handleSetEval($body) {
     ensureEvalsTable();
     $tbl = TABLE_PREFIX . 'evaluations';
     if ($value === '') {
-        getPDO()->prepare("DELETE FROM `$tbl` WHERE staff_id=? AND period=? AND item_id=?")->execute([$staffId, $period, $itemId]);
+        getPDO()->prepare("DELETE FROM `$tbl` WHERE year=? AND staff_id=? AND period=? AND item_id=?")->execute([$year, $staffId, $period, $itemId]);
         jsonOk(['deleted' => true]); return;
     }
     $valid = ['A','B','C','評価なし'];
-    if (!in_array($value, $valid)) { jsonError('Invalid eval_value', 400); return; }
-    getPDO()->prepare("INSERT INTO `$tbl` (staff_id, period, item_id, eval_value) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE eval_value=?")
-            ->execute([$staffId, $period, $itemId, $value, $value]);
+    if (strpos($itemId, '_num_') === 0 || strpos($itemId, '_self') !== false) {
+        // 数値・自己評価は自由文字列許可
+    } else {
+        if (!in_array($value, $valid)) { jsonError('Invalid eval_value', 400); return; }
+    }
+    getPDO()->prepare("INSERT INTO `$tbl` (year, staff_id, period, item_id, eval_value) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE eval_value=?")
+            ->execute([$year, $staffId, $period, $itemId, $value, $value]);
     jsonOk(['saved' => true]);
+}
+
+// 一括保存（保存ボタン用）
+function handleSaveEvalsBulk($body) {
+    $year   = getCurrentYear();
+    $items  = isset($body['items']) ? $body['items'] : [];
+    if (empty($items)) { jsonOk(['saved' => 0]); return; }
+    ensureEvalsTable();
+    $tbl = TABLE_PREFIX . 'evaluations';
+    $pdo = getPDO();
+    $count = 0;
+    foreach ($items as $item) {
+        $staffId = isset($item['staff_id']) ? (int)$item['staff_id'] : 0;
+        $period  = isset($item['period'])   ? (int)$item['period']   : -1;
+        $itemId  = isset($item['item_id'])  ? trim($item['item_id']) : '';
+        $value   = isset($item['eval_value']) ? trim($item['eval_value']) : '';
+        if (!$staffId || $period < 0 || !$itemId) continue;
+        if ($value === '') {
+            $pdo->prepare("DELETE FROM `$tbl` WHERE year=? AND staff_id=? AND period=? AND item_id=?")->execute([$year, $staffId, $period, $itemId]);
+        } else {
+            $pdo->prepare("INSERT INTO `$tbl` (year, staff_id, period, item_id, eval_value) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE eval_value=?")
+                ->execute([$year, $staffId, $period, $itemId, $value, $value]);
+        }
+        $count++;
+    }
+    jsonOk(['saved' => $count]);
 }
 
 // ============================================================
@@ -392,4 +457,90 @@ function jsonError($msg, $code = 400) {
     http_response_code($code);
     echo json_encode(['ok' => false, 'error' => $msg], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+// ============================================================
+// 確定ロック
+// ============================================================
+function ensureLockTable() {
+    static $done = false;
+    if ($done) return;
+    $pdo = getPDO();
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `" . TABLE_PREFIX . "period_locks` (
+        `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . ",
+        `period` TINYINT UNSIGNED NOT NULL,
+        `locked` TINYINT(1) NOT NULL DEFAULT 0,
+        `locked_at` DATETIME DEFAULT NULL,
+        PRIMARY KEY (`year`, `period`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    // 既存テーブルにyearカラムがない場合は追加
+    try {
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "period_locks` ADD COLUMN `year` SMALLINT UNSIGNED NOT NULL DEFAULT " . (int)date('Y') . " FIRST");
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "period_locks` DROP PRIMARY KEY");
+        $pdo->exec("ALTER TABLE `" . TABLE_PREFIX . "period_locks` ADD PRIMARY KEY (`year`, `period`)");
+    } catch (Exception $e) {}
+    $done = true;
+}
+
+function handleGetLocks() {
+    ensureLockTable();
+    $year = getCurrentYear();
+    $tbl = TABLE_PREFIX . 'period_locks';
+    $stmt = getPDO()->prepare("SELECT period, locked FROM `$tbl` WHERE year=?");
+    $stmt->execute([$year]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $result = [0=>false, 1=>false, 2=>false, 3=>false];
+    foreach ($rows as $r) {
+        $result[(int)$r['period']] = (bool)$r['locked'];
+    }
+    jsonOk($result);
+}
+
+function handleSetLock($body) {
+    $year   = getCurrentYear();
+    $period = isset($body['period']) ? (int)$body['period'] : -1;
+    $locked = isset($body['locked']) ? (bool)$body['locked'] : false;
+    if ($period < 0 || $period > 3) { jsonError('Invalid period', 400); return; }
+    ensureLockTable();
+    $tbl = TABLE_PREFIX . 'period_locks';
+    $lockedAt = $locked ? date('Y-m-d H:i:s') : null;
+    getPDO()->prepare("INSERT INTO `$tbl` (year, period, locked, locked_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE locked=VALUES(locked), locked_at=VALUES(locked_at)")
+            ->execute([$year, $period, $locked ? 1 : 0, $lockedAt]);
+    jsonOk(['year' => $year, 'period' => $period, 'locked' => $locked]);
+}
+
+// ============================================================
+// 年度管理
+// ============================================================
+function handleGetYears() {
+    ensureStaffTable();
+    $tbl = TABLE_PREFIX . 'staff';
+    $rows = getPDO()->query("SELECT DISTINCT year FROM `$tbl` ORDER BY year DESC")->fetchAll(PDO::FETCH_ASSOC);
+    $years = array_map(function($r){ return (int)$r['year']; }, $rows);
+    $currentYear = (int)date('Y');
+    if (!in_array($currentYear, $years)) $years[] = $currentYear;
+    rsort($years);
+    jsonOk($years);
+}
+
+function handleNewYear($body) {
+    $fromYear = isset($body['from_year']) ? (int)$body['from_year'] : (int)date('Y');
+    $toYear   = isset($body['to_year'])   ? (int)$body['to_year']   : $fromYear + 1;
+    if ($toYear <= $fromYear) { jsonError('to_year must be greater than from_year', 400); return; }
+    ensureStaffTable();
+    $pdo = getPDO();
+    $stbl = TABLE_PREFIX . 'staff';
+    // 既に新年度スタッフがいないか確認
+    $check = $pdo->prepare("SELECT COUNT(*) FROM `$stbl` WHERE year=?");
+    $check->execute([$toYear]);
+    if ((int)$check->fetchColumn() > 0) { jsonError('新年度のスタッフデータが既に存在します', 400); return; }
+    // 旧年度のスタッフ名だけ引き継ぎ（教室・エリアはリセット）
+    $old = $pdo->prepare("SELECT name FROM `$stbl` WHERE year=? ORDER BY id ASC");
+    $old->execute([$fromYear]);
+    $names = $old->fetchAll(PDO::FETCH_ASSOC);
+    $ins = $pdo->prepare("INSERT INTO `$stbl` (year, name, room, area) VALUES (?,?,?,?)");
+    foreach ($names as $n) {
+        $ins->execute([$toYear, $n['name'], '', '']);
+    }
+    jsonOk(['to_year' => $toYear, 'count' => count($names)]);
 }
