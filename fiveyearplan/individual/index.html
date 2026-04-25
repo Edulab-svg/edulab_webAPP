@@ -103,6 +103,7 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
       <div class="tab" onclick="switchMainTab(1)">⚙ パラメータ</div>
       <div class="tab" onclick="switchMainTab(2)">📋 教室マスタ</div>
       <div class="tab" onclick="switchMainTab(3)">📈 推移</div>
+      <div class="tab" onclick="switchMainTab(4)">📈 累計損益</div>
     </div>
 
     <!-- P&Lタブ -->
@@ -149,6 +150,18 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
           <div class="chart-container"><canvas id="year-chart"></canvas></div>
           <div class="table-wrap" style="margin-top:12px">
             <table class="year-summary-table" id="year-summary-table"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="main-tab-4" style="display:none">
+      <div class="card">
+        <div class="card-header">📈 累計損益</div>
+        <div class="card-body">
+          <div style="font-size:12px;color:#666;margin-bottom:10px" id="cum-scope-label"></div>
+          <div class="chart-container"><canvas id="cum-chart"></canvas></div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table class="year-summary-table" id="cum-summary-table"></table>
           </div>
         </div>
       </div>
@@ -243,6 +256,7 @@ let STATE = {
   plMode: 'single', // 'single' | 'consolidated19'
   results: {},      // 計算結果キャッシュ
   yearChart: null,
+  cumChart: null,
   scope: 'all',     // 'all' or '19'
   mgChecked: new Set(), // MG確認タブで選択中の教室名
   // 月別比率（パラメータタブで編集可能）
@@ -745,6 +759,7 @@ function renderAll(){
   renderParamClassroomList();
   renderParamArea();
   renderYearSummary();
+  if (STATE.mainTab===4) renderCumSummary();
 }
 
 function renderKPI(){
@@ -1507,7 +1522,7 @@ function renderYearSummary(){
       datasets:[
         {label:'売上',data:summaries.map(s=>Math.round(s.revenue)),backgroundColor:'rgba(27,73,101,0.7)',order:2},
         {label:'経費',data:summaries.map(s=>Math.round(s.expense)),backgroundColor:'rgba(224,122,95,0.7)',order:2},
-        {label:'利益',data:summaries.map(s=>Math.round(s.profit)),type:'line',borderColor:'#2D6A4F',backgroundColor:'rgba(45,106,79,0.1)',fill:true,tension:.3,order:1,pointRadius:4}
+        {label:'年間損益',data:summaries.map(s=>Math.round(s.profit)),type:'line',borderColor:'#1B4965',backgroundColor:'rgba(27,73,101,0.08)',fill:true,tension:.3,order:1,pointRadius:4,pointBackgroundColor:'#1B4965'}
       ]
     },
     options:{
@@ -1518,9 +1533,63 @@ function renderYearSummary(){
   });
 }
 
+function renderCumSummary(){
+  const is19 = STATE.scope === '19';
+  const base19 = is19 ? getBase19Names() : null;
+  document.getElementById('cum-scope-label').textContent = is19 ? '対象: 既存19教室のみ' : '対象: 全教室';
+
+  let cum = 0;
+  const summaries = [];
+  STATE.years.forEach((ys, i) => {
+    const fy = ys.fiscal_year;
+    const cls = STATE.classrooms[fy] || [];
+    const res = STATE.results[fy] || [];
+    let profit = 0;
+    cls.forEach((c, ci) => {
+      if (is19 && !base19.includes(c.name)) return;
+      profit += res[ci]?.profit || 0;
+    });
+    cum += profit;
+    summaries.push({ year: fy, profit, cum, idx: i });
+  });
+
+  let html = '<thead><tr><th style="text-align:left">年度</th><th>年間損益</th><th>累計損益</th></tr></thead><tbody>';
+  summaries.forEach((s, i) => {
+    const bg = i===STATE.yearIdx ? 'rgba(27,73,101,.05)' : '';
+    html += `<tr style="background:${bg}" onclick="STATE.yearIdx=${i};STATE.clIdx=0;renderYearTabs();renderAll()">
+      <td>${s.year}年度</td>
+      <td style="font-weight:700;color:${s.profit>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.profit)}</td>
+      <td style="font-weight:700;color:${s.cum>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.cum)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('cum-summary-table').innerHTML = html;
+
+  const annArr = summaries.map(s => Math.round(s.profit / 1e6));
+  const cumArr = summaries.map(s => Math.round(s.cum / 1e6));
+  const ctx = document.getElementById('cum-chart');
+  if (STATE.cumChart) STATE.cumChart.destroy();
+  STATE.cumChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:summaries.map(s=>s.year+'年度'),
+      datasets:[
+        {label:'年間損益(百万)',data:annArr,backgroundColor:annArr.map(v=>v>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'),order:2},
+        {label:'累計損益(百万)',data:cumArr,type:'line',borderColor:'#1B4965',backgroundColor:'rgba(27,73,101,0.08)',fill:true,tension:.35,order:1,pointRadius:4,pointBackgroundColor:'#1B4965',borderWidth:2.5}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.raw+'M'}}},
+      scales:{y:{ticks:{callback:v=>v+'M'}}}
+    }
+  });
+}
+
 function switchScope(scope){
   STATE.scope=scope;
   renderYearSummary();
+  if (STATE.mainTab===4) renderCumSummary();
 }
 
 // ============================================
@@ -1916,13 +1985,13 @@ function mgSelectAll(checked){
 }
 function switchMainTab(idx){
   STATE.mainTab=idx;
-  // main-tab-0〜3 は既存タブ、main-tab-10はMGタブ
-  [0,1,2,3,10].forEach(n=>{
+  // main-tab-0〜4 は通常タブ、main-tab-10はMGタブ
+  [0,1,2,3,4,10].forEach(n=>{
     const el=document.getElementById('main-tab-'+n);
     if(el) el.style.display=(n===idx?'':'none');
   });
-  // メインタブのアクティブ切替（0〜3のみ）
-  if(idx<=3){
+  // メインタブのアクティブ切替（0〜4のみ）
+  if(idx<=4){
     document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
   } else {
     // MGタブ選択中はメインタブを全部非アクティブ
@@ -1930,6 +1999,7 @@ function switchMainTab(idx){
   }
   if(idx===2)renderMasterTable();
   if(idx===3)renderYearSummary();
+  if(idx===4)renderCumSummary();
   if(idx===10)renderMGTab();
 }
 

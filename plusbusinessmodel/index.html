@@ -203,7 +203,7 @@ function YSTab({yearIdx,params,gs,wds,setWds,ads,setAds,enr,setEnr,tui,c3r,actEn
     {l:"賞与",f:"bonus",s:"b",c:1,skipIf:"ignoreBonus"},
     {l:"社員求人費",f:"recruitFee",s:"q",c:1,yr1only:1},
     {l:"消費税",f:"tax",s:"k",c:1},
-    {l:"経費合計",f:"expenseTotal",s:"o",c:1,h:1},{l:"営業利益",f:"profit",s:"p",c:1,h:1},
+    {l:"経費合計",f:"expenseTotal",s:"o",c:1,h:1},{l:"営業損益",f:"profit",s:"p",c:1,h:1},
   ];
   const sC={t:"#f0f9ff",r:"#f0fdf4",x:"#fffbeb",l:"#fef2f2",b:"#fdf4ff",q:"#fefce8",k:"#faf5ff",o:"#f8fafc",p:"#ecfdf5",g:"#fdf2f8"};
   const sB={t:"#bae6fd",r:"#bbf7d0",x:"#fde68a",l:"#fecaca",b:"#e9d5ff",q:"#fde68a",k:"#e9d5ff",o:"#cbd5e1",p:"#6ee7b7",g:"#f9a8d4"};
@@ -230,7 +230,7 @@ function YSTab({yearIdx,params,gs,wds,setWds,ads,setAds,enr,setEnr,tui,c3r,actEn
             )),
             h('th',{style:{padding:'8px 6px',minWidth:88,textAlign:'right',background:'#334155'}},'上期'),
             h('th',{style:{padding:'8px 6px',minWidth:88,textAlign:'right',background:'#334155'}},'下期'),
-            h('th',{style:{padding:'8px 6px',minWidth:110,textAlign:'right',background:'#0f172a'}},'年間合計')
+            h('th',{style:{padding:'8px 6px',minWidth:88,textAlign:'right',background:'#0f172a'}},'年計')
           )
         ),
         h('tbody',null,
@@ -578,7 +578,7 @@ function SchoolSim({school,onChange,onBack}){
             h('div',{style:{fontSize:14,fontWeight:700,color:'#0f172a'}},'¥'+fm(y.sales)),
             h('div',{style:{display:'flex',justifyContent:'space-between',marginTop:6}},
               h('div',null,
-                h('div',{style:{fontSize:10,color:'#94a3b8'}},'営業利益'),
+                h('div',{style:{fontSize:10,color:'#94a3b8'}},'営業損益'),
                 h('div',{style:{fontSize:16,fontWeight:900,color:y.profit>=0?'#059669':'#dc2626'}},(y.profit>=0?'+':'')+'¥'+fm(y.profit))
               ),
               h('div',{style:{textAlign:'right'}},
@@ -615,11 +615,11 @@ function SchoolSim({school,onChange,onBack}){
                   ...sumD.map((y,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right'}},'¥'+fm(y[r.k]||0)))
                 )),
                 h('tr',{style:{background:'#ecfdf5',fontWeight:700}},
-                  h('td',{style:{padding:'8px 14px',color:'#065f46'}},'収支（年）'),
+                  h('td',{style:{padding:'8px 14px',color:'#065f46'}},'年間損益'),
                   ...sumD.map((y,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right',color:y.profit>=0?'#059669':'#dc2626',fontSize:13}},'¥'+fm(y.profit)))
                 ),
                 h('tr',{style:{background:'#f0f9ff',fontWeight:700}},
-                  h('td',{style:{padding:'8px 14px',color:'#0c4a6e'}},'総収支（累計）'),
+                  h('td',{style:{padding:'8px 14px',color:'#0c4a6e'}},'累計損益'),
                   ...cum.map((c,i)=>h('td',{key:i,style:{padding:'8px 10px',textAlign:'right',color:c.p>=0?'#059669':'#dc2626',fontSize:13}},'¥'+fm(c.p)))
                 )
               )
@@ -644,7 +644,7 @@ function SchoolSim({school,onChange,onBack}){
           ),
           h('div',{style:{marginTop:12,padding:'10px 14px',background:'#f0fdf4',borderRadius:8,border:'1px solid #bbf7d0'}},
             h('div',{style:{fontSize:12,fontWeight:600,color:'#065f46'}},'💰 累計黒字転換: '+(cum.findIndex(c=>c.p>=0)>=0?(cum.findIndex(c=>c.p>=0)+1)+'年目':'5年以内には達成できません')),
-            h('div',{style:{fontSize:11,color:'#047857',marginTop:3}},'5年目終了時の累計収支: ¥'+fm(cum[4]?cum[4].p:0))
+            h('div',{style:{fontSize:11,color:'#047857',marginTop:3}},'5年目終了時の累計損益: ¥'+fm(cum[4]?cum[4].p:0))
           )
         )
       ),

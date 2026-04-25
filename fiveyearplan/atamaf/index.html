@@ -101,6 +101,7 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
       <div class="tab" onclick="switchMainTab(1)">⚙ パラメータ</div>
       <div class="tab" onclick="switchMainTab(2)">📋 教室マスタ</div>
       <div class="tab" onclick="switchMainTab(3)">📈 推移</div>
+      <div class="tab" onclick="switchMainTab(4)">📈 累計損益</div>
     </div>
 
     <div id="main-tab-0" class="card">
@@ -138,6 +139,17 @@ td:first-child{text-align:left;padding-left:8px;position:sticky;left:0;backgroun
           <div class="chart-container"><canvas id="year-chart"></canvas></div>
           <div class="table-wrap" style="margin-top:12px">
             <table class="year-summary-table" id="year-summary-table"></table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="main-tab-4" style="display:none">
+      <div class="card">
+        <div class="card-header">📈 累計損益</div>
+        <div class="card-body">
+          <div class="chart-container"><canvas id="cum-chart"></canvas></div>
+          <div class="table-wrap" style="margin-top:12px">
+            <table class="year-summary-table" id="cum-summary-table"></table>
           </div>
         </div>
       </div>
@@ -261,6 +273,7 @@ let STATE = {
   plMode: 'single',
   results: {},
   yearChart: null,
+  cumChart: null,
 };
 
 // ============================================================
@@ -887,6 +900,7 @@ function renderAll(){
   renderParamClassroomList();
   renderParamArea();
   if(STATE.mainTab===3) renderYearSummary();
+  if(STATE.mainTab===4) renderCumSummary();
 }
 
 function renderKPI(){
@@ -1504,13 +1518,58 @@ function renderYearSummary(){
       datasets:[
         {label:'売上',data:summaries.map(s=>Math.round(s.revenue)),backgroundColor:'rgba(45,80,22,0.7)',order:2},
         {label:'経費',data:summaries.map(s=>Math.round(s.expense)),backgroundColor:'rgba(224,122,95,0.7)',order:2},
-        {label:'利益',data:summaries.map(s=>Math.round(s.profit)),type:'line',borderColor:'#2D6A4F',backgroundColor:'rgba(45,106,79,0.1)',fill:true,tension:.3,order:1,pointRadius:4}
+        {label:'年間損益',data:summaries.map(s=>Math.round(s.profit)),type:'line',borderColor:'#1B4965',backgroundColor:'rgba(27,73,101,0.08)',fill:true,tension:.3,order:1,pointRadius:4,pointBackgroundColor:'#1B4965'}
       ]
     },
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{title:{display:true,text:'全教室 年度別推移',font:{size:14}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+fmtShort(ctx.raw)}}},
       scales:{y:{ticks:{callback:v=>fmtShort(v)}}}
+    }
+  });
+}
+
+function renderCumSummary(){
+  let cum = 0;
+  const summaries = STATE.years.map((ys, i) => {
+    const fy = ys.fiscal_year;
+    const cls = STATE.classrooms[fy] || [];
+    const res = STATE.results[fy] || [];
+    let profit = 0;
+    cls.forEach((_, ci) => { profit += res[ci]?.profit || 0; });
+    cum += profit;
+    return { year: fy, profit, cum, idx: i };
+  });
+
+  let html = '<thead><tr><th style="text-align:left">年度</th><th>年間損益</th><th>累計損益</th></tr></thead><tbody>';
+  summaries.forEach((s, i) => {
+    const bg = i === STATE.yearIdx ? 'rgba(45,80,22,.05)' : '';
+    html += `<tr style="background:${bg}" onclick="STATE.yearIdx=${i};STATE.clIdx=0;renderYearTabs();renderAll()">
+      <td>${s.year}年度</td>
+      <td style="font-weight:700;color:${s.profit>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.profit)}</td>
+      <td style="font-weight:700;color:${s.cum>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.cum)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('cum-summary-table').innerHTML = html;
+
+  const annArr = summaries.map(s => Math.round(s.profit / 1e6));
+  const cumArr = summaries.map(s => Math.round(s.cum / 1e6));
+  const ctx = document.getElementById('cum-chart');
+  if (STATE.cumChart) STATE.cumChart.destroy();
+  STATE.cumChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: summaries.map(s => s.year + '年度'),
+      datasets: [
+        {label:'年間損益(百万)',data:annArr,backgroundColor:annArr.map(v=>v>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'),order:2},
+        {label:'累計損益(百万)',data:cumArr,type:'line',borderColor:'#1B4965',backgroundColor:'rgba(27,73,101,0.08)',fill:true,tension:.35,order:1,pointRadius:4,pointBackgroundColor:'#1B4965',borderWidth:2.5},
+      ]
+    },
+    options: {
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.raw+'M'}}},
+      scales:{y:{ticks:{callback:v=>v+'M'}}}
     }
   });
 }
@@ -1524,6 +1583,7 @@ function switchMainTab(idx){
   document.querySelectorAll('.tabs')[1].querySelectorAll('.tab').forEach((el,i)=>{el.className='tab'+(i===idx?' active':'')});
   if(idx===2)renderMasterTable();
   if(idx===3)renderYearSummary();
+  if(idx===4)renderCumSummary();
 }
 
 function toggleCard(header){

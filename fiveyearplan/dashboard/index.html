@@ -652,7 +652,7 @@ function renderMonthly(){
   });
 
   // 事業部別行
-  html += '<tr><td colspan="14" style="padding:6px 10px;font-size:10px;color:#a0aec0;background:#fafafa">事業部別 年間利益</td></tr>';
+  html += '<tr><td colspan="14" style="padding:6px 10px;font-size:10px;color:#a0aec0;background:#fafafa">事業部別 年間損益</td></tr>';
   sims.forEach(function(key) {
     const d = STATE[key][fy];
     if(!d) return;
@@ -799,7 +799,7 @@ function renderCum(){
     type:'bar',
     data:{ labels:YEARS.map(y=>y+'年度'),
       datasets:[
-        {label:'年間利益(百万)',data:annProArr,backgroundColor:annProArr.map(v=>v>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'),order:2},
+        {label:'年間損益(百万)',data:annProArr,backgroundColor:annProArr.map(v=>v>=0?'rgba(16,185,129,0.6)':'rgba(239,68,68,0.6)'),order:2},
         {label:'累計損益(百万)',data:cumPro,type:'line',borderColor:active.color,backgroundColor:active.color+'22',
          fill:true,tension:.35,order:1,pointRadius:5,pointBackgroundColor:active.color,borderWidth:2.5},
       ]},
@@ -810,7 +810,7 @@ function renderCum(){
 
   // テーブル
   document.getElementById('cum-table-title').textContent = active.label + ' 累計損益テーブル';
-  let html='<thead><tr><th>年度</th><th>年間利益</th><th>累計損益</th></tr></thead><tbody>';
+  let html='<thead><tr><th>年度</th><th>年間損益</th><th>累計損益</th></tr></thead><tbody>';
   let cumVal=0;
   YEARS.forEach((fy,i)=>{
     const pro = active.key ? (STATE[active.key][fy]?.profit||0) : getConsolidated(fy).profit;
