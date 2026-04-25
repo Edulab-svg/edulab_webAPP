@@ -27,7 +27,7 @@ body{font-family:'Noto Sans JP','Outfit',sans-serif;background:var(--bg);color:v
 .header{text-align:center;margin-bottom:56px}
 .logo-mark{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--accent1),var(--accent2));font-family:'Outfit';font-weight:800;font-size:28px;color:#fff;margin-bottom:20px;box-shadow:0 8px 32px rgba(59,130,246,.3);animation:logoIn .8s ease-out both}
 @keyframes logoIn{from{opacity:0;transform:scale(.7) rotate(-10deg)}to{opacity:1;transform:scale(1) rotate(0)}}
-.header h1{font-family:'Outfit','Noto Sans JP';font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.02em;line-height:1.2;background:linear-gradient(135deg,#fff 30%,var(--text2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:fadeUp .8s ease-out .2s both}
+.header h1{font-family:'Outfit','Noto Sans JP';font-size:clamp(28px,5vw,42px);font-weight:800;letter-spacing:-.02em;line-height:1.2;background:linear-gradient(135deg,#fff 30%,var(--text2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:fadeUp .8s ease-out .2s both}
 .header .sub{font-size:14px;color:var(--text2);margin-top:8px;letter-spacing:.1em;font-weight:300;animation:fadeUp .8s ease-out .4s both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
