@@ -422,24 +422,28 @@ function initData() {
   calcAllResults();
 }
 
+// まんてん個別プラス同様: enroll_annual=「通年12ヶ月の目標入会数」。
+// 開校年（4月以外開校）では活動月分の合計＜annual になる（全月正規化しない）。
+// openMonth=0 は4月開校=通年、openMonth=-1は既存教室
 function distributeEnroll(annual, openMonth, enrollBase) {
   if (!annual) return Array(12).fill(0);
   const base = (enrollBase && enrollBase.length===12) ? enrollBase : ENROLL_BASE_DEFAULT;
   const total = base.reduce((s,v)=>s+v,0);
-  let ratios = base.map(v=>v/total);
-  if (openMonth !== undefined && openMonth >= 0) {
-    ratios = ratios.map((r, i) => i >= openMonth ? r : 0);
+  if (!total) return Array(12).fill(0);
+  const isOpenYear = (openMonth !== undefined && openMonth > 0);
+  const raw = base.map((v, i) => {
+    if (isOpenYear && i < openMonth) return 0;
+    return annual * v / total;
+  });
+  const result = raw.map(v => Math.round(v));
+  if (isOpenYear) {
+    return result;
   }
-  const sum = ratios.reduce((s,v)=>s+v,0);
-  if (!sum) return Array(12).fill(0);
-  const norm = ratios.map(r=>r/sum);
-  const raw = norm.map(r=>annual*r);
-  const result = raw.map(v=>Math.round(v));
   let diff = annual - result.reduce((s,v)=>s+v,0);
   const rem = raw.map((v,i)=>({i,r:v-Math.floor(v)})).filter(x=>x.r>0).sort((a,b)=>b.r-a.r);
-  if(!rem.length) return result;
-  for(let j=0;diff>0;j++){result[rem[j%rem.length].i]++;diff--;}
-  for(let j=rem.length-1;diff<0;j--){result[rem[Math.abs(j)%rem.length].i]--;diff++;}
+  if (!rem.length) return result;
+  for (let j = 0; diff > 0; j++) { result[rem[j%rem.length].i]++; diff--; }
+  for (let j = rem.length-1; diff < 0; j--) { result[rem[Math.abs(j)%rem.length].i]--; diff++; }
   return result;
 }
 
@@ -865,7 +869,8 @@ function renderParamClassroomList(){
     const yn = getYearNum(c, fy);
     const isNew = yn === 1;
     const bdgCls = isNew ? 'year-badge new-badge' : 'year-badge';
-    const enAnn = c.enroll_annual != null ? c.enroll_annual : (c.enroll ? c.enroll.reduce(function(s,v){return s+v;},0) : 0);
+    const enSum = c.enroll ? c.enroll.reduce(function(s,v){ return s+v; },0) : 0;
+    const enAnn = (c.open_month != null && c.open_month > 0) ? enSum : (c.enroll_annual != null ? c.enroll_annual : enSum);
     btn.innerHTML = c.name + `<span class="${bdgCls}">${yn}年目</span>` +
       '<br><span style="font-size:10px;opacity:.7">入会:' + enAnn + '名 | 利益:' + fmtShort(r?.profit||0) + ' | ' + (r?.endStudents||0) + '名</span>';
     btn.onclick = () => {
@@ -944,16 +949,18 @@ function renderParamArea(){
   html += '<input type="number" value="' + (p.start_wd||0) + '" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px" data-field="start_wd" onchange="onParamChange(this)"></div>';
   html += '<div style="font-size:11px;color:#888;align-self:flex-end;padding-bottom:6px">問合せ→入会率: <b>' + Math.round((p.conv_r||0)*100) + '%</b>（' + ((p.conv_r||0)>0?Math.round(30/(p.conv_r||1))+'件/年':'-') + '問合せ想定）</div></div>';
 
-  // 入会・退会（まんてん個別プラスと同じ: 年間目標→月別配分、開校年はフル年換算表示）
+  // 入会・退会: 開校年は入力＝当該年度の実入会合計、教室マスタの年間＝通年12ヶ月目標（enroll_annual）
   const actualEnroll = p.enroll ? p.enroll.reduce((s,v)=>s+v,0) : 0;
   const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
-  let annualEnroll = actualEnroll;
-  if (om2 > 0) {
-    const base3 = (p.enroll_base && p.enroll_base.length === 12) ? p.enroll_base : ENROLL_BASE_DEFAULT;
-    const baseTotal = base3.reduce((s,v)=>s+v,0);
-    const activeSum = base3.filter((_,i)=>i>=om2).reduce((s,v)=>s+v,0);
-    annualEnroll = activeSum > 0 ? Math.round(actualEnroll * baseTotal / activeSum) : actualEnroll;
+  const base3a = (p.enroll_base && p.enroll_base.length === 12) ? p.enroll_base : ENROLL_BASE_DEFAULT;
+  const eBaseAll = base3a.reduce((s,v)=>s+v,0);
+  const eActive = om2 > 0 ? base3a.filter(function(_,i){ return i >= om2; }).reduce(function(s,v){ return s+v; },0) : eBaseAll;
+  let fullYearEnroll = actualEnroll;
+  if (om2 > 0 && eActive > 0) {
+    fullYearEnroll = Math.round(actualEnroll * eBaseAll / eActive);
   }
+  const annualInputVal = (om2 > 0) ? actualEnroll : (p.enroll_annual != null ? p.enroll_annual : actualEnroll);
+  const enrollAnnualMaster = p.enroll_annual != null ? p.enroll_annual : fullYearEnroll;
   const wdRatePct2 = (p.wd_rate||0)*100;
   let estTotalSt=0, tmpSt2=p.start_st||0;
   for (let m=0;m<12;m++){
@@ -973,8 +980,8 @@ function renderParamArea(){
   html += '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">';
   html += '<div style="flex:1;min-width:250px;padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
   html += '<label style="font-weight:700;font-size:13px;color:#2D6A4F">年間入会数</label>';
-  html += '<input type="number" value="' + annualEnroll + '" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">';
-  html += '<span style="font-size:11px;color:#666">名' + (om2>0?' (開校年は'+actualEnroll+'名)':'') + '</span></div>';
+  html += '<input type="number" value="' + annualInputVal + '" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">';
+  html += '<span style="font-size:11px;color:#666">名' + (om2>0?' <span style="color:#b45309">（通年12ヶ月目標 '+enrollAnnualMaster+'名・教室マスタの年間入会）</span>':'') + '</span></div>';
   html += '<div style="flex:1;min-width:300px;padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
   html += '<label style="font-weight:700;font-size:13px;color:#C1292E">年間退会率</label>';
   html += '<input type="number" value="' + wdRatePct2.toFixed(2) + '" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_wd_rate_pct" onchange="onWdRateChange(this)">';
@@ -1098,7 +1105,8 @@ function renderClassroomList(){
     const yn=getYearNum(c,fy);
     const isNew=yn===1;
     const bdgCls=isNew?'year-badge new-badge':'year-badge';
-    const enAnn2 = c.enroll_annual != null ? c.enroll_annual : (c.enroll ? c.enroll.reduce((s,v)=>s+v,0) : 0);
+    const enSum2 = c.enroll ? c.enroll.reduce((s,v)=>s+v,0) : 0;
+    const enAnn2 = (c.open_month != null && c.open_month > 0) ? enSum2 : (c.enroll_annual != null ? c.enroll_annual : enSum2);
     btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">入会:'+enAnn2+'名 | 利益:'+fmtShort(r?.profit||0)+' | '+(r?.endStudents||0)+'名</span>';
     btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderPLTable();renderParamArea()};
     el.appendChild(btn);
@@ -1398,14 +1406,25 @@ function onWdRateChange(el){
 }
 
 function onAnnualEnrollChange(el){
-  const annual=parseInt(el.value,10)||0;
+  const val=parseInt(el.value,10)||0;
   const clName=curClassrooms()[STATE.clIdx].name;
   STATE.years.forEach(function(ys){
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(function(c){
       if (c.name !== clName) return;
-      c.enroll_annual = annual;
-      c.enroll = distributeEnroll(annual, c.open_month>=0 ? c.open_month : undefined, c.enroll_base);
-      saveField(c.id, 'enroll_annual', annual);
+      const om = c.open_month;
+      const base3 = (c.enroll_base && c.enroll_base.length === 12) ? c.enroll_base : ENROLL_BASE_DEFAULT;
+      const baseAll = base3.reduce(function(s,v){ return s+v; },0);
+      let enrollAnnual;
+      if (om != null && om > 0) {
+        // パラメータの入力=開校初年度の実入会合計 → 通年目標に換算して配分
+        const activeSum = base3.filter(function(_,i){ return i >= om; }).reduce(function(s,v){ return s+v; },0);
+        enrollAnnual = activeSum > 0 ? Math.round(val * baseAll / activeSum) : val;
+      } else {
+        enrollAnnual = val;
+      }
+      c.enroll_annual = enrollAnnual;
+      c.enroll = distributeEnroll(enrollAnnual, c.open_month >= 0 ? c.open_month : undefined, c.enroll_base);
+      saveField(c.id, 'enroll_annual', enrollAnnual);
       saveField(c.id, 'enroll', c.enroll);
     });
   });
@@ -1869,6 +1888,14 @@ async function loadFromAPI() {
       });
     });
     await ensureDbRowsForGeneratedYears();
+    // 開校年: enroll_annual(通年目標)に対し月次を再配分（旧ロジックで全量が活動月に乗っていた場合の修正）
+    STATE.years.forEach(function(ys){
+      (STATE.classrooms[ys.fiscal_year] || []).forEach(function(c){
+        if (c.open_month != null && c.open_month > 0 && (c.enroll_annual != null) && c.enroll_annual > 0) {
+          c.enroll = distributeEnroll(c.enroll_annual, c.open_month, c.enroll_base);
+        }
+      });
+    });
     // 全教室のadsをADS_BASEの比率で強制再計算
     STATE.years.forEach(ys => {
       (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
