@@ -328,9 +328,15 @@ function calcClassroom(p, bonusMult, fiscalYear) {
     let estTotalSt = 0;
     let tmpSt = p.start_st;
     for (let m = 0; m < 12; m++) {
-      const prevWdEst = m === 0 ? (p.start_wd || 0) : wdMonthly[m-1];
-      const base = tmpSt - prevWdEst;
-      let active = base + p.enroll[m];
+      let active;
+      if (m === 0) {
+        // 4月：全年度共通で 期首生徒数＋4月入会（期首退会は反映しない）
+        active = p.start_st + p.enroll[0];
+      } else {
+        const prevWdEst = wdMonthly[m - 1];
+        const base = tmpSt - prevWdEst;
+        active = base + p.enroll[m];
+      }
       if (p.max_st && active > p.max_st) active = p.max_st;
       estTotalSt += active;
       tmpSt = active;
@@ -367,11 +373,16 @@ function calcClassroom(p, bonusMult, fiscalYear) {
       ? (baseSubH2 > 0 ? baseSubH2 + SALARY_RAISE * semesters : 0)
       : (baseSubH1 > 0 ? baseSubH1 + SALARY_RAISE * semesters : 0);
 
-    const prevSt = m === 0 ? p.start_st : months[m-1][4];
-    const prevWd = m === 0 ? (p.start_wd || 0) : months[m-1][3];
-    const base = prevSt - prevWd;
     const enr = p.enroll[m];
-    let active = base + enr;
+    let active;
+    if (m === 0) {
+      // 4月：全年度共通で 期首生徒数＋4月入会（期首退会は反映しない）
+      active = p.start_st + enr;
+    } else {
+      const prevSt = months[m-1][4];
+      const prevWd = months[m-1][3];
+      active = prevSt - prevWd + enr;
+    }
     if (p.max_st && active > p.max_st) active = p.max_st;
     const wd = wdMonthly[m];
 
@@ -1181,7 +1192,11 @@ function renderParamArea(){
   const wdRate = p.wd_rate || 0;
   // Recalculate actual annualWd from rate for display
   let estTotalSt = 0; let tmpSt2 = p.start_st;
-  for(let m=0;m<12;m++){const b=m===0?(tmpSt2-(p.start_wd||0)):tmpSt2;let a=b+p.enroll[m];if(p.max_st&&a>p.max_st)a=p.max_st;estTotalSt+=a;tmpSt2=a;}
+  for(let m=0;m<12;m++){
+    let a;
+    if(m===0){a=p.start_st+p.enroll[0];}else{a=tmpSt2+p.enroll[m];}
+    if(p.max_st&&a>p.max_st)a=p.max_st;estTotalSt+=a;tmpSt2=a;
+  }
   const calcAnnualWd = Math.round(wdRate / 100 * estTotalSt);
   const wdMonthly = distributeWd(calcAnnualWd);
 
