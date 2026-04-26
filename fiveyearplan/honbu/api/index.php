@@ -46,11 +46,13 @@ try {
     switch ($route) {
 
         case 'all':
+            // repay は月次12要素のJSON。列がINTのままだと保存時に不整合になるため、JSON または TEXT への変更を推奨
             $rows = $db->query("SELECT * FROM honbu_year_settings ORDER BY fiscal_year")->fetchAll();
             $years = [];
-            $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','staff_json'];
+            // repay は従来INT1件のDB列も想定: intFを外し、配列化は下の正規化で対応
+            $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','repay','staff_json'];
             $intF   = ['salary1','salary2','rent','water','electric','phone','travel',
-                       'consume','sys','welfare','repair','lease','insurance','sanitation','other','repay'];
+                       'consume','sys','welfare','repair','lease','insurance','sanitation','other'];
             $floatF = ['legal_welf_r'];
             $strF   = ['name1','name2'];
             foreach ($rows as &$r) {
@@ -65,6 +67,18 @@ try {
                 foreach ($floatF as $f) $r[$f] = floatval($r[$f] ?? 0);
                 foreach ($strF   as $f) $r[$f] = (string)($r[$f] ?? '');
                 $r['fiscal_year'] = intval($r['fiscal_year']);
+                // 返済: 月次12要素。旧1か月定額int・JSON数値1件の場合は全月同一額に展開
+                if (!isset($r['repay']) || !is_array($r['repay']) || count($r['repay']) != 12) {
+                    $n = 1700000;
+                    if (is_array($r['repay'] ?? null) && count($r['repay']) > 0) {
+                        $n = (int) $r['repay'][0];
+                    } elseif (is_numeric($r['repay'] ?? null) && $r['repay'] !== null && $r['repay'] !== '') {
+                        $n = (int) $r['repay'];
+                    }
+                    $r['repay'] = array_fill(0, 12, $n);
+                } else {
+                    for ($i = 0; $i < 12; $i++) { $r['repay'][$i] = (int) ($r['repay'][$i] ?? 0); }
+                }
                 $years[] = $r;
             }
             unset($r);
@@ -77,9 +91,9 @@ try {
                 $field = $_POST['field'] ?? '';
                 $value = $_POST['value'] ?? '';
 
-                $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','staff_json'];
+                $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','repay','staff_json'];
                 $intF   = ['salary1','salary2','rent','water','electric','phone','travel',
-                           'consume','sys','welfare','repair','lease','insurance','sanitation','other','repay'];
+                           'consume','sys','welfare','repair','lease','insurance','sanitation','other'];
                 $floatF = ['legal_welf_r'];
                 $strF   = ['name1','name2'];
                 $allowed = array_merge($jsonF,$intF,$floatF,$strF);
