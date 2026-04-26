@@ -589,6 +589,13 @@ function getPriceByYear(yearNum) {
   return 44000; // 2年目以降
 }
 
+function getManualStartStValue(c) {
+  if (c == null) return null;
+  if (c.start_st_manual === null || c.start_st_manual === undefined || c.start_st_manual === '') return null;
+  const n = Number(c.start_st_manual);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 function calcAllResults() {
   STATE.results = {};
   STATE.years.forEach((ys, yi) => {
@@ -605,6 +612,11 @@ function calcAllResults() {
         // 単価を年数に応じて自動設定（ユーザーが個別編集した場合は上書きしない判定は省略し常に適用）
         const price = getPriceByYear(yn);
         c.prices = Array(12).fill(price);
+        const manualStartSt = getManualStartStValue(c);
+        if (manualStartSt !== null) {
+          c.start_st = manualStartSt;
+          return;
+        }
         // 新規教室（この年度が1年目）はstart_st=0のまま
         if (yn <= 1) return;
         // 前年度の同名教室を探す
@@ -619,6 +631,8 @@ function calcAllResults() {
         const yn = getYearNum(c, fy);
         const price = getPriceByYear(yn);
         c.prices = Array(12).fill(price);
+        const manualStartSt = getManualStartStValue(c);
+        if (manualStartSt !== null) c.start_st = manualStartSt;
       });
     }
 
@@ -796,8 +810,9 @@ function renderParamArea(){
   const el = document.getElementById('param-area');
   if(!el) return;
 
+  const autoStartSt = Number.isFinite(Number(p.start_st)) ? Number(p.start_st) : 0;
   const fields = [
-    {k:'start_st',    l:'期首生徒数',      s:'名'},
+    {k:'start_st_manual', l:'期首生徒数（手入力・空欄で自動）', s:'名'},
     {k:'conv_r',      l:'問合せ→入会率',   step:0.01},
     {k:'rent',        l:'家賃'},
     {k:'water',       l:'水道光熱'},
@@ -839,9 +854,11 @@ function renderParamArea(){
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">';
   fields.forEach(function(f) {
-    const v = p[f.k] !== undefined ? p[f.k] : 0;
+    const isManualStart = f.k === 'start_st_manual';
+    const v = isManualStart ? (p.start_st_manual ?? '') : (p[f.k] !== undefined ? p[f.k] : 0);
+    const manualHint = isManualStart ? ' <span style="font-size:10px;color:#888">自動値: ' + Math.round(autoStartSt) + '名</span>' : '';
     const repairNote = f.k === 'repair' ? ' <span style="font-size:10px;color:#e65100;font-weight:400">※4年目以降のみ適用</span>' : '';
-    html += '<div><label style="display:block;font-size:11px;color:#666;margin-bottom:2px">' + f.l + repairNote + '</label>';
+    html += '<div><label style="display:block;font-size:11px;color:#666;margin-bottom:2px">' + f.l + repairNote + manualHint + '</label>';
     html += '<input type="number" value="' + v + '" step="' + (f.step||1) + '"';
     html += ' style="width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px"';
     html += ' data-id="' + p.id + '" data-field="' + f.k + '" onchange="onParamChange(this)"></div>';
@@ -1186,16 +1203,18 @@ function syncAllYears(clName, field, val) {
 function onParamChange(el){
   const field=el.dataset.field;
   const step=parseFloat(el.step)||1;
-  const val=step<1?parseFloat(el.value)||0:parseInt(el.value)||0;
+  const isManualStart = field === 'start_st_manual';
+  const rawVal = (el.value || '').trim();
+  const val = isManualStart ? (rawVal === '' ? null : (parseInt(rawVal,10)||0)) : (step<1?parseFloat(el.value)||0:parseInt(el.value)||0);
   const p=curClassrooms()[STATE.clIdx];
   p[field]=val;
-  const YEAR_ONLY_FIELDS = ['recruit_fee','recruit_fee_oct'];
+  const YEAR_ONLY_FIELDS = ['recruit_fee','recruit_fee_oct','start_st_manual'];
   if (!YEAR_ONLY_FIELDS.includes(field)) {
     syncAllYears(p.name, field, val);
     STATE.years.forEach(ys=>{ const m=(STATE.classrooms[ys.fiscal_year]||[]).find(c=>c.name===p.name&&c.id!==p.id); if(m) saveField(m.id,field,val); });
   }
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();
-  saveClassroomField(p.id, field, val);
+  saveClassroomField(p.id, field, isManualStart && val===null ? '' : val);
 }
 
 function onNameChange(el){

@@ -42,6 +42,9 @@ if ($route !== 'export_write') {
 
 try {
     $db = getDB();
+    try {
+        $db->exec("ALTER TABLE fc_classrooms ADD COLUMN start_st_manual INT NULL DEFAULT NULL");
+    } catch (Exception $e) { /* カラムが既に存在する場合は無視 */ }
 
     switch ($route) {
 
@@ -60,12 +63,14 @@ try {
                        'consume_r','promo_r','recruit_fee','sys_per_st','fee_r','welfare_r',
                        'repair','lease_cost','insurance','sanitation','other_exp',
                        'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_part','recruit_fee_oct'];
+            $nullableIntF = ['start_st_manual'];
             $floatF = ['wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
             $strF   = ['salary_name'];
 
             foreach ($classrooms as &$c) {
                 foreach ($jsonF  as $f) $c[$f] = isset($c[$f]) ? json_decode($c[$f], true) : [];
                 foreach ($intF   as $f) $c[$f] = intval($c[$f] ?? 0);
+                foreach ($nullableIntF as $f) $c[$f] = (isset($c[$f]) && $c[$f] !== null) ? intval($c[$f]) : null;
                 foreach ($floatF as $f) $c[$f] = floatval($c[$f] ?? 0);
                 foreach ($strF   as $f) $c[$f] = (string)($c[$f] ?? '');
                 $c['id']          = intval($c['id']);
@@ -89,13 +94,18 @@ try {
                            'consume_r','promo_r','recruit_fee','recruit_fee_part','sys_per_st','fee_r','welfare_r',
                            'repair','lease_cost','insurance','sanitation','other_exp',
                            'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_oct'];
+                $nullableIntF = ['start_st_manual'];
                 $floatF = ['wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
                 $strF   = ['name','salary_name'];
-                $allowed = array_merge($jsonF,$intF,$floatF,$strF);
+                $allowed = array_merge($jsonF,$intF,$nullableIntF,$floatF,$strF);
                 if (!in_array($field, $allowed)) { echo json_encode(['error'=>'invalid field']); break; }
                 $safe = '`'.str_replace('`','',$field).'`';
                 if (in_array($field,$jsonF))       $value = json_encode(json_decode($value,true));
                 elseif (in_array($field,$intF))    $value = intval($value);
+                elseif (in_array($field,$nullableIntF)) {
+                    $valueStr = is_string($value) ? trim($value) : $value;
+                    $value = ($valueStr === '' || $valueStr === null || strtolower((string)$valueStr) === 'null') ? null : intval($valueStr);
+                }
                 elseif (in_array($field,$floatF))  $value = floatval($value);
                 $db->prepare("UPDATE fc_classrooms SET $safe=? WHERE id=?")->execute([$value,$id]);
                 echo json_encode(['status'=>'ok']);
