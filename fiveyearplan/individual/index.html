@@ -441,11 +441,45 @@ function calcClassroom(p, bonusMult, fiscalYear) {
   return { months, revenue: sum(13), expense: sum(42), profit: sum(43), totalEnroll: sum(1), totalWd: sum(3), endStudents: last[4] - last[3] };
 }
 
+function getManualStartStValue(c){
+  if(c == null) return null;
+  if(c.start_st_manual === null || c.start_st_manual === undefined || c.start_st_manual === '') return null;
+  const n = Number(c.start_st_manual);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 function calcAllResults() {
   STATE.results = {};
   STATE.years.forEach((ys, yi) => {
     const fy = ys.fiscal_year;
     const cls = STATE.classrooms[fy] || [];
+    if(yi > 0){
+      const prevFy = STATE.years[yi-1].fiscal_year;
+      const prevResults = STATE.results[prevFy] || [];
+      const prevCls = STATE.classrooms[prevFy] || [];
+      cls.forEach(c=>{
+        const manualStartSt = getManualStartStValue(c);
+        if(manualStartSt !== null){
+          c.start_st = manualStartSt;
+          return;
+        }
+        const prevIdx = prevCls.findIndex(pc => pc.name === c.name);
+        if(prevIdx >= 0 && prevResults[prevIdx]){
+          c.start_st = prevResults[prevIdx].endStudents;
+        } else {
+          c.start_st = Number.isFinite(Number(c.start_st)) ? Number(c.start_st) : 0;
+        }
+      });
+    } else {
+      cls.forEach(c=>{
+        const manualStartSt = getManualStartStValue(c);
+        if(manualStartSt !== null){
+          c.start_st = manualStartSt;
+        } else {
+          c.start_st = Number.isFinite(Number(c.start_st)) ? Number(c.start_st) : 0;
+        }
+      });
+    }
     STATE.results[fy] = cls.map(c => calcClassroom(c, ys.bonus_mult, fy));
   });
   // 全社ダッシュボード向けエクスポート（API書き込み）
@@ -684,7 +718,11 @@ function hideSaving(){document.getElementById('saving-indicator').style.display=
 
 async function saveField(id,field,value){
   showSaving();
-  await apiPost('classroom',{action:'update',id,field,value:typeof value==='object'?JSON.stringify(value):value});
+  const res = await apiPost('classroom',{action:'update',id,field,value:typeof value==='object'?JSON.stringify(value):value});
+  if(res && res.error){
+    console.error('saveField error:', field, id, res.error);
+    alert('保存に失敗しました: ' + res.error);
+  }
   hideSaving();
 }
 
@@ -1020,8 +1058,9 @@ function renderParamArea(){
   if(!p)return;
   const el=document.getElementById('param-area');
 
+  const autoStartSt = Number.isFinite(Number(p.start_st)) ? Number(p.start_st) : 0;
   const fields=[
-    {k:'start_st',l:'期首生徒数',s:'名'},{k:'conv_r',l:'問合せ→入会率',s:'',step:0.01},
+    {k:'start_st_manual',l:'期首生徒数（手入力・空欄で自動）',s:'名'},{k:'conv_r',l:'問合せ→入会率',s:'',step:0.01},
     {k:'rent',l:'家賃'},{k:'water',l:'水道光熱'},{k:'electric',l:'電気'},{k:'phone',l:'電話'},
     {k:'travel',l:'交通費'},{k:'consume_r',l:'消耗品/人'},{k:'promo_r',l:'販促費/人'},
     {k:'recruit_fee',l:'正社員求人費(4月)'},{k:'recruit_fee_oct',l:'正社員求人費(10月)'},{k:'recruit_fee_part',l:'アルバイト求人費'},{k:'staff_recruit',l:'人材紹介'},
@@ -1068,9 +1107,11 @@ function renderParamArea(){
 
   html+='<div class="edit-grid">';
   fields.forEach(f=>{
-    const v=p[f.k];
+    const isManualStart = f.k === 'start_st_manual';
+    const v=isManualStart ? (p.start_st_manual ?? '') : p[f.k];
+    const manualHint = isManualStart ? ` <span style="font-size:10px;color:#888">自動値: ${Math.round(autoStartSt)}名</span>` : '';
     const repairNote = f.k==='repair' ? ' <span style="font-size:10px;color:#e65100;font-weight:400">※4年目以降のみ適用</span>' : '';
-    html+=`<div class="edit-field"><label>${f.l}${repairNote}</label><input type="number" value="${v}" step="${f.step||1}" data-id="${p.id}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+    html+=`<div class="edit-field"><label>${f.l}${repairNote}${manualHint}</label><input type="number" value="${v}" step="${f.step||1}" data-id="${p.id}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
   });
   html+='</div>';
 
@@ -1325,10 +1366,12 @@ function resetSemRates() {
 function onParamChange(el){
   const id=el.dataset.id;
   const field=el.dataset.field;
-  const val=parseFloat(el.value)||0;
+  const isManualStart = field === 'start_st_manual';
+  const rawVal = (el.value || '').trim();
+  const val = isManualStart ? (rawVal === '' ? null : (parseFloat(rawVal) || 0)) : (parseFloat(el.value)||0);
   const p=curClassrooms()[STATE.clIdx];
   p[field]=val;
-  saveField(id,field,val);
+  saveField(id,field,isManualStart && val===null ? '' : val);
 
   // If master field, sync to all years
   if(MASTER_FIELDS.includes(field)){

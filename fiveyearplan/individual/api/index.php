@@ -25,6 +25,9 @@ $action = isset($_POST['action']) ? $_POST['action'] : '';
 
 try {
     $db = getDB();
+    try {
+        $db->exec("ALTER TABLE classrooms ADD COLUMN start_st_manual INT NULL DEFAULT NULL");
+    } catch (Exception $e) { /* カラムが既に存在する場合は無視 */ }
 
     switch ($route) {
 
@@ -57,6 +60,7 @@ try {
                           'open_fiscal_year'] as $f) {
                     $c[$f] = isset($c[$f]) ? intval($c[$f]) : 0;
                 }
+                $c['start_st_manual'] = (isset($c['start_st_manual']) && $c['start_st_manual'] !== null) ? intval($c['start_st_manual']) : null;
                 foreach (['conv_r','wd_rate','fee_r','welfare_r','mat_buy_r','exam_buy_r',
                           'teacher_r','legal_welf_r','tax_r'] as $f) {
                     $c[$f] = floatval($c[$f]);
@@ -87,9 +91,10 @@ try {
                               'salary_pm','salary_mgr','salary_sub',
                               'salary_pm2','salary_mgr2','salary_sub2',
                               'open_fiscal_year'];
+                $nullableIntFields = ['start_st_manual'];
                 $floatFields = ['conv_r','wd_rate','fee_r','welfare_r','mat_buy_r','exam_buy_r',
                                 'teacher_r','legal_welf_r','tax_r'];
-                $allowed = array_merge($jsonFields, $intFields, $floatFields, ['name', 'name_pm', 'name_mgr', 'name_sub']);
+                $allowed = array_merge($jsonFields, $intFields, $nullableIntFields, $floatFields, ['name', 'name_pm', 'name_mgr', 'name_sub']);
 
                 if (!in_array($field, $allowed)) {
                     echo json_encode(['error' => 'invalid field: ' . $field]);
@@ -103,6 +108,9 @@ try {
                     $value = json_encode($decoded);
                 } elseif (in_array($field, $intFields)) {
                     $value = intval($value);
+                } elseif (in_array($field, $nullableIntFields)) {
+                    $valueStr = is_string($value) ? trim($value) : $value;
+                    $value = ($valueStr === '' || $valueStr === null || strtolower((string)$valueStr) === 'null') ? null : intval($valueStr);
                 } elseif (in_array($field, $floatFields)) {
                     $value = floatval($value);
                 }

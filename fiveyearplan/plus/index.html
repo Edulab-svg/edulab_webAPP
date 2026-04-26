@@ -213,17 +213,22 @@ async function flushSaves() {
   const batchSize = 50;
   for (let i = 0; i < entries.length; i += batchSize) {
     const batch = entries.slice(i, i + batchSize);
-    await Promise.all(batch.map(e =>
+    const responses = await Promise.all(batch.map(e =>
       apiPost('classroom', { action: 'update', id: e.id, field: e.field,
         value: typeof e.value === 'object' ? JSON.stringify(e.value) : e.value })
     ));
+    const err = responses.find(r => r && r.error);
+    if (err) {
+      console.error('flushSaves error:', err.error);
+      alert('保存に失敗しました: ' + err.error);
+    }
   }
   document.getElementById('saving-indicator').style.display = 'none';
 }
 
 // saveAll: 現在の年度の全教室の全フィールドをDBに保存
 const JSON_FIELDS  = ['prices','enroll','ads','enroll_base','wd_base'];
-const INT_FIELDS   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+const INT_FIELDS   = ['start_st','start_st_manual','start_wd','max_st','open_month','rent','water','electric','phone','travel',
                       'consume_r','promo_r','recruit_fee','sys_per_st','mat_per_st','fee_r','welfare_r',
                       'repair','lease_cost','insurance','sanitation','other_exp','parttime_cost',
                       'recruit_fee_part','recruit_fee_oct','enroll_fee','salary1','salary2'];
@@ -277,7 +282,7 @@ async function manualSave() {
 
   // 仮IDの教室が残っていればDBに登録してリアルIDを取得
   const allSaveFields = ['prices','enroll','ads','enroll_base','wd_base',
-    'start_st','start_wd','rent','water','electric','phone','travel','consume_r','promo_r',
+    'start_st','start_st_manual','start_wd','rent','water','electric','phone','travel','consume_r','promo_r',
     'sys_per_st','mat_per_st','exam_buy_r','fee_r','welfare_r','repair','lease_cost',
     'insurance','sanitation','other_exp','parttime_cost','recruit_fee','recruit_fee_oct',
     'recruit_fee_part','enroll_fee','salary1','wd_rate','conv_r','exam_sell_r',
@@ -848,6 +853,13 @@ function getPriceByYear(yearNum) {
   return 30000; // 5年目以降
 }
 
+function getManualStartStValue(c) {
+  if (c == null) return null;
+  if (c.start_st_manual === null || c.start_st_manual === undefined || c.start_st_manual === '') return null;
+  const n = Number(c.start_st_manual);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 function calcAllResults() {
   STATE.results = {};
   STATE.years.forEach((ys, yi) => {
@@ -864,6 +876,11 @@ function calcAllResults() {
         // 単価を年数に応じて自動設定（ユーザーが個別編集した場合は上書きしない判定は省略し常に適用）
         const price = getPriceByYear(yn);
         c.prices = Array(12).fill(price);
+        const manualStartSt = getManualStartStValue(c);
+        if (manualStartSt !== null) {
+          c.start_st = manualStartSt;
+          return;
+        }
         // 新規教室（この年度が1年目）はstart_st=0のまま
         if (yn <= 1) return;
         // 前年度の同名教室を探す
@@ -878,6 +895,8 @@ function calcAllResults() {
         const yn = getYearNum(c, fy);
         const price = getPriceByYear(yn);
         c.prices = Array(12).fill(price);
+        const manualStartSt = getManualStartStValue(c);
+        if (manualStartSt !== null) c.start_st = manualStartSt;
       });
     }
 
@@ -1278,8 +1297,9 @@ function renderParamArea(){
   const effSal=p.salary1>0?p.salary1+SALARY_RAISE*sem0:0;
 
   const isNewCl = getYearNum(p, curYear().fiscal_year) === 1;
+  const autoStartSt = Number.isFinite(Number(p.start_st)) ? Number(p.start_st) : 0;
   const fields=[
-    ...(isNewCl ? [] : [{k:'start_st',l:'期首生徒数'}]),
+    ...(isNewCl ? [] : [{k:'start_st_manual',l:'期首生徒数（手入力・空欄で自動）'}]),
     {k:'conv_r',l:'問合せ→入会率',step:0.01},
     {k:'rent',l:'家賃'},
     {k:'water',l:'水道光熱'},
@@ -1340,10 +1360,13 @@ function renderParamArea(){
 
   html+='<div class="edit-grid">';
   fields.forEach(f=>{
+    const isManualStart = f.k === 'start_st_manual';
+    const v = isManualStart ? (p.start_st_manual ?? '') : p[f.k];
+    const manualHint = isManualStart ? ` <span style="font-size:10px;color:#888">自動値: ${Math.round(autoStartSt)}名</span>` : '';
     if (f.k === 'repair') {
-      html+=`<div class="edit-field"><label>${f.l} <span style="font-size:10px;color:#e65100;font-weight:400">※4年目以降のみ適用</span></label><input type="number" value="${p[f.k]}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+      html+=`<div class="edit-field"><label>${f.l} <span style="font-size:10px;color:#e65100;font-weight:400">※4年目以降のみ適用</span>${manualHint}</label><input type="number" value="${v}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
     } else {
-      html+=`<div class="edit-field"><label>${f.l}</label><input type="number" value="${p[f.k]}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
+      html+=`<div class="edit-field"><label>${f.l}${manualHint}</label><input type="number" value="${v}" step="${f.step||1}" data-field="${f.k}" onchange="onParamChange(this)"></div>`;
     }
   });
   html+='</div>';
@@ -1538,7 +1561,7 @@ async function addClassroom(openMonth) {
     newCl.id = res.id;
     // 全フィールドをDBに保存
     const allFields = ['prices','enroll','ads','enroll_base','wd_base',
-      'start_st','start_wd','max_st','rent','water','electric','phone','travel',
+      'start_st','start_st_manual','start_wd','max_st','rent','water','electric','phone','travel',
       'consume_r','promo_r','recruit_fee','recruit_fee_oct','recruit_fee_part',
       'sys_per_st','mat_per_st','fee_r','welfare_r','repair','lease_cost',
       'insurance','sanitation','other_exp','parttime_cost','enroll_fee','salary1','salary2',
@@ -1582,11 +1605,13 @@ function syncAllYears(clName, field, val) {
 function onParamChange(el){
   const field=el.dataset.field;
   const step=parseFloat(el.step)||1;
-  const val=step<1?parseFloat(el.value)||0:parseInt(el.value)||0;
+  const isManualStart = field === 'start_st_manual';
+  const rawVal = (el.value || '').trim();
+  const val = isManualStart ? (rawVal === '' ? null : (parseInt(rawVal,10)||0)) : (step<1?parseFloat(el.value)||0:parseInt(el.value)||0);
   const p=curClassrooms()[STATE.clIdx];
   p[field]=val;
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();
-  saveField(p.id, field, val);
+  saveField(p.id, field, isManualStart && val===null ? '' : val);
 }
 
 function onNameChange(el){
