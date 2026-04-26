@@ -49,6 +49,7 @@ try {
     switch ($route) {
 
         case 'all':
+            // enroll_annual 列が未作成の場合: ALTER TABLE fc_classrooms ADD COLUMN enroll_annual INT NULL DEFAULT NULL;
             $years = $db->query("SELECT * FROM fc_year_settings ORDER BY fiscal_year")->fetchAll();
             foreach ($years as &$y) {
                 $y['fiscal_year'] = intval($y['fiscal_year']);
@@ -59,7 +60,7 @@ try {
             $classrooms = $db->query("SELECT * FROM fc_classrooms ORDER BY fiscal_year, sort_order")->fetchAll();
             $byYear = [];
             $jsonF  = ['prices','enroll','ads','enroll_base','wd_base'];
-            $intF   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+            $intF   = ['start_st','start_wd','max_st','open_month','enroll_annual','rent','water','electric','phone','travel',
                        'consume_r','promo_r','recruit_fee','sys_per_st','fee_r','welfare_r',
                        'repair','lease_cost','insurance','sanitation','other_exp',
                        'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_part','recruit_fee_oct'];
@@ -90,7 +91,7 @@ try {
                 $field = $_POST['field'] ?? '';
                 $value = $_POST['value'] ?? '';
                 $jsonF  = ['prices','enroll','ads','enroll_base','wd_base'];
-                $intF   = ['start_st','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+                $intF   = ['start_st','start_wd','max_st','open_month','enroll_annual','rent','water','electric','phone','travel',
                            'consume_r','promo_r','recruit_fee','recruit_fee_part','sys_per_st','fee_r','welfare_r',
                            'repair','lease_cost','insurance','sanitation','other_exp',
                            'enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_oct'];

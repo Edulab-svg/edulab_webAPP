@@ -210,7 +210,7 @@ async function flushSaves() {
 }
 
 async function ensureDbRowsForGeneratedYears() {
-  const allSaveFields = ['prices','enroll','ads','enroll_base','wd_base',
+  const allSaveFields = ['prices','enroll','enroll_annual','ads','enroll_base','wd_base',
     'start_st','start_st_manual','start_wd','max_st','open_month','rent','water','electric','phone','travel',
     'consume_r','promo_r','recruit_fee','recruit_fee_oct','recruit_fee_part','sys_per_st','fee_r','welfare_r',
     'repair','lease_cost','insurance','sanitation','other_exp','enroll_fee','teacher_monthly',
@@ -267,6 +267,7 @@ const INITIAL_DATA = {
       {id:'2026-0',name:'板宿（FC）',open_month:-1,start_st:4,
        prices:[40000,40000,40000,40000,40000,40000,40000,40000,40000,40000,40000,40000],
        enroll:[2,2,2,2,2,2,2,1,2,1,1,1], // 年間20名
+       enroll_annual: 20,
        ads:[250000,35000,200000,250000,35000,35000,60000,60000,400000,35000,200000,250000],
        rent:220000,water:2000,electric:15000,phone:10000,travel:2000,
        consume_r:700,promo_r:150,sys_per_st:300,
@@ -864,8 +865,9 @@ function renderParamClassroomList(){
     const yn = getYearNum(c, fy);
     const isNew = yn === 1;
     const bdgCls = isNew ? 'year-badge new-badge' : 'year-badge';
+    const enAnn = c.enroll_annual != null ? c.enroll_annual : (c.enroll ? c.enroll.reduce(function(s,v){return s+v;},0) : 0);
     btn.innerHTML = c.name + `<span class="${bdgCls}">${yn}年目</span>` +
-      '<br><span style="font-size:10px;opacity:.7">利益:' + fmtShort(r?.profit||0) + ' | ' + (r?.endStudents||0) + '名</span>';
+      '<br><span style="font-size:10px;opacity:.7">入会:' + enAnn + '名 | 利益:' + fmtShort(r?.profit||0) + ' | ' + (r?.endStudents||0) + '名</span>';
     btn.onclick = () => {
       STATE.clIdx = i;
       renderParamClassroomList();
@@ -913,7 +915,6 @@ function renderParamArea(){
     {k:'salary2',     l:'給与（下期）'},
     {k:'legal_welf_r',l:'法定福利率',     step:0.01},
     {k:'tax_r',       l:'租税公課率',     step:0.01},
-    {k:'wd_rate',     l:'退会率',         step:0.01},
   ];
 
   let html = '<h3 style="font-size:14px;margin-bottom:12px">' + p.name + ' パラメータ編集</h3>';
@@ -938,20 +939,84 @@ function renderParamArea(){
   });
   html += '</div>';
 
-  // 入会数・退会率
-  const actualEnroll = p.enroll ? p.enroll.reduce(function(s,v){return s+v;},0) : 0;
-  html += '<div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">';
-  html += '<div style="padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
+  html += '<div style="margin-top:8px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
+  html += '<div><label style="font-size:11px;color:#666">期首退会数</label><br>';
+  html += '<input type="number" value="' + (p.start_wd||0) + '" style="width:70px;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:13px" data-field="start_wd" onchange="onParamChange(this)"></div>';
+  html += '<div style="font-size:11px;color:#888;align-self:flex-end;padding-bottom:6px">問合せ→入会率: <b>' + Math.round((p.conv_r||0)*100) + '%</b>（' + ((p.conv_r||0)>0?Math.round(30/(p.conv_r||1))+'件/年':'-') + '問合せ想定）</div></div>';
+
+  // 入会・退会（まんてん個別プラスと同じ: 年間目標→月別配分、開校年はフル年換算表示）
+  const actualEnroll = p.enroll ? p.enroll.reduce((s,v)=>s+v,0) : 0;
+  const om2 = (p.open_month != null && p.open_month > 0) ? p.open_month : -1;
+  let annualEnroll = actualEnroll;
+  if (om2 > 0) {
+    const base3 = (p.enroll_base && p.enroll_base.length === 12) ? p.enroll_base : ENROLL_BASE_DEFAULT;
+    const baseTotal = base3.reduce((s,v)=>s+v,0);
+    const activeSum = base3.filter((_,i)=>i>=om2).reduce((s,v)=>s+v,0);
+    annualEnroll = activeSum > 0 ? Math.round(actualEnroll * baseTotal / activeSum) : actualEnroll;
+  }
+  const wdRatePct2 = (p.wd_rate||0)*100;
+  let estTotalSt=0, tmpSt2=p.start_st||0;
+  for (let m=0;m<12;m++){
+    const b = m===0 ? (tmpSt2-(p.start_wd||0)) : tmpSt2;
+    let a = b + (p.enroll[m]||0);
+    if (p.max_st && a > p.max_st) a = p.max_st;
+    estTotalSt += a; tmpSt2 = a;
+  }
+  const calcAnnualWd = Math.round((p.wd_rate||0)*estTotalSt);
+  const enrollBase3 = p.enroll_base || ENROLL_BASE_DEFAULT;
+  const wdBase3 = p.wd_base || WD_BASE_DEFAULT;
+  const eBaseTotal = enrollBase3.reduce((s,v)=>s+v,0);
+  const wBaseTotal = wdBase3.reduce((s,v)=>s+v,0);
+  const wdMonthlyDisp = distributeWd(calcAnnualWd, wdBase3);
+
+  html += '<h3 style="font-size:14px;margin:16px 0 8px">入会・退会（年間設定 → 月別自動配分）</h3>';
+  html += '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px">';
+  html += '<div style="flex:1;min-width:250px;padding:10px;background:#f0f8f0;border-radius:8px;border:1px solid #c8e6c9;display:flex;align-items:center;gap:10px">';
   html += '<label style="font-weight:700;font-size:13px;color:#2D6A4F">年間入会数</label>';
-  html += '<input type="number" value="' + actualEnroll + '"';
-  html += ' style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right"';
-  html += ' data-id="' + p.id + '" onchange="onAnnualEnrollChange(this)"></div>';
-  html += '<div style="padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
+  html += '<input type="number" value="' + annualEnroll + '" style="width:90px;padding:6px 8px;border:2px solid #2D6A4F;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_annual_enroll" onchange="onAnnualEnrollChange(this)">';
+  html += '<span style="font-size:11px;color:#666">名' + (om2>0?' (開校年は'+actualEnroll+'名)':'') + '</span></div>';
+  html += '<div style="flex:1;min-width:300px;padding:10px;background:#fef5f5;border-radius:8px;border:1px solid #e8c0c0;display:flex;align-items:center;gap:10px">';
   html += '<label style="font-weight:700;font-size:13px;color:#C1292E">年間退会率</label>';
-  html += '<input type="number" value="' + (p.wd_rate||0) + '" step="0.01"';
-  html += ' style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right"';
-  html += ' data-id="' + p.id + '" onchange="onWdRateChange(this)">%</div>';
-  html += '</div>';
+  html += '<input type="number" value="' + wdRatePct2.toFixed(2) + '" step="0.01" style="width:90px;padding:6px 8px;border:2px solid #C1292E;border-radius:6px;font-size:16px;font-weight:700;text-align:right" data-field="_wd_rate_pct" onchange="onWdRateChange(this)">';
+  html += '<span style="font-size:11px;color:#666">% → 退会' + calcAnnualWd + '名 | 純増' + (actualEnroll-calcAnnualWd) + '名</span></div></div>';
+
+  html += '<div class="table-wrap"><table class="monthly-table"><thead><tr><th>項目</th>';
+  MONTHS.forEach(function(m){ html += '<th>'+m+'</th>'; });
+  html += '<th style="background:#f0f0f0;font-weight:700">年計</th></tr></thead><tbody>';
+  html += '<tr><td style="font-weight:600;color:#2D6A4F">入会数</td>';
+  (p.enroll||[]).forEach(function(v){ html += '<td style="color:#2D6A4F;font-weight:500">'+v+'</td>'; });
+  html += '<td style="background:#e8f5e9;font-weight:700;color:#2D6A4F">'+actualEnroll+'</td></tr>';
+  html += '<tr><td style="font-size:10px;color:#999;font-style:italic">入会比率</td>';
+  enrollBase3.forEach(function(v){ html += '<td style="font-size:10px;color:#999;font-style:italic">'+(eBaseTotal>0?(v/eBaseTotal*100).toFixed(1):0)+'%</td>'; });
+  html += '<td style="font-size:10px;color:#999;background:#f8f8f8">100%</td></tr>';
+  html += '<tr><td style="font-weight:600;color:#C1292E">退会数</td>';
+  wdMonthlyDisp.forEach(function(v){ html += '<td style="color:#C1292E;font-weight:500">'+v+'</td>'; });
+  html += '<td style="background:#fef5f5;font-weight:700;color:#C1292E">'+calcAnnualWd+'</td></tr>';
+  html += '<tr><td style="font-size:10px;color:#999;font-style:italic">退会比率</td>';
+  wdBase3.forEach(function(v){ html += '<td style="font-size:10px;color:#999;font-style:italic">'+(wBaseTotal>0?(v/wBaseTotal*100).toFixed(1):0)+'%</td>'; });
+  html += '<td style="font-size:10px;color:#999;background:#f8f8f8">100%</td></tr>';
+  html += '<tr><td style="font-weight:600">授業料単価</td>';
+  (p.prices||[]).forEach(function(v,mi){
+    html += '<td><input type="number" value="'+v+'" data-field="prices" data-mi="'+mi+'" onchange="onArrayChange(this)"></td>';
+  });
+  html += '<td style="background:#f8f8f8;font-size:10px;color:#888">'+ (p.prices||[]).reduce(function(s,v){return s+v;},0).toLocaleString() + '</td></tr>';
+  html += '</tbody></table></div>';
+
+  html += '<details style="margin-top:10px;padding:8px 12px;background:#f8f8f8;border-radius:8px;border:1px solid #e0e0e0;font-size:12px"><summary style="cursor:pointer;font-weight:600;color:#666">⚙ 入会比率・退会比率のカスタム設定（クリックで展開）</summary>';
+  html += '<div style="margin-top:10px"><div style="font-size:11px;color:#888;margin-bottom:8px">※ 合計値は手入力後、月別入会数が再配分されます（年間入会数は維持）。</div>';
+  html += '<table class="monthly-table"><thead><tr><th>項目</th>';
+  MONTHS.forEach(function(m){ html += '<th>'+m+'</th>'; });
+  html += '<th>合計</th></tr></thead><tbody>';
+  html += '<tr><td style="font-weight:600;color:#2D6A4F;font-size:11px">入会比率</td>';
+  enrollBase3.forEach(function(v,mi){
+    html += '<td><input type="number" value="'+v+'" data-field="enroll_base" data-mi="'+mi+'" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#2D6A4F;border-color:#a5d6a7"></td>';
+  });
+  html += '<td style="background:#e8f5e9;font-size:10px;font-weight:700;color:#2D6A4F">'+eBaseTotal+'</td></tr>';
+  html += '<tr><td style="font-weight:600;color:#C1292E;font-size:11px">退会比率</td>';
+  wdBase3.forEach(function(v,mi){
+    html += '<td><input type="number" value="'+v+'" data-field="wd_base" data-mi="'+mi+'" onchange="onRatioChange(this)" style="width:38px;font-size:10px;color:#C1292E;border-color:#ef9a9a"></td>';
+  });
+  html += '<td style="background:#fef5f5;font-size:10px;font-weight:700;color:#C1292E">'+wBaseTotal+'</td></tr></tbody></table></div></details>';
 
   // 広告費（年間合計入力→比率自動配分）
   const annAds_fc = p.ads ? p.ads.reduce((s,v)=>s+v,0) : 0;
@@ -1033,7 +1098,8 @@ function renderClassroomList(){
     const yn=getYearNum(c,fy);
     const isNew=yn===1;
     const bdgCls=isNew?'year-badge new-badge':'year-badge';
-    btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">利益:'+fmtShort(r?.profit||0)+' | '+(r?.endStudents||0)+'名</span>';
+    const enAnn2 = c.enroll_annual != null ? c.enroll_annual : (c.enroll ? c.enroll.reduce((s,v)=>s+v,0) : 0);
+    btn.innerHTML=c.name+`<span class="${bdgCls}">${yn}年目</span>`+'<br><span style="font-size:10px;opacity:.7">入会:'+enAnn2+'名 | 利益:'+fmtShort(r?.profit||0)+' | '+(r?.endStudents||0)+'名</span>';
     btn.onclick=()=>{STATE.plMode='single';STATE.clIdx=i;renderClassroomList();renderPLTable();renderParamArea()};
     el.appendChild(btn);
   });
@@ -1205,6 +1271,7 @@ function makeNewClassroom(fy, idx, openMonth) {
     start_st: 0,
     prices: Array(12).fill(24000),
     enroll,
+    enroll_annual: 30,
     ads: generateAds(om),
     rent: 220000, water: 2000, electric: 15000, phone: 10000, travel: 2000,
     consume_r: 700, promo_r: 150, recruit_fee: 0,
@@ -1256,7 +1323,7 @@ function saveAll() {
   clearTimeout(_saveAllTimer);
   _saveAllTimer = setTimeout(() => {
     const JSON_FIELDS = ['prices','enroll','ads','enroll_base','wd_base'];
-    const INT_FIELDS = ['start_st','start_st_manual','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+    const INT_FIELDS = ['start_st','start_st_manual','start_wd','max_st','open_month','enroll_annual','rent','water','electric','phone','travel',
       'consume_r','promo_r','recruit_fee','recruit_fee_part','sys_per_st','fee_r','welfare_r',
       'repair','lease_cost','insurance','sanitation','other_exp','enroll_fee','teacher_monthly','salary1','salary2','parttime_cost','recruit_fee_oct'];
     const FLOAT_FIELDS = ['wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r','legal_welf_r','tax_r'];
@@ -1298,7 +1365,7 @@ function onParamChange(el){
     syncAllYears(p.name, field, val);
     STATE.years.forEach(ys=>{ const m=(STATE.classrooms[ys.fiscal_year]||[]).find(c=>c.name===p.name&&c.id!==p.id); if(m) saveField(m.id,field,val); });
   }
-  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();
+  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();
   saveClassroomField(p.id, field, isManualStart && val===null ? '' : val);
 }
 
@@ -1331,10 +1398,17 @@ function onWdRateChange(el){
 }
 
 function onAnnualEnrollChange(el){
-  const annual=parseInt(el.value)||0;
-  const p=curClassrooms()[STATE.clIdx];
-  p.enroll=distributeEnroll(annual, p.open_month>=0?p.open_month:undefined, p.enroll_base);
-  syncAllYears(p.name,'enroll',p.enroll);
+  const annual=parseInt(el.value,10)||0;
+  const clName=curClassrooms()[STATE.clIdx].name;
+  STATE.years.forEach(function(ys){
+    (STATE.classrooms[ys.fiscal_year]||[]).forEach(function(c){
+      if (c.name !== clName) return;
+      c.enroll_annual = annual;
+      c.enroll = distributeEnroll(annual, c.open_month>=0 ? c.open_month : undefined, c.enroll_base);
+      saveField(c.id, 'enroll_annual', annual);
+      saveField(c.id, 'enroll', c.enroll);
+    });
+  });
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
 }
 
@@ -1354,7 +1428,7 @@ function onRatioChange(el){
         c[field][mi]=val;
         // 入会比率変更時は enroll を再配分
         if(field==='enroll_base'){
-          const ann=c.enroll.reduce((s,v)=>s+v,0);
+          const ann = c.enroll_annual != null ? c.enroll_annual : c.enroll.reduce((s,v)=>s+v,0);
           c.enroll=distributeEnroll(ann, c.open_month>=0?c.open_month:undefined, c.enroll_base);
         }
       }
@@ -1362,7 +1436,7 @@ function onRatioChange(el){
   });
   // 現在の教室も再配分
   if(field==='enroll_base'){
-    const ann=p.enroll.reduce((s,v)=>s+v,0);
+    const ann = p.enroll_annual != null ? p.enroll_annual : p.enroll.reduce((s,v)=>s+v,0);
     p.enroll=distributeEnroll(ann, p.open_month>=0?p.open_month:undefined, p.enroll_base);
   }
   calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
@@ -1412,7 +1486,7 @@ function onArrayChange(el){
   const val=parseInt(el.value)||0;
   const p=curClassrooms()[STATE.clIdx];
   p[field][mi]=val;
-  calcAllResults();renderKPI();renderPLTable();renderClassroomList();saveAll();
+  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
 }
 
 // ============================================================
@@ -1453,6 +1527,9 @@ function renderMasterTable(){
   bulkHtml += '<div style="font-weight:700;font-size:13px;color:#e65100;margin-bottom:6px">⚡ 一括変更</div><div style="font-size:11px;color:#b45309;margin-bottom:8px">① チェックボックスで教室を選択 → ② 項目と値を入力 → ③「選択教室に適用」ボタン</div>';
   bulkHtml += '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">';
   bulkHtml += '<select id="bulk-field" style="padding:6px 10px;border:1px solid #ffd54f;border-radius:6px;font-size:13px;background:#fff">';
+  bulkHtml += '<option value="_enroll" data-step="1" data-special="enroll">年間入会数</option>';
+  bulkHtml += '<option value="_wd" data-step="0.01" data-special="wd">退会率％</option>';
+  bulkHtml += '<option value="_ads" data-step="1" data-special="ads">広告費/年</option>';
   const bulkCols = cols.filter(c=>!c.readonly && !c.special);
   bulkCols.forEach(c=>{
     bulkHtml += `<option value="${c.k}" data-step="${c.step||1}">${c.l}</option>`;
@@ -1478,7 +1555,7 @@ function renderMasterTable(){
       if(c.readonly){
         html+=`<td style="padding:4px 6px;font-weight:700;position:sticky;left:30px;background:${bg};border-right:2px solid #ddd;z-index:1">${p[c.k]}</td>`;
       } else if(c.special==='enroll'){
-        const ann=p.enroll?p.enroll.reduce((s,v)=>s+v,0):0;
+        const ann = p.enroll_annual != null ? p.enroll_annual : (p.enroll?p.enroll.reduce((s,v)=>s+v,0):0);
         html+=`<td style="padding:2px;background:${ci%2===0?'#f0f8f0':'#e8f5e9'}"><input type="number" value="${ann}" style="width:100%;padding:3px 4px;border:1px solid #a5d6a7;border-radius:3px;font-size:12px;text-align:right;background:transparent;color:#2D6A4F;font-weight:600" data-name="${p.name}" onchange="onMasterEnrollChange(this)"></td>`;
       } else if(c.special==='wd'){
         const wr=((p.wd_rate||0)*100).toFixed(2);
@@ -1510,20 +1587,37 @@ function applyBulkChange() {
   const field = document.getElementById('bulk-field').value;
   const valStr = document.getElementById('bulk-value').value;
   if (valStr === '') { alert('値を入力してください'); return; }
-  const step = parseFloat(document.getElementById('bulk-field').selectedOptions[0]?.dataset.step)||1;
+  const selectedOpt = document.getElementById('bulk-field').selectedOptions[0];
+  const step = parseFloat(selectedOpt?.dataset.step)||1;
+  const special = selectedOpt?.dataset.special || '';
   const val = step < 1 ? parseFloat(valStr)||0 : parseInt(valStr)||0;
   const checked = document.querySelectorAll('.master-check:checked');
   if (!checked.length) { alert('教室を選択してください'); return; }
-  if (!confirm(`選択中の${checked.length}教室の「${document.getElementById('bulk-field').selectedOptions[0].text}」を${val}に変更しますか？`)) return;
+  if (!confirm(`選択中の${checked.length}教室の「${selectedOpt.text}」を${val}${special==='wd'?'%':''}に変更しますか？`)) return;
   checked.forEach(cb => {
     const name = cb.dataset.name;
     STATE.years.forEach(ys => {
       (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
-        if (c.name === name) { c[field] = val; saveField(c.id, field, val); }
+        if (c.name !== name) return;
+        if (special === 'enroll') {
+          c.enroll_annual = val;
+          saveField(c.id, 'enroll_annual', val);
+          c.enroll = distributeEnroll(val, c.open_month >= 0 ? c.open_month : undefined, c.enroll_base);
+          saveField(c.id, 'enroll', c.enroll);
+        } else if (special === 'wd') {
+          c.wd_rate = val / 100;
+          saveField(c.id, 'wd_rate', c.wd_rate);
+        } else if (special === 'ads') {
+          c.ads = distributeAds(val, c.open_month >= 0 ? c.open_month : undefined);
+          saveField(c.id, 'ads', c.ads);
+        } else {
+          c[field] = val;
+          saveField(c.id, field, val);
+        }
       });
     });
   });
-  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList(); renderMasterTable();
+  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList(); renderParamArea(); renderMasterTable();
 }
 
 function selectAllMaster(checked) {
@@ -1544,7 +1638,7 @@ function onMasterAdsChange(el) {
       }
     });
   });
-  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList();
+  calcAllResults(); renderKPI(); renderPLTable(); renderClassroomList(); renderParamClassroomList(); renderParamArea();
 }
 function onMasterChange(el){
   const name=el.dataset.name;
@@ -1554,29 +1648,34 @@ function onMasterChange(el){
   STATE.years.forEach(ys=>{
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{if(c.name===name)c[field]=val;});
   });
-  calcAllResults();renderKPI();renderPLTable();renderClassroomList();saveAll();
+  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
 }
 
 function onMasterEnrollChange(el){
   const name=el.dataset.name;
-  const annual=parseInt(el.value)||0;
+  const annual=parseInt(el.value,10)||0;
   STATE.years.forEach(ys=>{
     (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
       if(c.name===name){
+        c.enroll_annual=annual;
         c.enroll=distributeEnroll(annual,c.open_month>=0?c.open_month:undefined,c.enroll_base);
+        saveField(c.id,'enroll_annual',annual);
+        saveField(c.id,'enroll',c.enroll);
       }
     });
   });
-  calcAllResults();renderKPI();renderPLTable();renderClassroomList();saveAll();
+  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
 }
 
 function onMasterWdChange(el){
   const name=el.dataset.name;
   const rate=parseFloat(el.value)||0;
   STATE.years.forEach(ys=>{
-    (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{if(c.name===name)c.wd_rate=rate/100;});
+    (STATE.classrooms[ys.fiscal_year]||[]).forEach(c=>{
+      if(c.name===name){ c.wd_rate=rate/100; saveField(c.id,'wd_rate',c.wd_rate); }
+    });
   });
-  calcAllResults();renderKPI();renderPLTable();renderClassroomList();saveAll();
+  calcAllResults();renderKPI();renderPLTable();renderClassroomList();renderParamClassroomList();renderParamArea();saveAll();
 }
 
 // ============================================================
@@ -1721,6 +1820,7 @@ async function loadFromAPI() {
       const _correctWdRate = 0.07;
       if (_c.id) {
         apiPost('classroom', {action:'update', id:_c.id, field:'enroll', value:JSON.stringify(_correctEnroll)});
+        apiPost('classroom', {action:'update', id:_c.id, field:'enroll_annual', value:20});
         apiPost('classroom', {action:'update', id:_c.id, field:'wd_rate', value:_correctWdRate});
       }
     }
@@ -1749,6 +1849,7 @@ async function loadFromAPI() {
           id: `${fy}-${i}`, name, open_month:om, start_st:pr.start_st||0,
           prices: base.prices?.slice() || [44000,...Array(11).fill(44000)],
           enroll: base.enroll?.slice() || Array(12).fill(0),
+          enroll_annual: base.enroll_annual != null ? base.enroll_annual : null,
           ads: base.ads?.slice() || Array(12).fill(0),
           rent:base.rent||220000, water:base.water||2000, electric:base.electric||15000,
           phone:base.phone||10000, travel:base.travel||2000,
