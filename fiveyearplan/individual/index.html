@@ -774,6 +774,29 @@ function curYear(){return STATE.years[STATE.yearIdx]}
 function curClassrooms(){return STATE.classrooms[curYear().fiscal_year]||[]}
 function curResults(){return STATE.results[curYear().fiscal_year]||[]}
 
+/** 年度切替後、直前に見ていた教室名に一致するインデックスを復元（無ければ0へクランプ） */
+function syncClIdxToClassroomName(selectedName){
+  const cls=curClassrooms();
+  if(!cls.length){STATE.clIdx=0;return}
+  if(selectedName){
+    const j=cls.findIndex(c=>c.name===selectedName);
+    if(j>=0){STATE.clIdx=j;return}
+  }
+  if(STATE.clIdx>=cls.length)STATE.clIdx=Math.max(0,cls.length-1);
+}
+function onSelectFiscalYearTab(i){
+  const prevName=curClassrooms()[STATE.clIdx]?.name;
+  STATE.yearIdx=i;STATE.mainTab=0;
+  syncClIdxToClassroomName(prevName);
+  renderYearTabs();renderAll();switchMainTab(0);
+}
+function onSelectFiscalYearFromTable(i){
+  const prevName=curClassrooms()[STATE.clIdx]?.name;
+  STATE.yearIdx=i;
+  syncClIdxToClassroomName(prevName);
+  renderYearTabs();renderAll();
+}
+
 function renderYearTabs(){
   const el=document.getElementById('year-tabs');
   el.innerHTML='';
@@ -782,7 +805,7 @@ function renderYearTabs(){
     const btn=document.createElement('div');
     btn.className='tab'+(i===STATE.yearIdx&&STATE.mainTab!==10?' active':'');
     btn.textContent=ys.fiscal_year+'年度 '+cls.length+'室';
-    btn.onclick=()=>{STATE.yearIdx=i;STATE.clIdx=0;STATE.mainTab=0;renderYearTabs();renderAll();switchMainTab(0)};
+    btn.onclick=()=>onSelectFiscalYearTab(i);
     el.appendChild(btn);
   });
   // 2026年度が存在する場合のみMGタブを追加
@@ -1558,7 +1581,7 @@ function renderYearSummary(){
     const wdRate=s.totalSt>0?(s.wd/s.totalSt*100).toFixed(2)+'%':'-';
     const profitRate=s.revenue>0?(s.profit/s.revenue*100).toFixed(1)+'%':'-';
     const bg=i===STATE.yearIdx?'rgba(27,73,101,.05)':'';
-    html+=`<tr style="background:${bg}" onclick="STATE.yearIdx=${i};STATE.clIdx=0;renderYearTabs();renderAll()">
+    html+=`<tr style="background:${bg}" onclick="onSelectFiscalYearFromTable(${i})">
       <td>${fy}年度</td><td>${s.rooms}</td><td>${s.endSt}名</td>
       <td style="color:#2D6A4F">${s.enroll}</td><td style="color:#C1292E">${s.wd}</td>
       <td style="color:#e67e22;font-weight:600">${wdRate}</td>
@@ -1614,7 +1637,7 @@ function renderCumSummary(){
   let html = '<thead><tr><th style="text-align:left">年度</th><th>年間損益</th><th>累計損益</th></tr></thead><tbody>';
   summaries.forEach((s, i) => {
     const bg = i===STATE.yearIdx ? 'rgba(27,73,101,.05)' : '';
-    html += `<tr style="background:${bg}" onclick="STATE.yearIdx=${i};STATE.clIdx=0;renderYearTabs();renderAll()">
+    html += `<tr style="background:${bg}" onclick="onSelectFiscalYearFromTable(${i})">
       <td>${s.year}年度</td>
       <td style="font-weight:700;color:${s.profit>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.profit)}</td>
       <td style="font-weight:700;color:${s.cum>=0?'#2D6A4F':'#C1292E'}">${fmtYen(s.cum)}</td>
