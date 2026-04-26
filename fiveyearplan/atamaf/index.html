@@ -178,13 +178,48 @@ async function apiPost(route, data) {
 }
 let _saveTimer = null;
 function saveField(id, field, value) {
+  const idNum = Number(id);
+  if (!id || isNaN(idNum) || idNum <= 0) return;
   clearTimeout(_saveTimer);
   document.getElementById('saving-indicator').style.display = 'block';
   _saveTimer = setTimeout(async () => {
-    await apiPost('classroom', {action:'update', id, field,
+    const res = await apiPost('classroom', {action:'update', id, field,
       value: typeof value === 'object' ? JSON.stringify(value) : value});
+    if (res && res.error) {
+      console.error('saveField error:', field, id, res.error);
+      alert('保存に失敗しました: ' + res.error);
+    }
     document.getElementById('saving-indicator').style.display = 'none';
   }, 600);
+}
+
+async function ensureDbRowsForGeneratedYears() {
+  const allSaveFields = ['prices','enroll','ads','enroll_base','wd_base',
+    'start_st','start_st_manual','start_wd','max_st','open_month','rent','water','electric','phone','travel',
+    'consume_r','promo_r','recruit_fee','recruit_fee_oct','recruit_fee_part','sys_per_st','fee_r','welfare_r',
+    'repair','lease_cost','insurance','sanitation','other_exp','enroll_fee','teacher_monthly',
+    'salary1','salary2','parttime_cost','wd_rate','conv_r','atama_r','exam_buy_r','exam_sell_r',
+    'legal_welf_r','tax_r','name','salary_name'];
+  for (const ys of STATE.years) {
+    for (const c of (STATE.classrooms[ys.fiscal_year] || [])) {
+      const idNum = Number(c.id);
+      const isFakeId = !c.id || isNaN(idNum) || idNum <= 0;
+      if (!isFakeId) continue;
+      const addRes = await apiPost('classroom', {
+        action: 'add',
+        fiscal_year: ys.fiscal_year,
+        name: c.name,
+        open_month: c.open_month
+      });
+      if (!addRes || !addRes.id) continue;
+      c.id = addRes.id;
+      for (const f of allSaveFields) {
+        if (c[f] !== undefined) {
+          saveField(c.id, f, c[f] == null ? '' : c[f]);
+        }
+      }
+    }
+  }
 }
 
 // ============================================================
@@ -1682,6 +1717,7 @@ async function loadFromAPI() {
         };
       });
     });
+    await ensureDbRowsForGeneratedYears();
     // 全教室のadsをADS_BASEの比率で強制再計算
     STATE.years.forEach(ys => {
       (STATE.classrooms[ys.fiscal_year]||[]).forEach(c => {
