@@ -233,6 +233,11 @@ input[type=text], input[type=password]{
   background:#0a0f1a;color:#e8ecf4;font-size:14px;margin-bottom:10px
 }
 input:focus{outline:none;border-color:#3b82f6}
+.pw-line{display:flex;gap:8px;align-items:stretch;margin-bottom:10px}
+.pw-line input{flex:1;min-width:0;margin-bottom:0}
+.pw-line .gen-btn{flex:0 0 auto;padding:0 12px;border-radius:10px;border:1px solid rgba(59,130,246,.35);background:rgba(59,130,246,.12);color:#93c5fd;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+.pw-line .gen-btn:hover{border-color:#3b82f6;filter:brightness(1.08)}
+.gen-hint{min-height:1.2em;font-size:11px;color:#6b7a9a;margin:0 0 10px}
 .cbm{display:flex;align-items:center;gap:8px;font-size:13px;color:#b8c0d0;margin:8px 0 14px}
 .cbm input{width:auto}
 .btn{width:100%;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#3b82f6,#10b981);color:#fff}
@@ -333,7 +338,11 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
           <label for="aid">ログインID</label>
           <input id="aid" name="login_id" type="text" required pattern="[a-zA-Z0-9._\-]{1,64}" title="半角英数字と ._- のみ">
           <label for="apw">パスワード</label>
-          <input id="apw" name="password" type="password" required minlength="8" autocomplete="new-password">
+          <div class="pw-line">
+            <input id="apw" name="password" type="password" required minlength="8" autocomplete="new-password" maxlength="200">
+            <button type="button" class="gen-btn" id="apw-gen">ランダム生成</button>
+          </div>
+          <p class="gen-hint" id="apw-gen-hint" aria-live="polite"></p>
           <label for="adn">表示名（省略時はIDと同じ）</label>
           <input id="adn" name="display_name" type="text" placeholder="社名 担当者 など">
           <label class="cbm">
@@ -346,5 +355,65 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
     </div>
   </div>
 </div>
+<script>
+(function () {
+  function makeRandomPassword() {
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const digits = '23456789';
+    const sym = '@#$%&*?!-';
+    const all = lower + upper + digits + sym;
+    const n = 16;
+    const buf = new Uint32Array(32);
+    if (!window.crypto || !crypto.getRandomValues) { return null; }
+    crypto.getRandomValues(buf);
+    let s = '';
+    s += lower[buf[0] % lower.length] + upper[buf[1] % upper.length]
+      + digits[buf[2] % digits.length] + sym[buf[3] % sym.length];
+    for (let i = 4; i < n; i++) {
+      s += all[buf[i] % all.length];
+    }
+    const a = s.split('');
+    crypto.getRandomValues(buf);
+    for (let j = a.length - 1; j > 0; j--) {
+      const k = buf[j] % (j + 1);
+      const tmp = a[j];
+      a[j] = a[k];
+      a[k] = tmp;
+    }
+    return a.join('');
+  }
+  const apw = document.getElementById('apw');
+  const gen = document.getElementById('apw-gen');
+  const hint = document.getElementById('apw-gen-hint');
+  if (!apw || !gen) { return; }
+  gen.addEventListener('click', function () {
+    if (hint) { hint.textContent = ''; }
+    const p = makeRandomPassword();
+    if (p == null) {
+      if (hint) { hint.textContent = 'このブラウザでは乱数が使えません。手で入力してください。'; }
+      return;
+    }
+    apw.value = p;
+    apw.dispatchEvent(new Event('input', { bubbles: true }));
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(p).then(function () {
+        if (hint) { hint.textContent = '16文字を生成し、クリップボードにコピーしました。相手へは安全な経路で渡してください。'; }
+      }).catch(function () { copyFallback(); });
+    } else {
+      copyFallback();
+    }
+  });
+  function copyFallback() {
+    apw.type = 'text';
+    apw.focus();
+    apw.select();
+    if (hint) { hint.textContent = '平文表示しています。Ctrl/Cmd+C でコピーし、共有後に欄外をクリックで非表示に戻ります。'; }
+  }
+  apw.addEventListener('blur', function () {
+    if (apw.type === 'text') { apw.type = 'password'; }
+  });
+}());
+</script>
 </body>
 </html>
