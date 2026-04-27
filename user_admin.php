@@ -61,7 +61,7 @@ a.back{color:#3b82f6}
   AFTER `is_active`;</pre>
     <p>次に、あなたのログイン ID の管理者付与（例）を実行し、<a class="back" href="/user_admin.php">再読み込み</a> してください。</p>
     <pre>UPDATE `portal_users` SET `is_admin` = 1 WHERE `login_id` = 'あなたのID' LIMIT 1;</pre>
-    <p><a class="back" href="/_auth/portal_index.html">トップ（ポータル）へ戻る</a></p>
+    <p><a class="back" href="/">トップ（エデュラボ管理システム）へ戻る</a></p>
   </div>
 </div>
 </body>
@@ -101,13 +101,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $st = $pdo->prepare('INSERT INTO portal_users (login_id, password_hash, display_name, is_active, is_admin) VALUES (?,?,?,1,?)');
             $st->execute([$loginId, $h, $displayName, $asAdmin ? 1 : 0]);
             ua_ok('add');
-        } elseif ($action === 'toggle_active') {
+        } elseif ($action === 'delete_user') {
             $uid = (int) ($_POST['user_id'] ?? 0);
             if ($uid < 1) {
                 ua_err('id');
             }
             if ($uid === $selfId) {
-                ua_err('self_active');
+                ua_err('self_delete');
             }
             $st = $pdo->prepare('SELECT is_active, is_admin FROM portal_users WHERE id = ?');
             $st->execute([$uid]);
@@ -115,17 +115,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             if (!$r) {
                 ua_err('id');
             }
-            if ((int) $r['is_active'] === 0) {
-                $st = $pdo->prepare('UPDATE portal_users SET is_active = 1, updated_at = NOW() WHERE id = ?');
-                $st->execute([$uid]);
-            } else {
-                if ((int) $r['is_admin'] === 1 && ua_count_active_admins($pdo) <= 1) {
-                    ua_err('last_admin');
-                }
-                $st = $pdo->prepare('UPDATE portal_users SET is_active = 0, updated_at = NOW() WHERE id = ?');
-                $st->execute([$uid]);
+            if ((int) $r['is_active'] === 1 && (int) $r['is_admin'] === 1 && ua_count_active_admins($pdo) <= 1) {
+                ua_err('last_admin');
             }
-            ua_ok('active');
+            $st = $pdo->prepare('DELETE FROM portal_users WHERE id = ?');
+            $st->execute([$uid]);
+            if ($st->rowCount() < 1) {
+                ua_err('id');
+            }
+            ua_ok('delete');
         } elseif ($action === 'toggle_admin') {
             $uid = (int) ($_POST['user_id'] ?? 0);
             if ($uid < 1) {
@@ -188,17 +186,17 @@ $errMsg = [
     'login_id'     => 'ログインIDは半角英数字と ._- のみ、64 文字以内で入力してください。',
     'pass_short'   => 'パスワードは 8 文字以上にしてください。',
     'id'          => '対象ユーザーが見つかりません。',
-    'self_active'  => '自分自身を無効化することはできません。',
+    'self_delete'  => '自分自身のアカウントを削除することはできません。',
     'self_admin'  => '自分の管理者権限をここから外すことはできません。',
     'last_admin'  => '有効な管理者を 0 人にすることはできません。',
     'dup'         => 'そのログインIDは既に使われています。',
-    'inactive'    => '無効化済みユーザーを管理者にできません。先に有効化してください。',
+    'inactive'    => '無効化済みユーザーを管理者にできません。',
 ];
 $okMsg = [
-    'add'   => 'ユーザーを登録しました。',
-    'active'=> '有効/無効を切り替えました。',
-    'admin' => '管理者権限を切り替えました。',
-    'pass'  => 'パスワードを更新しました。',
+    'add'    => 'ユーザーを登録しました。',
+    'delete' => 'ユーザーを削除しました。',
+    'admin'  => '管理者権限を切り替えました。',
+    'pass'   => 'パスワードを更新しました。',
 ];
 $flashErr  = $err && isset($errMsg[$err]) ? $errMsg[$err] : ($err && $err !== '' ? '更新できませんでした。' : '');
 $flashOk   = $ok && isset($okMsg[$ok]) ? $okMsg[$ok] : ($ok && $ok !== '' ? '保存しました。' : '');
@@ -259,9 +257,9 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
   <div class="top">
     <div>
       <h1>ユーザー管理</h1>
-      <p class="sub">新規のログインID・パスワードを発行し、有効/無効や再発行（パスワード変更）が行えます。仮パスは本人に必ず安全な方法で知らせてください。</p>
+      <p class="sub">新規のログインID・パスワードの登録、削除、パスワード再設定が行えます。パスワードは本人に必ず安全な方法で知らせてください。</p>
     </div>
-    <a href="/_auth/portal_index.html">トップへ戻る</a>
+    <a href="/">トップへ戻る</a>
   </div>
   <?php if ($flashErr !== ''): ?><div class="msg e"><?php echo $esc($flashErr); ?></div><?php endif; ?>
   <?php if ($flashOk !== '' && $flashErr === ''): ?><div class="msg"><?php echo $esc($flashOk); ?></div><?php endif; ?>
@@ -295,13 +293,11 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
             <span class="badge <?php echo $adm ? 'b-on' : 'b-off'; ?>"><?php echo $adm ? '管理者' : '一般'; ?></span>
           </td>
           <td>
-            <form class="rowmini" method="post" action="" style="display:block">
+            <form class="rowmini" method="post" action="" style="display:block" onsubmit="return confirm('このユーザーを完全に削除します。よろしいですか？');">
               <input type="hidden" name="csrf" value="<?php echo $esc($csrf); ?>">
-              <input type="hidden" name="action" value="toggle_active">
+              <input type="hidden" name="action" value="delete_user">
               <input type="hidden" name="user_id" value="<?php echo $uid; ?>">
-              <button class="btn2" type="submit" <?php echo $self ? ' disabled title="自分自身は切り替え不可"' : ''; ?>>
-                <?php echo $on ? 'アカウントを無効化' : '有効化'; ?>
-              </button>
+              <button class="btn2 danger" type="submit" <?php echo $self ? ' disabled title="自分自身は削除できません"' : ''; ?>>ユーザーを削除</button>
             </form>
             <form class="rowmini" method="post" action="" style="display:block">
               <input type="hidden" name="csrf" value="<?php echo $esc($csrf); ?>">
@@ -336,7 +332,7 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
           <input type="hidden" name="action" value="add">
           <label for="aid">ログインID</label>
           <input id="aid" name="login_id" type="text" required pattern="[a-zA-Z0-9._\-]{1,64}" title="半角英数字と ._- のみ">
-          <label for="apw">初回パスワード</label>
+          <label for="apw">パスワード</label>
           <input id="apw" name="password" type="password" required minlength="8" autocomplete="new-password">
           <label for="adn">表示名（省略時はIDと同じ）</label>
           <input id="adn" name="display_name" type="text" placeholder="社名 担当者 など">
@@ -345,7 +341,7 @@ form.rowmini .btn2.danger{background:rgba(193,41,46,.15);color:#f87171;border-co
           </label>
           <button class="btn" type="submit">登録</button>
         </form>
-        <p class="note">同じIDは登録できません。平文のパスワードは安全な経路（対面、社内手順など）で周知してください。</p>
+        <p class="note">同じIDは登録できません。平文のパスワードは、対面や社内手順など安全な経路で相手に伝えてください。</p>
       </div>
     </div>
   </div>

@@ -102,6 +102,14 @@ function portal_require_user_admin() {
         return;
     }
     http_response_code(403);
-    echo '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>権限がありません</title></head><body style="font-family:sans-serif;padding:40px;background:#0a0f1a;color:#e8ecf4">このページにアクセスするには管理者アカウントでログインしてください。 <a style="color:#3b82f6" href="/">トップへ</a></body></html>';
+    echo '<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        . '<title>アクセスできません — ユーザー管理</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">'
+        . '<style>body{font-family:\'Noto Sans JP\',sans-serif;background:#0a0f1a;color:#e8ecf4;min-height:100vh;margin:0;display:flex;align-items:center;justify-content:center;padding:24px}'
+        . '.c{max-width:400px;width:100%;background:#111827;border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:32px 28px}'
+        . 'h1{font-size:18px;margin:0 0 12px}'
+        . 'p{font-size:14px;color:#94a3b8;line-height:1.6;margin:0 0 20px}'
+        . 'a{display:inline-block;color:#3b82f6;font-size:14px;text-decoration:none}.a2{margin-top:8px;display:block;color:#64748b;font-size:12px}.a1:hover,a:hover{text-decoration:underline}</style></head><body><div class="c">'
+        . '<h1>管理者権限が必要です</h1><p>ユーザー管理画面にアクセスするには、<strong>管理者</strong>として付与されたアカウントが必要です。社内の管理者の方に権限付与を依頼するか、別の管理者アカウントでログインし直してください。</p>'
+        . '<a class="a1" href="/">トップ（エデュラボ管理システム）へ戻る</a><a class="a2" href="/logout.php">いったんログアウトする</a></div></body></html>';
     exit;
 }
