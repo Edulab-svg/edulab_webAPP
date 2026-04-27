@@ -29,12 +29,20 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         } else {
             try {
                 $pdo = getPortalPdo();
-                $st  = $pdo->prepare('SELECT id, password_hash, is_active FROM portal_users WHERE login_id = ? LIMIT 1');
-                $st->execute([$loginId]);
-                $row = $st->fetch();
+                $row = null;
+                try {
+                    $st = $pdo->prepare('SELECT id, password_hash, is_active, is_admin FROM portal_users WHERE login_id = ? LIMIT 1');
+                    $st->execute([$loginId]);
+                    $row = $st->fetch();
+                } catch (Throwable $e) {
+                    $st = $pdo->prepare('SELECT id, password_hash, is_active FROM portal_users WHERE login_id = ? LIMIT 1');
+                    $st->execute([$loginId]);
+                    $row = $st->fetch();
+                }
                 if ($row && (int)$row['is_active'] === 1 && password_verify($pass, $row['password_hash'])) {
                     session_regenerate_id(true);
-                    $_SESSION['portal_user_id'] = (int)$row['id'];
+                    $_SESSION['portal_user_id']  = (int) $row['id'];
+                    $_SESSION['portal_is_admin'] = isset($row['is_admin']) && (int) $row['is_admin'] === 1;
                     header('Location: ' . $redirect);
                     exit;
                 }

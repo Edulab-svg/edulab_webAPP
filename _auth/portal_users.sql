@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `portal_users` (
   `password_hash` VARCHAR(255)     NOT NULL COMMENT 'password_hash() 結果',
   `display_name`  VARCHAR(100)     NULL DEFAULT NULL COMMENT '表示名',
   `is_active`     TINYINT(1)       NOT NULL DEFAULT 1,
+  `is_admin`      TINYINT(1)       NOT NULL DEFAULT 0 COMMENT '1=ユーザー管理画面にアクセス可',
   `created_at`    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`    DATETIME         NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
