@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../../_auth/bootstrap_session.php';
+require_once __DIR__ . '/../../_auth/auth.php';
 
 header('Cache-Control: no-store, no-cache');
 header('Pragma: no-cache');
@@ -21,13 +23,15 @@ if ($method === 'GET') {
 }
 
 try {
-    // ── 認証不要アクション ──
-    if ($action === 'login')  { echo json_encode(action_login($body));  exit; }
-    if ($action === 'logout') { echo json_encode(action_logout());      exit; }
-    if ($action === 'check')  { echo json_encode(['ok' => true, 'authenticated' => is_logged_in()]); exit; }
+    if ($action === 'check') {
+        if (!portal_is_logged_in() && portal_is_document_navigation_request()) {
+            portal_redirect_to_login();
+        }
+        echo json_encode(['ok' => true, 'authenticated' => portal_is_logged_in()]);
+        exit;
+    }
 
-    // ── 以降は要認証 ──
-    require_auth();
+    portal_require_api_session_json(false);
 
     switch ($action) {
         case 'list':        echo json_encode(action_list()); break;
@@ -48,46 +52,7 @@ try {
 }
 
 // ════════════════════════════════════════
-// 認証アクション
-// ════════════════════════════════════════
-
-function action_login(array $body): array {
-    $ip  = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
-    $pdo = get_pdo();
-
-    // ブルートフォース対策：直近5分の失敗回数チェック
-    $window = date('Y-m-d H:i:s', time() - LOGIN_WINDOW_SEC);
-    $stmt   = $pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND attempted_at > ?');
-    $stmt->execute([$ip, $window]);
-    if ((int)$stmt->fetchColumn() >= LOGIN_MAX_ATTEMPTS) {
-        return ['ok' => false, 'error' => 'しばらく時間をおいてから再試行してください（ロック中）'];
-    }
-
-    $password = $body['password'] ?? '';
-    if (!$password || !password_verify($password, APP_PASSWORD_HASH)) {
-        // 失敗記録
-        $pdo->prepare('INSERT INTO login_attempts (ip) VALUES (?)')->execute([$ip]);
-        return ['ok' => false, 'error' => 'パスワードが違います'];
-    }
-
-    // 成功：古い失敗記録を削除してセッション生成
-    $pdo->prepare('DELETE FROM login_attempts WHERE ip = ?')->execute([$ip]);
-    start_session();
-    session_regenerate_id(true);
-    $_SESSION['authenticated'] = true;
-    $_SESSION['expires_at']    = time() + SESSION_LIFETIME;
-    return ['ok' => true];
-}
-
-function action_logout(): array {
-    start_session();
-    $_SESSION = [];
-    session_destroy();
-    return ['ok' => true];
-}
-
-// ════════════════════════════════════════
-// データアクション（認証済み）
+// データアクション
 // ════════════════════════════════════════
 
 function action_list(): array {

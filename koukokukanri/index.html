@@ -340,6 +340,13 @@ canvas { max-height: 280px; }
       <label>シート名</label>
       <input type="text" id="newSheetName" placeholder="例: 2026年5月配布">
     </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>教室・配布情報をコピーする元の月</label>
+      <select id="copySourceSheet" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:13px;font-family:inherit;">
+        <option value="">コピーしない（空で作成）</option>
+      </select>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">※ 教室名・依頼先・部数などをコピーします。日付・費用・PPチェックはリセットされます。</div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('addSheetModal')">キャンセル</button>
       <button class="btn btn-primary" onclick="addSheet()">追加</button>
@@ -361,6 +368,7 @@ let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth() + 1;
 let editTarget = null;    // {distId}
 let charts = {};
+let openCards = new Set(); // 開いているカードのciを記憶
 
 // ============================================================
 // API ヘルパー
@@ -432,38 +440,110 @@ async function loadSheetData() {
 function renderSheetTabs() {
   const el = document.getElementById('sheetTabs');
   el.innerHTML = sheets.map(s =>
-    `<div class="sheet-tab ${s.id===currentSheetId?'active':''}" onclick="selectSheet(${s.id})">${s.name}</div>`
+    `<div class="sheet-tab ${s.id===currentSheetId?'active':''}" onclick="selectSheet(${s.id})">
+      ${s.name}
+      <span onclick="event.stopPropagation();deleteSheet(${s.id})" style="margin-left:6px;color:var(--muted);font-size:11px;opacity:.5;transition:opacity .15s;" onmouseover="this.style.opacity=1;this.style.color='var(--danger)'" onmouseout="this.style.opacity=.5;this.style.color='var(--muted)'">✕</span>
+    </div>`
   ).join('');
 }
 
 async function selectSheet(id) {
   currentSheetId = id;
+  openCards.clear();
   renderSheetTabs();
   await loadSheetData();
   if (document.getElementById('analyticsView').style.display !== 'none') renderCharts();
 }
 
-function openAddSheetModal() { document.getElementById('addSheetModal').classList.add('visible'); }
+function openAddSheetModal() {
+  // コピー元リストを現在のシート一覧で更新
+  const sel = document.getElementById('copySourceSheet');
+  sel.innerHTML = '<option value="">コピーしない（空で作成）</option>' +
+    sheets.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('addSheetModal').classList.add('visible');
+}
 
 async function addSheet() {
   const name = document.getElementById('newSheetName').value.trim();
   if (!name) return;
+  const copySourceId = parseInt(document.getElementById('copySourceSheet').value) || 0;
   try {
+    // 新しいシートを作成
     const s = await apiPost({ action: 'add_sheet', name });
     sheets.push(s);
     closeModal('addSheetModal');
     document.getElementById('newSheetName').value = '';
+    document.getElementById('copySourceSheet').value = '';
     currentSheetId = s.id;
     classrooms = [];
+
+    // コピー元が指定されていればデータを複製
+    if (copySourceId) {
+      loading(true);
+      try {
+        const srcData = await apiGet({ action: 'all', sheet_id: copySourceId });
+        const srcClassrooms = srcData.classrooms || [];
+        for (const srcC of srcClassrooms) {
+          // 教室を作成
+          const newC = await apiPost({ action: 'add_classroom', sheet_id: s.id, name: srcC.name });
+          // 各配布情報をコピー（日付・費用・PPはリセット）
+          for (const srcD of srcC.distributions) {
+            await apiPost({
+              action: 'add_distribution',
+              classroom_id: newC.id,
+              type:      srcD.type,
+              vendor:    srcD.vendor,
+              copies:    srcD.copies,
+              order_qty: srcD.order_qty,
+              times:     srcD.times || 1,
+              order_date: '', arrival_date: '', delivery_date: '',
+              print_cost: srcD.print_cost,
+              dist_cost:  srcD.dist_cost,
+              total_cost: srcD.total_cost,
+              campaign:   srcD.campaign,
+              period:     srcD.period,
+            });
+          }
+        }
+      } catch(e) {
+        showToast('⚠️ コピー中にエラー: ' + e.message, 'error');
+      }
+      loading(false);
+    }
+
     renderSheetTabs();
-    renderStats();
-    renderClassroomList();
-    showToast(`✅ 「${name}」を追加しました`, 'success');
+    await loadSheetData();
+    showToast(`✅ 「${name}」を追加しました${copySourceId?' (コピー完了)':''}`, 'success');
   } catch(e) { showToast('⚠️ ' + e.message, 'error'); }
 }
 
-// ============================================================
-// STATS
+async function deleteSheet(id) {
+  const sheet = sheets.find(s => s.id === id);
+  if (!sheet) return;
+  if (!confirm(`「${sheet.name}」を削除しますか？\n※ この月の教室・配布情報もすべて削除されます。`)) return;
+  try {
+    await apiPost({ action: 'delete_sheet', id });
+    sheets = sheets.filter(s => s.id !== id);
+    // 削除したシートが表示中だった場合、別のシートに切り替え
+    if (currentSheetId === id) {
+      openCards.clear();
+      if (sheets.length) {
+        currentSheetId = sheets[0].id;
+        renderSheetTabs();
+        await loadSheetData();
+      } else {
+        currentSheetId = null;
+        classrooms = [];
+        renderSheetTabs();
+        renderStats();
+        renderClassroomList();
+      }
+    } else {
+      renderSheetTabs();
+    }
+    showToast(`🗑️ 「${sheet.name}」を削除しました`);
+  } catch(e) { showToast('⚠️ ' + e.message, 'error'); }
+}
 // ============================================================
 function renderStats() {
   let totalCost=0, totalCopies=0, totalDists=0, ppReg=0, ppDel=0;
@@ -560,8 +640,7 @@ function renderClassroomList(search='', typeF='', vendorF='') {
   }
 
   el.innerHTML = filtered.map(classroom => {
-    const ci = classrooms.indexOf(classroom);
-    const dists = classroom.distributions.filter(d =>
+    const ci = classrooms.indexOf(classroom);    const dists = classroom.distributions.filter(d =>
       (!typeF   || d.type===typeF) && (!vendorF || d.vendor===vendorF)
     );
     const totalCost   = dists.reduce((s,d)=>s+d.total_cost,0);
@@ -578,7 +657,7 @@ function renderClassroomList(search='', typeF='', vendorF='') {
         : `<span class="pp-pill pp-pill-none">🖨️ 未対応</span>`;
 
     return `
-    <div class="classroom-card" id="card_${ci}">
+    <div class="classroom-card ${openCards.has(ci)?'open':''}" id="card_${ci}">
       <div class="classroom-header" onclick="toggleCard(${ci})">
         <div class="classroom-name">${classroom.name}</div>
         <div class="classroom-badge">
@@ -690,7 +769,11 @@ function renderClassroomList(search='', typeF='', vendorF='') {
   }).join('');
 }
 
-function toggleCard(ci) { document.getElementById(`card_${ci}`).classList.toggle('open'); }
+function toggleCard(ci) {
+  const card = document.getElementById(`card_${ci}`);
+  card.classList.toggle('open');
+  if (card.classList.contains('open')) { openCards.add(ci); } else { openCards.delete(ci); }
+}
 function toggleAddForm(ci) { document.getElementById(`addForm_${ci}`).classList.toggle('visible'); }
 
 // ============================================================

@@ -9,10 +9,7 @@ define('DB_USER', 'xs047468_mantan');
 define('DB_PASS', '0Ra^Bx:TH0_C');
 define('DB_CHARSET', 'utf8mb4');
 
-// ============================================================
-// シミュレーター認証パスワード（任意の文字列に変更してください）
-// ============================================================
-define('SIMULATOR_PASSWORD', 'manten2025');
+require_once __DIR__ . '/../../../_auth/auth.php';
 
 function getDB() {
     static $pdo = null;
@@ -26,11 +23,6 @@ function getDB() {
     return $pdo;
 }
 
-function checkAuth() {
-    $token = $_SERVER['HTTP_X_SIM_TOKEN'] ?? '';
-    if ($token !== SIMULATOR_PASSWORD) {
-        http_response_code(401);
-        echo json_encode(['error' => 'Unauthorized']);
-        exit;
-    }
+function checkAuth(): void {
+    portal_require_api_session_json(true);
 }

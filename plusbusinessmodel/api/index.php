@@ -3,6 +3,8 @@
 // まんてん個別プラス シミュレーター — API
 // ============================================================
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../../_auth/bootstrap_session.php';
+require_once __DIR__ . '/../../_auth/auth.php';
 
 // --- 共通ヘッダー ---
 header('Content-Type: application/json; charset=UTF-8');
@@ -17,17 +19,6 @@ header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-// --- セッションクッキー設定（HttpOnly / SameSite） ---
-session_name('manten_sid');
-session_set_cookie_params([
-    'lifetime' => SESSION_TTL,
-    'path'     => '/',
-    'secure'   => isset($_SERVER['HTTPS']),
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_start();
-
 // --- ルーティング ---
 $method = $_SERVER['REQUEST_METHOD'];
 $action = '';
@@ -38,74 +29,22 @@ if ($method === 'POST') {
     $action = $_GET['action'] ?? '';
 }
 
-// 認証不要アクション
-if ($action === 'login')  { doLogin($body ?? []);  exit; }
-if ($action === 'logout') { doLogout();             exit; }
-if ($action === 'check')  { doCheck();              exit; }
-
-// 認証チェック
-if (!isAuthed()) {
-    jsonError(401, 'Unauthorized');
+if ($action === 'check') {
+    if (!portal_is_logged_in() && portal_is_document_navigation_request()) {
+        portal_redirect_to_login();
+    }
+    jsonOk(['authed' => portal_is_logged_in()]);
 }
+
+portal_require_api_session_json(true);
 
 // 認証後アクション
 switch ($action) {
     case 'list':         doList();              break;
-    case 'save_school':  doSaveSchool($body);   break;
-    case 'delete_school':doDeleteSchool($body); break;
-    case 'save_all':     doSaveAll($body);      break;
+    case 'save_school':  doSaveSchool($body ?? []);   break;
+    case 'delete_school':doDeleteSchool($body ?? []); break;
+    case 'save_all':     doSaveAll($body ?? []);      break;
     default:             jsonError(400, 'Unknown action');
-}
-
-// ============================================================
-// 認証
-// ============================================================
-function isAuthed(): bool {
-    if (!empty($_SESSION['authed'])) return true;
-    // DBセッション確認
-    $sid = session_id();
-    if (!$sid) return false;
-    try {
-        $db  = getDB();
-        $st  = $db->prepare('SELECT id FROM manten_sessions WHERE id=? AND expires_at > NOW()');
-        $st->execute([$sid]);
-        if ($st->fetch()) { $_SESSION['authed'] = true; return true; }
-    } catch (Exception $e) {}
-    return false;
-}
-
-function doCheck(): void {
-    jsonOk(['authed' => isAuthed()]);
-}
-
-function doLogin(array $body): void {
-    $pass = $body['password'] ?? '';
-    if ($pass !== APP_PASSWORD) {
-        jsonError(401, 'パスワードが正しくありません');
-    }
-    // セッション再生成
-    session_regenerate_id(true);
-    $_SESSION['authed'] = true;
-    $sid = session_id();
-    $expires = date('Y-m-d H:i:s', time() + SESSION_TTL);
-    try {
-        $db = getDB();
-        $db->prepare('INSERT INTO manten_sessions(id, expires_at) VALUES(?,?) ON DUPLICATE KEY UPDATE expires_at=?')
-           ->execute([$sid, $expires, $expires]);
-        // 期限切れ削除
-        $db->exec('DELETE FROM manten_sessions WHERE expires_at < NOW()');
-    } catch (Exception $e) { /* セッションテーブルが使えなくても続行 */ }
-    jsonOk(['message' => 'ログイン成功']);
-}
-
-function doLogout(): void {
-    $sid = session_id();
-    try {
-        getDB()->prepare('DELETE FROM manten_sessions WHERE id=?')->execute([$sid]);
-    } catch (Exception $e) {}
-    $_SESSION = [];
-    session_destroy();
-    jsonOk(['message' => 'ログアウトしました']);
 }
 
 // ============================================================

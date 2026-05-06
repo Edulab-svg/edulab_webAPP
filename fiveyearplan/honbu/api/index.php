@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: X-Sim-Token, Content-Type');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
@@ -27,18 +27,11 @@ $route  = $_GET['route']  ?? ($_POST['route']  ?? '');
 $action = $_POST['action'] ?? '';
 
 if ($route === 'test') {
+    portal_redirect_login_if_document_navigation_unauthenticated();
     echo json_encode(['status' => 'ok', 'sim' => 'honbu', 'time' => date('Y-m-d H:i:s')]);
     exit;
 }
-if ($route === 'auth') {
-    $pw = $_POST['password'] ?? '';
-    echo json_encode(['ok' => ($pw === SIMULATOR_PASSWORD)]);
-    exit;
-}
-
-if ($route !== 'export_write') {
-    checkAuth();
-}
+checkAuth();
 
 try {
     $db = getDB();

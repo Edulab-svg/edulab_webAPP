@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Headers: X-Sim-Token, Content-Type');
+header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
@@ -28,9 +28,11 @@ $action = $_POST['action'] ?? '';
 
 // 認証不要ルート
 if ($route === 'test') {
+    portal_redirect_login_if_document_navigation_unauthenticated();
     echo json_encode(['status' => 'ok', 'sim' => 'plus', 'time' => date('Y-m-d H:i:s')]);
     exit;
 }
+checkAuth();
 if ($route === 'debug_export') {
     // POSTされたdataをそのまま返す
     $raw = $_POST['data'] ?? 'not sent';
@@ -48,16 +50,6 @@ if ($route === 'debug_export') {
     }
     echo json_encode(['raw_length' => strlen($raw), 'rows' => $info]);
     exit;
-}
-if ($route === 'auth') {
-    $pw = $_POST['password'] ?? '';
-    echo json_encode(['ok' => ($pw === SIMULATOR_PASSWORD)]);
-    exit;
-}
-
-// 以降は認証必須（export_writeは認証なしで許可）
-if ($route !== 'export_write') {
-    checkAuth();
 }
 
 try {

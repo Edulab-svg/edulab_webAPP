@@ -24,6 +24,29 @@ function post_int(string $key, int $default = 0): int {
     return isset($_POST[$key]) ? (int)$_POST[$key] : $default;
 }
 
+/** salary_reviews に業務手当関連カラムが無ければ追加（案A・昇給審査） */
+function ensure_salary_review_extended_columns(PDO $pdo): void {
+    $need = ['raise_business_amount', 'business_before', 'business_after'];
+    foreach ($need as $col) {
+        $qcol = $pdo->quote($col);
+        $n = (int)$pdo->query(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'salary_reviews'
+               AND COLUMN_NAME = $qcol"
+        )->fetchColumn();
+        if ($n > 0) {
+            continue;
+        }
+        if ($col === 'raise_business_amount') {
+            $pdo->exec('ALTER TABLE salary_reviews ADD COLUMN raise_business_amount INT NOT NULL DEFAULT 0');
+        } elseif ($col === 'business_before') {
+            $pdo->exec('ALTER TABLE salary_reviews ADD COLUMN business_before INT NULL DEFAULT NULL');
+        } else {
+            $pdo->exec('ALTER TABLE salary_reviews ADD COLUMN business_after INT NULL DEFAULT NULL');
+        }
+    }
+}
+
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $action = ($method === 'POST') ? post_str('action') : ($_GET['action'] ?? '');
 
@@ -227,19 +250,23 @@ try {
         if ($action === 'get_salary_reviews') {
             $emp_id = (int)($_GET['employee_id'] ?? 0);
             if ($emp_id <= 0) json_err('社員IDが不正です');
+            ensure_salary_review_extended_columns($pdo);
             $stmt = $pdo->prepare(
-                'SELECT id, employee_id, review_period, approved, raise_amount,
-                        salary_before, salary_after, note, created_at
+                'SELECT id, employee_id, review_period, approved, raise_amount, raise_business_amount,
+                        salary_before, salary_after, business_before, business_after, note, created_at
                  FROM salary_reviews WHERE employee_id=? ORDER BY review_period DESC'
             );
             $stmt->execute([$emp_id]);
             $rows = $stmt->fetchAll();
             foreach ($rows as &$rv) {
-                $rv['id']           = (int)$rv['id'];
-                $rv['approved']     = (bool)$rv['approved'];
-                $rv['raise_amount'] = (int)$rv['raise_amount'];
-                $rv['salary_before']= (int)$rv['salary_before'];
-                $rv['salary_after'] = (int)$rv['salary_after'];
+                $rv['id']                    = (int)$rv['id'];
+                $rv['approved']             = (bool)$rv['approved'];
+                $rv['raise_amount']         = (int)$rv['raise_amount'];
+                $rv['raise_business_amount']= isset($rv['raise_business_amount']) ? (int)$rv['raise_business_amount'] : 0;
+                $rv['salary_before']        = (int)$rv['salary_before'];
+                $rv['salary_after']         = (int)$rv['salary_after'];
+                $rv['business_before']      = $rv['business_before'] !== null ? (int)$rv['business_before'] : null;
+                $rv['business_after']       = $rv['business_after'] !== null ? (int)$rv['business_after'] : null;
             }
             unset($rv);
             json_ok($rows);
@@ -732,13 +759,18 @@ try {
 
         // ── 昇給審査を記録 ────────────────────────────
         if ($action === 'add_salary_review') {
-            $employee_id   = post_int('employee_id');
-            $review_period = post_str('review_period');
-            $approved      = post_int('approved');
-            $raise_amount  = post_int('raise_amount');
-            $salary_before = post_int('salary_before');
-            $salary_after  = post_int('salary_after');
-            $note          = post_str('note');
+            ensure_salary_review_extended_columns($pdo);
+
+            $employee_id           = post_int('employee_id');
+            $review_period         = post_str('review_period');
+            $approved              = post_int('approved');
+            $raise_amount          = post_int('raise_amount');
+            $raise_business_amount = post_int('raise_business_amount');
+            $salary_before         = post_int('salary_before');
+            $salary_after          = post_int('salary_after');
+            $business_before       = post_int('business_before');
+            $business_after        = post_int('business_after');
+            $note                  = post_str('note');
 
             if ($employee_id <= 0) json_err('社員IDが不正です');
             if (!preg_match('/^\d{4}-\d{2}$/', $review_period)) json_err('審査期間が不正です（YYYY-MM形式）');
@@ -761,21 +793,111 @@ try {
             try {
                 $stmt = $pdo->prepare(
                     'INSERT INTO salary_reviews
-                     (employee_id, review_period, approved, raise_amount, salary_before, salary_after, note)
-                     VALUES (?,?,?,?,?,?,?)'
+                     (employee_id, review_period, approved, raise_amount, raise_business_amount,
+                      salary_before, salary_after, business_before, business_after, note)
+                     VALUES (?,?,?,?,?,?,?,?,?,?)'
                 );
                 $stmt->execute([
                     $employee_id, $review_period, $approved,
-                    $raise_amount, $salary_before, $salary_after, $note
+                    $raise_amount, $raise_business_amount,
+                    $salary_before, $salary_after, $business_before, $business_after, $note
                 ]);
 
-                if ($approved && $raise_amount > 0) {
-                    $stmt = $pdo->prepare('UPDATE employees SET base_salary=? WHERE id=?');
-                    $stmt->execute([$salary_after, $employee_id]);
+                if ($approved && ($raise_amount > 0 || $raise_business_amount > 0)) {
+                    $stmt = $pdo->prepare(
+                        'UPDATE employees SET base_salary=?, business_allowance=? WHERE id=?'
+                    );
+                    $stmt->execute([$salary_after, $business_after, $employee_id]);
                 }
 
                 $pdo->commit();
                 json_ok(['id' => (int)$pdo->lastInsertId()]);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                throw $e;
+            }
+        }
+
+        // ── 昇給審査の修正 ────────────────────────────
+        if ($action === 'update_salary_review') {
+            ensure_salary_review_extended_columns($pdo);
+
+            $id                    = post_int('id');
+            $employee_id_post      = post_int('employee_id');
+            $approved              = post_int('approved');
+            $raise_amount          = post_int('raise_amount');
+            $raise_business_amount = post_int('raise_business_amount');
+            $note                  = post_str('note');
+
+            if ($id <= 0) {
+                json_err('記録IDが不正です');
+            }
+            if ($employee_id_post <= 0) {
+                json_err('社員IDが不正です');
+            }
+
+            $stmt = $pdo->prepare(
+                'SELECT id, employee_id, review_period, salary_before, business_before
+                 FROM salary_reviews WHERE id=?'
+            );
+            $stmt->execute([$id]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                json_err('記録が見つかりません');
+            }
+            $employee_id = (int)$row['employee_id'];
+            if ($employee_id !== $employee_id_post) {
+                json_err('社員が記録と一致しません');
+            }
+
+            $salary_before   = (int)$row['salary_before'];
+            $business_before = $row['business_before'] !== null ? (int)$row['business_before'] : 0;
+
+            if (!$approved) {
+                $raise_amount          = 0;
+                $raise_business_amount = 0;
+                $salary_after          = $salary_before;
+                $business_after        = $business_before;
+            } else {
+                $salary_after   = $salary_before + $raise_amount;
+                $business_after = $business_before + $raise_business_amount;
+            }
+
+            if ($approved && $salary_cap_check = $pdo->prepare(
+                'SELECT COALESCE(r.salary_cap,0) FROM employees e LEFT JOIN roles r ON e.role_id=r.id WHERE e.id=?'
+            )) {
+                $salary_cap_check->execute([$employee_id]);
+                $cap = (int)$salary_cap_check->fetchColumn();
+                if ($cap > 0 && $salary_after > $cap) {
+                    json_err("基本給が上限（{$cap}円）を超えています");
+                }
+            }
+
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare(
+                    'UPDATE salary_reviews SET approved=?, raise_amount=?, raise_business_amount=?,
+                     salary_after=?, business_after=?, note=? WHERE id=?'
+                );
+                $stmt->execute([
+                    $approved, $raise_amount, $raise_business_amount,
+                    $salary_after, $business_after, $note ?: null, $id,
+                ]);
+
+                $maxStmt = $pdo->prepare(
+                    'SELECT MAX(review_period) FROM salary_reviews WHERE employee_id=?'
+                );
+                $maxStmt->execute([$employee_id]);
+                $maxPeriod = $maxStmt->fetchColumn();
+                if ($maxPeriod !== null && (string)$row['review_period'] === (string)$maxPeriod) {
+                    $upd = $pdo->prepare(
+                        'UPDATE employees SET base_salary=?, business_allowance=? WHERE id=?'
+                    );
+                    $upd->execute([$salary_after, $business_after, $employee_id]);
+                }
+
+                $pdo->commit();
+                json_ok(['updated' => true]);
             } catch (Exception $e) {
                 $pdo->rollBack();
                 throw $e;

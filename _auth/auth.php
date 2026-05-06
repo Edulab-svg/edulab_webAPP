@@ -21,9 +21,46 @@ function portal_require_login() {
     if (portal_is_logged_in()) {
         return;
     }
+    portal_redirect_to_login();
+}
+
+/**
+ * ログイン画面へ（戻り先は現在の REQUEST_URI）
+ */
+function portal_redirect_to_login(): void {
     $uri = $_SERVER['REQUEST_URI'] ?? '/';
     header('Location: /login.php?redirect=' . rawurlencode($uri));
     exit;
+}
+
+/**
+ * ブラウザのアドレスバー直叩き等「ページ遷移」と判定できるリクエストか。
+ * fetch/XHR では false になりやすく、API は JSON のまま 401 を返せる。
+ */
+/**
+ * 未ログインかつブラウザのページ遷移ならログインへ（それ以外は何もしない）
+ */
+function portal_redirect_login_if_document_navigation_unauthenticated(): void {
+    require_once __DIR__ . '/bootstrap_session.php';
+    if (portal_is_logged_in()) {
+        return;
+    }
+    if (portal_is_document_navigation_request()) {
+        portal_redirect_to_login();
+    }
+}
+
+function portal_is_document_navigation_request(): bool {
+    $mode = $_SERVER['HTTP_SEC_FETCH_MODE'] ?? '';
+    $dest = $_SERVER['HTTP_SEC_FETCH_DEST'] ?? '';
+    if ($mode === 'navigate' || $dest === 'document') {
+        return true;
+    }
+    $accept = trim((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    if ($accept !== '' && strncasecmp($accept, 'text/html', 9) === 0) {
+        return true;
+    }
+    return false;
 }
 
 function portal_set_csrf_token() {
@@ -94,6 +131,33 @@ function portal_is_user_admin() {
     } catch (Throwable $e) {
         return false;
     }
+}
+
+/**
+ * JSON API 用。未ログイン時:
+ * - ブラウザで URL 直接指定など「ページ遷移」と判定できる場合はログイン画面へリダイレクト
+ * - それ以外（fetch 等）は 401 + JSON
+ *
+ * @param bool $legacyUnauthorized true のとき fiveyearplan 等と同様 { "error": "Unauthorized" }
+ */
+function portal_require_api_session_json(bool $legacyUnauthorized = false): void {
+    require_once __DIR__ . '/bootstrap_session.php';
+    if (portal_is_logged_in()) {
+        return;
+    }
+    if (portal_is_document_navigation_request()) {
+        portal_redirect_to_login();
+    }
+    http_response_code(401);
+    if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode(
+        $legacyUnauthorized
+            ? ['error' => 'Unauthorized']
+            : ['ok' => false, 'error' => 'unauthenticated']
+    );
+    exit;
 }
 
 function portal_require_user_admin() {

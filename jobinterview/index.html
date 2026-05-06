@@ -76,6 +76,10 @@ input,textarea,select,button{font-family:inherit}
 // 定数
 // ════════════════════════════════════════
 const API = '/jobinterview/api/index.php';
+
+function redirectToPortalLogin() {
+    location.href = '/login.php?redirect=' + encodeURIComponent(location.pathname + location.search);
+}
 const MEDIA_OPTIONS      = ['HP','airwork','マイナビ','duda'];
 const STATUS_OPTIONS     = ['未設定','通過','保留','見送り'];
 const PERSONALITY        = ['陽','やや陽','中間','やや陰','陰'];
@@ -102,7 +106,7 @@ async function apiGet(action, params = {}) {
     const q = new URLSearchParams({ action, ...params, _: Date.now() });
     const r = await fetch(API + '?' + q, { credentials: 'same-origin' });
     const json = await r.json();
-    if (r.status === 401 || json.error === 'unauthenticated') { _loggedIn = false; render(); return json; }
+    if (r.status === 401 || json.error === 'unauthenticated') { redirectToPortalLogin(); return json; }
     return json;
 }
 
@@ -114,7 +118,7 @@ async function apiPost(data) {
         body: JSON.stringify(data),
     });
     const json = await r.json();
-    if (r.status === 401 || json.error === 'unauthenticated') { _loggedIn = false; render(); return json; }
+    if (r.status === 401 || json.error === 'unauthenticated') { redirectToPortalLogin(); return json; }
     return json;
 }
 
@@ -124,7 +128,9 @@ async function apiUpload(candidate_id, file) {
     fd.append('candidate_id', candidate_id);
     fd.append('file', file);
     const r = await fetch(API, { method: 'POST', credentials: 'same-origin', body: fd });
-    return r.json();
+    const json = await r.json();
+    if (r.status === 401 || json.error === 'unauthenticated') { redirectToPortalLogin(); return json; }
+    return json;
 }
 
 // ════════════════════════════════════════
@@ -169,10 +175,6 @@ function showToast(msg, isErr = false) {
 // ════════════════════════════════════════
 // 状態
 // ════════════════════════════════════════
-let _loggedIn    = false;
-let _loginPw     = '';
-let _loginErr    = '';
-let _loginBusy   = false;
 let _currentPage = 'top';
 let _candidates  = [];
 let _selected    = null;
@@ -184,66 +186,13 @@ let _loading     = true;
 function render() {
     const app = document.getElementById('app');
     if (_loading)           { app.innerHTML = '<div class="loading">読み込み中…</div>'; return; }
-    if (!_loggedIn)         { renderLogin(app); return; }
     if (_currentPage === 'add')    { renderAdd(app); return; }
     if (_currentPage === 'detail') { renderDetail(app); return; }
     renderTop(app);
 }
 
-// ════════════════════════════════════════
-// ログイン画面
-// ════════════════════════════════════════
-function renderLogin(app) {
-    app.innerHTML = `
-    <div class="login-wrap">
-      <div class="login-box">
-        <div class="login-logo">
-          <div class="icon">📋</div>
-          <h1>1次面接 議事録管理</h1>
-          <p>パスワードを入力してください</p>
-        </div>
-        ${_loginErr ? `<div class="login-err">⚠️ ${esc(_loginErr)}</div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <div>
-            <label class="field-label">パスワード</label>
-            <input id="pwInput" type="password" class="inp" value="${esc(_loginPw)}"
-              oninput="_loginPw=this.value"
-              onkeydown="if(event.key==='Enter')submitLogin()"
-              placeholder="パスワードを入力" autofocus>
-          </div>
-          <button class="btn-primary" style="width:100%;padding:12px 0;border-radius:12px;font-size:15px;margin-top:4px"
-            ${_loginBusy ? 'disabled' : ''} onclick="submitLogin()">
-            ${_loginBusy ? 'ログイン中…' : 'ログイン'}
-          </button>
-        </div>
-      </div>
-    </div>`;
-    if (!_loginBusy) setTimeout(() => document.getElementById('pwInput')?.focus(), 50);
-}
-
-async function submitLogin() {
-    if (_loginBusy || !_loginPw) return;
-    _loginBusy = true; _loginErr = ''; render();
-    const res = await fetch(API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ action: 'login', password: _loginPw }),
-    }).then(r => r.json()).catch(() => ({ ok: false, error: '通信エラー' }));
-    _loginBusy = false;
-    if (res.ok) {
-        _loggedIn = true; _loginPw = ''; _loginErr = '';
-        await loadCandidates();
-    } else {
-        _loginErr = res.error || 'ログイン失敗';
-    }
-    render();
-}
-
-async function logout() {
-    await apiPost({ action: 'logout' });
-    _loggedIn = false; _currentPage = 'top'; _candidates = []; _selected = null;
-    render();
+function logout() {
+    location.href = '/logout.php';
 }
 
 // ════════════════════════════════════════
@@ -267,7 +216,7 @@ function renderTop(app) {
           <div style="font-size:12px;color:#c7d2fe;margin-top:2px">2次面接担当者への引き継ぎシステム</div>
         </div>
         <button class="btn-primary" style="background:#fff;color:#4338ca" onclick="goAdd()">＋ 新規追加</button>
-        <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,.4);color:#c7d2fe;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer">ログアウト</button>
+        <button onclick="logout()" style="background:none;border:1px solid rgba(255,255,255,.4);color:#c7d2fe;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer">ポータルからログアウト</button>
       </div>
       <div style="max-width:896px;margin:0 auto;padding:24px 16px">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
@@ -1014,11 +963,13 @@ async function loadCandidates() {
 // 起動
 // ════════════════════════════════════════
 (async () => {
-    // セッション確認
     const chk = await fetch(API + '?action=check&_=' + Date.now(), { credentials: 'same-origin' })
-        .then(r => r.json()).catch(() => ({ ok: false }));
-    _loggedIn = !!(chk.authenticated);
-    if (_loggedIn) await loadCandidates();
+        .then(r => r.json()).catch(() => ({ ok: false, authenticated: false }));
+    if (!chk.authenticated) {
+        redirectToPortalLogin();
+        return;
+    }
+    await loadCandidates();
     _loading = false;
     render();
 })();

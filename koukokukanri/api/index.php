@@ -205,9 +205,17 @@ function add_sheet(array $d): void {
 function delete_sheet(array $d): void {
     $id = (int)($d['id'] ?? 0);
     if (!$id) throw new Exception('id required');
-    $pdo  = get_pdo();
-    $stmt = $pdo->prepare('DELETE FROM sheets WHERE id=?');
+    $pdo = get_pdo();
+    // 教室IDを取得して配布情報を先に削除（カスケード）
+    $stmt = $pdo->prepare('SELECT id FROM classrooms WHERE sheet_id=?');
     $stmt->execute([$id]);
+    $cids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($cids) {
+        $in = implode(',', array_fill(0, count($cids), '?'));
+        $pdo->prepare("DELETE FROM distributions WHERE classroom_id IN ($in)")->execute($cids);
+    }
+    $pdo->prepare('DELETE FROM classrooms WHERE sheet_id=?')->execute([$id]);
+    $pdo->prepare('DELETE FROM sheets WHERE id=?')->execute([$id]);
     json_ok(['deleted' => $id]);
 }
 

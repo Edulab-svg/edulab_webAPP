@@ -30,6 +30,11 @@ select option{background:#ffffff}
 .card{background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .overlay{position:fixed;inset:0;background:rgba(100,116,139,.4);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
 .modal{background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;padding:32px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.modal.modal-wide{max-width:min(1120px,98vw);padding:28px}
+.modal.modal-wide .salary-history-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal.modal-wide table.salary-history-table th{font-size:10px;padding:6px 7px;letter-spacing:.02em}
+.modal.modal-wide table.salary-history-table td{font-size:12px;padding:7px 7px}
+.modal.modal-wide table.salary-history-table td.memo-cell{white-space:normal;max-width:160px;word-break:break-word;color:#64748b;line-height:1.35}
 .nav-item{padding:10px 16px;border-radius:10px;cursor:pointer;transition:all .2s;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nav-item:hover{background:#e8edf5;color:#334155}
 .nav-item.active{background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1));color:#6366f1;border:1px solid rgba(99,102,241,.25)}
@@ -376,11 +381,17 @@ function showToast(msg,type='ok'){
   if(toastTimer)clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.style.display='none',3000);
 }
-function openModal(html){
-  document.getElementById('modal-box').innerHTML=html;
+function openModal(html,opts){
+  opts=opts||{};
+  const box=document.getElementById('modal-box');
+  box.innerHTML=html;
+  box.className='modal'+(opts.wide?' modal-wide':'');
   document.getElementById('modal-overlay').style.display='flex';
 }
-function closeModal(){document.getElementById('modal-overlay').style.display='none';}
+function closeModal(){
+  document.getElementById('modal-overlay').style.display='none';
+  document.getElementById('modal-box').className='modal';
+}
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 
 // ══════════════════════════════════════════════════════════════════
@@ -1071,6 +1082,8 @@ async function loadRoles(){
 }
 
 function fmtYen(n){return Number(n||0).toLocaleString('ja-JP')+'円';}
+function escAttr(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtW(n){if(!n||n===0)return null;return Number(n).toLocaleString('ja-JP');}
 function fmtPeriod(p){if(!p)return'—';const[y,m]=p.split('-');return`${y}年${parseInt(m)}月`;}
 
@@ -1879,9 +1892,15 @@ function openSalaryReview(id){
   <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#1e293b">昇給審査</h2>
   <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name} — ${parseInt(pm)}月審査（${py}年）</p>
   ${roleInfo}
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px">
-    <div style="font-size:12px;color:#64748b;margin-bottom:4px">現在の基本給</div>
-    <div style="font-size:24px;font-weight:700;color:#6366f1;font-family:monospace">${fmtYen(emp.base_salary)}</div>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">現在の基本給</div>
+      <div style="font-size:22px;font-weight:700;color:#6366f1;font-family:monospace">${fmtYen(emp.base_salary)}</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">現在の業務手当</div>
+      <div style="font-size:22px;font-weight:700;color:#6366f1;font-family:monospace">${fmtYen(emp.business_allowance||0)}</div>
+    </div>
   </div>
   <div class="fg"><label>審査結果</label>
     <select id="rv-approved" onchange="reviewToggleRaise()">
@@ -1889,61 +1908,188 @@ function openSalaryReview(id){
       <option value="0">見送り</option>
     </select>
   </div>
-  <div class="fg" id="rv-raise-wrap"><label>昇給額（円/月）</label>
-    <input id="rv-raise" type="number" placeholder="例：5000" min="0" value="${emp.raise_min||''}"
-      oninput="reviewCalcAfter(${emp.base_salary||0},${emp.salary_cap||0})">
-    ${emp.raise_min||emp.raise_max?`<div style="font-size:12px;color:#475569;margin-top:4px">推奨幅: ${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div>`:''}
+  <div id="rv-raise-wrap">
+    <div class="fg"><label>昇給額・基本給（円/月）</label>
+      <input id="rv-raise" type="number" placeholder="例：5000" min="0" value="${emp.raise_min||''}"
+        oninput="reviewCalcPreview()">
+      ${emp.raise_min||emp.raise_max?`<div style="font-size:12px;color:#475569;margin-top:4px">役職の昇給幅（目安・基本給）: ${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div>`:''}
+    </div>
+    <div class="fg"><label>昇給額・業務手当（円/月）</label>
+      <input id="rv-raise-business" type="number" placeholder="例：3000" min="0" value=""
+        oninput="reviewCalcPreview()">
+      <div style="font-size:12px;color:#475569;margin-top:4px">業務手当の増額を別途入力できます（0 の場合は変更なし）</div>
+    </div>
   </div>
-  <div id="rv-after-wrap" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px">
-    <div style="font-size:12px;color:#64748b;margin-bottom:4px">昇給後の基本給</div>
-    <div id="rv-after-val" style="font-size:22px;font-weight:700;color:#047857;font-family:monospace">—</div>
+  <div id="rv-after-wrap" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">昇給後の基本給</div>
+      <div id="rv-after-val-base" style="font-size:20px;font-weight:700;color:#047857;font-family:monospace">—</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">昇給後の業務手当</div>
+      <div id="rv-after-val-business" style="font-size:20px;font-weight:700;color:#047857;font-family:monospace">—</div>
+    </div>
   </div>
   <div class="fg"><label>メモ（任意）</label><input id="rv-note" placeholder="例：査定A、業績貢献 など"></div>
   <input type="hidden" id="rv-id" value="${id}">
+  <input type="hidden" id="rv-review-id" value="">
+  <input type="hidden" id="rv-post-save" value="">
   <input type="hidden" id="rv-period" value="${currentPeriod}">
   <input type="hidden" id="rv-before" value="${emp.base_salary||0}">
+  <input type="hidden" id="rv-before-business" value="${emp.business_allowance||0}">
+  <input type="hidden" id="rv-cap" value="${emp.salary_cap||0}">
   <div style="display:flex;gap:12px;margin-top:8px">
     <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
     <button class="btn btn-success" style="flex:1" onclick="submitSalaryReview()">審査を記録</button>
   </div>`);
-  reviewCalcAfter(emp.base_salary||0,emp.salary_cap||0);
+  reviewCalcPreview();
+}
+async function openSalaryReviewEdit(employeeId,reviewId){
+  const emp=employees.find(e=>e.id==employeeId);if(!emp)return;
+  const r=await apiGet('get_salary_reviews',{employee_id:employeeId});
+  if(!r.ok){showToast(r.error,'err');return;}
+  const rv=r.data.find(x=>Number(x.id)===Number(reviewId));if(!rv){showToast('記録が見つかりません','err');return;}
+  const[py,pm]=rv.review_period.split('-');
+  const bb=rv.business_before!=null?rv.business_before:0;
+  const roleInfo=emp.role_id?`
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;color:#64748b;margin-bottom:8px">役職: ${emp.role_name}</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div><div style="font-size:11px;color:#475569">昇給幅</div><div style="font-size:13px;font-weight:600;color:#94a3b8;font-family:monospace">${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div></div>
+        <div><div style="font-size:11px;color:#475569">基本給上限</div><div style="font-size:13px;font-weight:600;color:#b45309;font-family:monospace">${emp.salary_cap?fmtYen(emp.salary_cap):'上限なし'}</div></div>
+      </div>
+    </div>`:'';
+  const bizNote=rv.business_before==null?'<div style="font-size:11px;color:#b45309;margin-top:6px">※この記録当時、業務手当の「審査前」が未保存のため 0 円として扱っています（必要なら給与設定でマスタを確認してください）</div>':'';
+  openModal(`
+  <h2 style="font-size:20px;font-weight:700;margin-bottom:4px;color:#1e293b">昇給審査の修正</h2>
+  <p style="font-size:14px;color:#64748b;margin-bottom:20px">${emp.name} — ${parseInt(pm)}月審査（${py}年）</p>
+  ${roleInfo}
+  <div style="background:#fefce8;border:1px solid #fde047;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#713f12;line-height:1.45">
+    審査期間は変更できません。<strong>審査前の金額</strong>は記録上そのままです（昇給額・結果・メモのみ修正できます）。<br>
+    <span style="opacity:.95">※この行が<strong>いちばん新しい審査期間</strong>の記録のときだけ、社員マスタの基本給・業務手当も連動して更新されます。過去の期間だけ直す場合は台帳の記録のみ変わります。</span>
+  </div>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">審査記録上の基本給（審査前）</div>
+      <div style="font-size:22px;font-weight:700;color:#64748b;font-family:monospace">${fmtYen(rv.salary_before)}</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">審査記録上の業務手当（審査前）</div>
+      <div style="font-size:22px;font-weight:700;color:#64748b;font-family:monospace">${fmtYen(bb)}</div>
+    </div>
+  </div>${bizNote}
+  <div class="fg"><label>審査結果</label>
+    <select id="rv-approved" onchange="reviewToggleRaise()">
+      <option value="1" ${rv.approved?'selected':''}>昇給する</option>
+      <option value="0" ${!rv.approved?'selected':''}>見送り</option>
+    </select>
+  </div>
+  <div id="rv-raise-wrap">
+    <div class="fg"><label>昇給額・基本給（円/月）</label>
+      <input id="rv-raise" type="number" placeholder="例：5000" min="0" value="${rv.approved?rv.raise_amount:0}"
+        oninput="reviewCalcPreview()">
+      ${emp.raise_min||emp.raise_max?`<div style="font-size:12px;color:#475569;margin-top:4px">役職の昇給幅（目安・基本給）: ${fmtYen(emp.raise_min)} 〜 ${fmtYen(emp.raise_max)}</div>`:''}
+    </div>
+    <div class="fg"><label>昇給額・業務手当（円/月）</label>
+      <input id="rv-raise-business" type="number" placeholder="例：3000" min="0" value="${rv.approved?rv.raise_business_amount:0}"
+        oninput="reviewCalcPreview()">
+      <div style="font-size:12px;color:#475569;margin-top:4px">業務手当の増額（0 の場合は変更なし）</div>
+    </div>
+  </div>
+  <div id="rv-after-wrap" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:16px;display:flex;gap:24px;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">審査後の基本給（プレビュー）</div>
+      <div id="rv-after-val-base" style="font-size:20px;font-weight:700;color:#047857;font-family:monospace">—</div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#64748b;margin-bottom:4px">審査後の業務手当（プレビュー）</div>
+      <div id="rv-after-val-business" style="font-size:20px;font-weight:700;color:#047857;font-family:monospace">—</div>
+    </div>
+  </div>
+  <div class="fg"><label>メモ（任意）</label><input id="rv-note" placeholder="例：査定A、業績貢献 など" value="${escAttr(rv.note)}"></div>
+  <input type="hidden" id="rv-id" value="${employeeId}">
+  <input type="hidden" id="rv-review-id" value="${reviewId}">
+  <input type="hidden" id="rv-post-save" value="history">
+  <input type="hidden" id="rv-period" value="${rv.review_period}">
+  <input type="hidden" id="rv-before" value="${rv.salary_before}">
+  <input type="hidden" id="rv-before-business" value="${bb}">
+  <input type="hidden" id="rv-cap" value="${emp.salary_cap||0}">
+  <div style="display:flex;gap:12px;margin-top:8px">
+    <button class="btn btn-ghost" style="flex:1" onclick="closeModal()">キャンセル</button>
+    <button class="btn btn-success" style="flex:1" onclick="submitSalaryReview()">変更を保存</button>
+  </div>`);
+  reviewToggleRaise();
 }
 function reviewToggleRaise(){
   const v=document.getElementById('rv-approved').value;
   document.getElementById('rv-raise-wrap').style.display=v==='1'?'block':'none';
   document.getElementById('rv-after-wrap').style.display=v==='1'?'block':'none';
+  reviewCalcPreview();
 }
-function reviewCalcAfter(before,cap){
+function reviewCalcPreview(){
   const raiseEl=document.getElementById('rv-raise');
-  const afterEl=document.getElementById('rv-after-val');
-  if(!raiseEl||!afterEl)return;
+  const raiseBizEl=document.getElementById('rv-raise-business');
+  const afterBase=document.getElementById('rv-after-val-base');
+  const afterBiz=document.getElementById('rv-after-val-business');
+  const beforeHidden=document.getElementById('rv-before');
+  const beforeBizHidden=document.getElementById('rv-before-business');
+  const capHidden=document.getElementById('rv-cap');
+  if(!raiseEl||!afterBase||!beforeHidden)return;
+  const before=parseInt(beforeHidden.value)||0;
+  const beforeBiz=beforeBizHidden?parseInt(beforeBizHidden.value)||0:0;
+  const cap=capHidden?parseInt(capHidden.value)||0:0;
   const raise=parseInt(raiseEl.value)||0;
+  const raiseBiz=raiseBizEl?(parseInt(raiseBizEl.value)||0):0;
   const after=before+raise;
+  const afterBusiness=beforeBiz+raiseBiz;
   if(cap>0&&after>cap){
-    afterEl.textContent=fmtYen(after)+' ⚠ 上限超過';
-    afterEl.style.color='#f43f5e';
+    afterBase.textContent=fmtYen(after)+' ⚠ 上限超過';
+    afterBase.style.color='#f43f5e';
   }else{
-    afterEl.textContent=fmtYen(after);
-    afterEl.style.color='#10b981';
+    afterBase.textContent=fmtYen(after);
+    afterBase.style.color='#10b981';
+  }
+  if(afterBiz){
+    afterBiz.textContent=fmtYen(afterBusiness);
+    afterBiz.style.color='#10b981';
   }
 }
 async function submitSalaryReview(){
   const employee_id=document.getElementById('rv-id').value;
+  const review_id_raw=document.getElementById('rv-review-id').value;
+  const review_id=review_id_raw?parseInt(review_id_raw,10):0;
+  const postSave=document.getElementById('rv-post-save').value;
   const review_period=document.getElementById('rv-period').value;
   const approved=document.getElementById('rv-approved').value;
   const raise_amount=approved==='1'?(parseInt(document.getElementById('rv-raise').value)||0):0;
+  const raise_business_amount=approved==='1'?(parseInt(document.getElementById('rv-raise-business').value)||0):0;
   const salary_before=parseInt(document.getElementById('rv-before').value)||0;
   const salary_after=approved==='1'?salary_before+raise_amount:salary_before;
+  const business_before=parseInt(document.getElementById('rv-before-business').value)||0;
+  const business_after=approved==='1'?business_before+raise_business_amount:business_before;
   const note=document.getElementById('rv-note').value.trim();
   const emp=employees.find(e=>e.id==employee_id);
   if(emp&&emp.salary_cap>0&&salary_after>emp.salary_cap){
     showToast(`上限（${fmtYen(emp.salary_cap)}）を超えています`,'err');return;
   }
-  const r=await apiPost({action:'add_salary_review',employee_id,review_period,approved,raise_amount,salary_before,salary_after,note});
+  let r;
+  if(review_id>0){
+    r=await apiPost({action:'update_salary_review',id:review_id,employee_id,approved,raise_amount,raise_business_amount,note});
+  }else{
+    r=await apiPost({action:'add_salary_review',employee_id,review_period,approved,raise_amount,raise_business_amount,salary_before,salary_after,business_before,business_after,note});
+  }
   if(!r.ok){showToast(r.error,'err');return;}
   closeModal();
-  showToast(`審査を記録しました${approved==='1'?'（昇給 +'+fmtYen(raise_amount)+'）':'（見送り）'}`);
+  let msg='';
+  if(approved==='1'){
+    const parts=[];
+    if(raise_amount>0)parts.push('基本+'+fmtYen(raise_amount));
+    if(raise_business_amount>0)parts.push('業務+'+fmtYen(raise_business_amount));
+    msg=parts.length?'（'+parts.join(' ')+'）':'（昇給額0の記録）';
+  }else msg='（見送り）';
+  showToast(review_id>0?('審査内容を更新しました'+msg):('審査を記録しました'+msg));
   await loadEmployees();renderCurrent();
+  if(postSave==='history')await openSalaryHistory(employee_id);
 }
 
 // ── 昇給履歴モーダル ──────────────────────────────────
@@ -1952,15 +2098,23 @@ async function openSalaryHistory(id){
   const r=await apiGet('get_salary_reviews',{employee_id:id});
   if(!r.ok){showToast(r.error,'err');return;}
   const reviews=r.data;
-  const rows=reviews.map(rv=>`
-    <tr>
+  const rows=reviews.map(rv=>{
+    const rb=rv.raise_business_amount!=null?rv.raise_business_amount:0;
+    const bizBefore=rv.business_before;
+    const bizCell=bizBefore!=null&&rv.business_after!=null
+      ?`<span style="font-family:monospace;color:#64748b">${fmtYen(bizBefore)}</span> → <span style="font-family:monospace;font-weight:600;color:#047857">${fmtYen(rv.business_after)}</span>`
+      :'<span style="color:#94a3b8">—</span>';
+    return`<tr>
       <td style="font-family:monospace;color:#94a3b8;white-space:nowrap">${fmtPeriod(rv.review_period)}</td>
       <td>${rv.approved?'<span class="tag" style="background:#dcfce766;color:#16a34a">昇給</span>':'<span class="tag" style="background:#f1f5f9;color:#64748b">見送り</span>'}</td>
-      <td style="font-family:monospace;color:#6366f1">${rv.approved&&rv.raise_amount?'+'+fmtYen(rv.raise_amount):'—'}</td>
-      <td style="font-family:monospace;color:#64748b">${fmtYen(rv.salary_before)}</td>
-      <td style="font-family:monospace;font-weight:600;color:#047857">${fmtYen(rv.salary_after)}</td>
-      <td style="font-size:12px;color:#64748b">${rv.note||'—'}</td>
-    </tr>`).join('');
+      <td style="font-family:monospace;color:#6366f1;white-space:nowrap">${rv.approved&&rv.raise_amount?'+'+fmtYen(rv.raise_amount):'—'}</td>
+      <td style="font-family:monospace;color:#8b5cf6;white-space:nowrap">${rv.approved&&rb?'+'+fmtYen(rb):'—'}</td>
+      <td style="white-space:nowrap"><span style="font-family:monospace;color:#64748b">${fmtYen(rv.salary_before)}</span> → <span style="font-family:monospace;font-weight:600;color:#047857">${fmtYen(rv.salary_after)}</span></td>
+      <td style="white-space:nowrap">${bizCell}</td>
+      <td class="memo-cell">${rv.note?escHtml(rv.note):'—'}</td>
+      <td style="white-space:nowrap"><button type="button" class="btn-sm" onclick="openSalaryReviewEdit(${id},${rv.id})">修正</button></td>
+    </tr>`;
+  }).join('');
   openModal(`
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
     <div>
@@ -1971,13 +2125,13 @@ async function openSalaryHistory(id){
   </div>
   ${reviews.length===0
     ?'<p style="color:#475569;text-align:center;padding:24px">審査記録がありません</p>'
-    :`<div style="max-height:380px;overflow-y:auto"><table>
-        <thead><tr><th>審査期間</th><th>結果</th><th>昇給額</th><th>審査前</th><th>審査後</th><th>メモ</th></tr></thead>
+    :`<div class="salary-history-wrap"><table class="salary-history-table">
+        <thead><tr><th>審査期間</th><th>結果</th><th>基本↑</th><th>業務↑</th><th>基本給（前→後）</th><th>業務手当（前→後）</th><th>メモ</th><th style="width:1%">操作</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>`}
   <div style="margin-top:16px">
     <button class="btn btn-ghost" style="width:100%" onclick="closeModal()">閉じる</button>
-  </div>`);
+  </div>`,{wide:true});
 }
 
 // ── 役職追加モーダル ──────────────────────────────────

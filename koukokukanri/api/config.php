@@ -7,7 +7,7 @@
 define('DB_HOST', 'localhost');          // 通常このまま
 define('DB_NAME', 'xs047468_koukokukanri');      // ← ★ DB名を書き換え
 define('DB_USER', 'xs047468_koukoku');      // ← ★ ユーザー名を書き換え
-define('DB_PASS', 'ms9/3byIYvLY');  // ← ★ パスワードを書き換え
+define('DB_PASS', 'Vu.,Z2f&.D$N');  // ← ★ パスワードを書き換え
 define('DB_CHARSET', 'utf8mb4');
 
 // ============================================================
