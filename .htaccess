@@ -1,6 +1,21 @@
 SetEnvIf Request_URI ".*" Ngx_Cache_NoCacheMode=off
 SetEnvIf Request_URI ".*" Ngx_Cache_AllCacheMode
 
-# ルートは index.php 優先（トップのポータル認証）。子ディレクトリは index.html も有効（index.php が無い場合の403防止）
+Options -Indexes
 DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ルートは必ず index.php へ
+    RewriteRule ^$ index.php [L]
+
+    # 既存ファイル/ディレクトリはそのまま配信
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # それ以外は必ず index.php へ（未ログイン時は login.php へ遷移）
+    RewriteRule ^ index.php [L]
+</IfModule>
 
