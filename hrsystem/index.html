@@ -1124,7 +1124,15 @@ function renderSalary(){
     if(noSetting)statusTag=`<span class="tag" style="background:#f1f5f9;color:#64748b">未設定</span>`;
     else if(atCap)statusTag=`<span class="tag" style="background:#fef3c7;color:#92400e">上限到達</span>`;
     else if(due)statusTag=`<span class="tag" style="background:#ffedd5;color:#9a3412">審査待ち</span>`;
-    else statusTag=`<span class="tag" style="background:#dcfce766;color:#16a34a">審査済</span>`;
+    else{
+      let reviewResultTag='';
+      if(emp.last_review_approved===true){
+        reviewResultTag=`<span class="tag" style="background:#dcfce7;color:#15803d">昇給</span>`;
+      }else if(emp.last_review_approved===false){
+        reviewResultTag=`<span class="tag" style="background:#fef3c7;color:#b45309">見送り</span>`;
+      }
+      statusTag=`<span class="tag" style="background:#dcfce766;color:#16a34a">審査済</span>${reviewResultTag?` <span style="display:inline-block;width:4px"></span>${reviewResultTag}`:''}`;
+    }
     const w=v=>fmtW(v)?`<span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${fmtW(v)}</span>`:'<span style="color:#cbd5e1">—</span>';
     const P='padding:4px 5px';
     return`<tr style="${due&&!noSetting?'background:#fff7ed;':''}">
@@ -1203,7 +1211,7 @@ function renderSalary(){
               <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="住宅手当">住宅</th>
               <th style="padding:7px 6px;font-size:10px;white-space:nowrap" title="特別手当">特別</th>
               <th style="padding:7px 8px;color:#047857;border-left:1px solid #e2e8f0;white-space:nowrap">月合計</th>
-              <th style="padding:7px 8px;color:#4f46e5;white-space:nowrap" title="（月合計−通勤費・住宅・特別）×(12+賞与月数)">年収概算</th>
+              <th style="padding:7px 8px;color:#4f46e5;white-space:nowrap">年収概算（手当除く） <span title="この年収概算は、通勤費手当・住宅手当・特別手当を除いて算出しています。計算式: （月合計−通勤費・住宅・特別）×(12+賞与月数)" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:9999px;background:#e0e7ff;color:#3730a3;font-size:10px;font-weight:700;cursor:help;vertical-align:middle">?</span></th>
               <th style="padding:7px 8px;white-space:nowrap">前回審査</th>
               <th style="padding:7px 8px;white-space:nowrap">状態</th>
               <th style="padding:7px 8px"></th>
