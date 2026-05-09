@@ -1209,7 +1209,84 @@ function renderPLTable(){
     html+=`<td class="annual-col ${ac}" style="${dimCss}">${fmtCell(row.fmt,ann)}</td></tr>`;
   });
   html+='</tbody></table>';
-  document.getElementById('pl-table-wrap').innerHTML=html;
+  let csvBar='';
+  if(!isCon){
+    csvBar='<div style="margin-bottom:10px;display:flex;justify-content:flex-end"><button type="button" onclick="downloadPlCsvSingle()" style="padding:6px 14px;background:#2D5016;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">📥 CSV出力（この教室）</button></div>';
+  }
+  document.getElementById('pl-table-wrap').innerHTML=csvBar+html;
+}
+
+function csvEscapeCell(v){
+  const s=v==null?'':String(v);
+  if(/[",\r\n]/.test(s))return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+
+function safeFilenamePart(s){
+  const t=String(s||'').replace(/[\\/:*?"<>|]/g,'_').trim();
+  return t||'classroom';
+}
+
+function buildSingleClassroomPlCsv(data,p){
+  const header=['項目','基準値'].concat(MONTHS.slice(0,6),['上期計'],MONTHS.slice(6,12),['下期計','年計']);
+  const rows=[header];
+  let lastGroup='';
+  PL_ROWS.forEach(row=>{
+    if(row.group!==lastGroup){
+      lastGroup=row.group;
+      rows.push([GROUP_NAMES[row.group]].concat(Array(header.length-1).fill('')));
+    }
+    if(row.special==='wdRate'){
+      const tWd=data.reduce((s,m)=>s+m[2],0);
+      const tSt=data.reduce((s,m)=>s+m[3],0);
+      const ann=tSt>0?tWd/tSt:0;
+      const wH1=data.slice(0,6).reduce((s,m)=>s+m[2],0);
+      const sH1=data.slice(0,6).reduce((s,m)=>s+m[3],0);
+      const wH2=data.slice(6,12).reduce((s,m)=>s+m[2],0);
+      const sH2=data.slice(6,12).reduce((s,m)=>s+m[3],0);
+      const cells=[row.label,'-'];
+      data.slice(0,6).forEach(md=>{const r=md[3]>0?md[2]/md[3]:0;cells.push((r*100).toFixed(1)+'%')});
+      cells.push((sH1>0?(wH1/sH1*100).toFixed(2):0)+'%');
+      data.slice(6,12).forEach(md=>{const r=md[3]>0?md[2]/md[3]:0;cells.push((r*100).toFixed(1)+'%')});
+      cells.push((sH2>0?(wH2/sH2*100).toFixed(2):0)+'%');
+      cells.push((ann*100).toFixed(2)+'%');
+      rows.push(cells);
+      return;
+    }
+    const s0=calcSem(data,row.idx,0);
+    const s1=calcSem(data,row.idx,1);
+    const ann=getAnnual(row.idx,data);
+    const cells=[row.label,getBaseRef(row,p)];
+    data.slice(0,6).forEach(md=>cells.push(fmtCell(row.fmt,md[row.idx]||0)));
+    cells.push(fmtCell(row.fmt,s0));
+    data.slice(6,12).forEach(md=>cells.push(fmtCell(row.fmt,md[row.idx]||0)));
+    cells.push(fmtCell(row.fmt,s1));
+    cells.push(fmtCell(row.fmt,ann));
+    rows.push(cells);
+  });
+  return rows;
+}
+
+function downloadPlCsvSingle(){
+  if(STATE.plMode==='consolidated')return;
+  const results=curResults();
+  if(!results.length)return;
+  const p=curClassrooms()[STATE.clIdx];
+  if(!p)return;
+  const data=results[STATE.clIdx].months;
+  const fy=curYear().fiscal_year;
+  const rows=buildSingleClassroomPlCsv(data,p);
+  const bom='\uFEFF';
+  const body=rows.map(r=>r.map(csvEscapeCell).join(',')).join('\r\n');
+  const blob=new Blob([bom+body],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='PL_'+fy+'年度_'+safeFilenamePart(p.name)+'.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function getBaseRef(row,p){
