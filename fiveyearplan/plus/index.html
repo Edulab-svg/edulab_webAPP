@@ -778,7 +778,7 @@ function calcClassroom(p, fiscalYear) {
       const price = p.prices[m] || 25000;
       // 授業料: 生徒数×単価（入会月は半月分）
       const tuition = active * price - enr * price / 2;
-      // 教材売上（入塾金）: 入会数×入塾金
+      // 入塾金: 入会数×入塾金
       const matSale = enr * p.enroll_fee;
       // 模試売上: 授業料×exam_sell_r
       const examSale = tuition * p.exam_sell_r;
@@ -953,7 +953,7 @@ const PL_ROWS = [
   {label:'生徒数',idx:3,fmt:'num',group:'kpi'},
   {label:'授業料単価(税込)',idx:4,fmt:'yen',group:'kpi'},
   {label:'授業料売上',idx:5,fmt:'yen',group:'rev'},
-  {label:'教材売上(入塾金)',idx:6,fmt:'yen',group:'rev'},
+  {label:'入塾金',idx:6,fmt:'yen',group:'rev'},
   {label:'模試売上',idx:7,fmt:'yen',group:'rev'},
   {label:'売上合計',idx:8,fmt:'yen',group:'rev',bold:true,highlight:true},
   {label:'家賃',idx:9,fmt:'yen',group:'admin'},
@@ -970,8 +970,8 @@ const PL_ROWS = [
   {label:'システム使用料',idx:19,fmt:'yen',group:'admin'},
   {label:'教材仕入',idx:21,fmt:'yen',group:'admin'},
   {label:'模試仕入',idx:22,fmt:'yen',group:'admin'},
-  {label:'決済手数料',idx:23,fmt:'yen',group:'admin'},
-  {label:'福利厚生費',idx:24,fmt:'yen',group:'admin'},
+  {label:'支払手数料',idx:23,fmt:'yen',group:'admin'},
+  {label:'交際費',idx:24,fmt:'yen',group:'admin'},
   {label:'修繕費',idx:25,fmt:'yen',group:'admin'},
   {label:'賃借料',idx:26,fmt:'yen',group:'admin'},
   {label:'保険料',idx:27,fmt:'yen',group:'admin'},
@@ -1339,7 +1339,7 @@ function getBaseRef(row,p){
     case 4: return'¥'+f(p.prices[0]||25000);
     // 売上
     case 5: return'-'; // 授業料売上
-    case 6: return'入会数×¥'+f(p.enroll_fee||0); // 教材売上（入塾金）
+    case 6: return'入会数×¥'+f(p.enroll_fee||0); // 入塾金
     case 7: return'授業料×'+(p.exam_sell_r||0); // 模試売上
     case 8: return'-'; // 売上合計
     // 管理費（統合インデックス）
@@ -1415,9 +1415,9 @@ function renderParamArea(){
     {k:'sys_per_st',l:'システム/人'},
     {k:'mat_per_st',l:'教材仕入/人'},
     {k:'exam_buy_r',l:'模試仕入率',step:0.01},
-    {k:'enroll_fee',l:'入塾金(教材売上)'},
-    {k:'fee_r',l:'決済手数料/人'},
-    {k:'welfare_r',l:'福利厚生'},
+    {k:'enroll_fee',l:'入塾金'},
+    {k:'fee_r',l:'支払手数料/人'},
+    {k:'welfare_r',l:'交際費/人'},
     {k:'repair',l:'修繕費'},
     {k:'lease_cost',l:'リース'},
     {k:'insurance',l:'保険'},
