@@ -1023,7 +1023,128 @@ function renderPLTable(){
   });
 
   html+='</tbody></table>';
-  document.getElementById('pl-table-wrap').innerHTML=staffInfoHtml+html;
+  let csvBar = '';
+  if (!isConsolidated) {
+    csvBar = '<div style="margin-bottom:10px;display:flex;justify-content:flex-end"><button type="button" onclick="downloadPlCsvSingle()" style="padding:6px 14px;background:#1B4965;color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">📥 CSV出力（この教室）</button></div>';
+  }
+  document.getElementById('pl-table-wrap').innerHTML=staffInfoHtml+csvBar+html;
+}
+
+function csvEscapeCell(v) {
+  const s = v == null ? '' : String(v);
+  if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function safeFilenamePart(s) {
+  const t = String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+  return t || 'classroom';
+}
+
+function buildSingleClassroomPlCsv(data, p) {
+  const header = ['項目', '基準値'].concat(MONTHS.slice(0, 6), ['上期計'], MONTHS.slice(6, 12), ['下期計', '年計']);
+  const rows = [header];
+  let lastGroup = '';
+  PL_ROWS.forEach(row => {
+    if (row.group !== lastGroup) {
+      lastGroup = row.group;
+      rows.push([GROUP_NAMES[row.group]].concat(Array(header.length - 1).fill('')));
+    }
+    if (row.special === 'wdRate') {
+      const totalWd = data.reduce((s, m) => s + m[3], 0);
+      const totalSt = data.reduce((s, m) => s + m[4], 0);
+      const annRate = totalSt > 0 ? totalWd / totalSt : 0;
+      const wdH1 = data.slice(0, 6).reduce((s, m) => s + m[3], 0),
+        stH1 = data.slice(0, 6).reduce((s, m) => s + m[4], 0);
+      const wdH2 = data.slice(6, 12).reduce((s, m) => s + m[3], 0),
+        stH2 = data.slice(6, 12).reduce((s, m) => s + m[4], 0);
+      const cells = [row.label, '-'];
+      data.slice(0, 6).forEach(md => {
+        const r = md[4] > 0 ? md[3] / md[4] : 0;
+        cells.push((r * 100).toFixed(1) + '%');
+      });
+      cells.push(stH1 > 0 ? (wdH1 / stH1 * 100).toFixed(2) + '%' : '0.00%');
+      data.slice(6, 12).forEach(md => {
+        const r = md[4] > 0 ? md[3] / md[4] : 0;
+        cells.push((r * 100).toFixed(1) + '%');
+      });
+      cells.push(stH2 > 0 ? (wdH2 / stH2 * 100).toFixed(2) + '%' : '0.00%');
+      cells.push((annRate * 100).toFixed(2) + '%');
+      rows.push(cells);
+      return;
+    }
+    if (row.special === 'seminarRate') {
+      const SEMINAR_RATE_MONTHS = [0, 4, 9];
+      const semH1 = data.slice(0, 6).reduce((s, m) => s + m[8], 0);
+      const tutH1 = data.slice(0, 6).reduce((s, m) => s + m[6], 0);
+      const semH2 = data.slice(6, 12).reduce((s, m) => s + m[8], 0);
+      const tutH2 = data.slice(6, 12).reduce((s, m) => s + m[6], 0);
+      const semAnn = data.reduce((s, m) => s + m[8], 0);
+      const tutAnn = data.reduce((s, m) => s + m[6], 0);
+      const cells = [row.label, '-'];
+      data.slice(0, 6).forEach((md, mi) => {
+        const show = SEMINAR_RATE_MONTHS.includes(mi);
+        const r = show && md[6] > 0 ? (md[8] / md[6]) * 100 : 0;
+        cells.push(r.toFixed(1) + '%');
+      });
+      cells.push(tutH1 > 0 ? (semH1 / tutH1 * 100).toFixed(1) + '%' : '0.0%');
+      data.slice(6, 12).forEach((md, mi) => {
+        const mIdx = mi + 6;
+        const show = SEMINAR_RATE_MONTHS.includes(mIdx);
+        const r = show && md[6] > 0 ? (md[8] / md[6]) * 100 : 0;
+        cells.push(r.toFixed(1) + '%');
+      });
+      cells.push(tutH2 > 0 ? (semH2 / tutH2 * 100).toFixed(1) + '%' : '0.0%');
+      cells.push(tutAnn > 0 ? (semAnn / tutAnn * 100).toFixed(1) + '%' : '0.0%');
+      rows.push(cells);
+      return;
+    }
+    let rowLabel = row.label;
+    if (p) {
+      if (row.idx === 36 && p.name_pm) rowLabel += ' ' + p.name_pm;
+      if (row.idx === 37 && p.name_mgr) rowLabel += ' ' + p.name_mgr;
+      if (row.idx === 38 && p.name_sub) rowLabel += ' ' + p.name_sub;
+    }
+    const s0 = calcSemester(data, row.idx, 0);
+    const s1 = calcSemester(data, row.idx, 1);
+    const annVal = getAnnual(row.idx, data);
+    const baseRef = getBaseRef(row, p);
+    const cells = [rowLabel, baseRef];
+    data.slice(0, 6).forEach(md => {
+      cells.push(fmtCell(row.fmt, md[row.idx]));
+    });
+    cells.push(s0 == null ? '-' : fmtCell(row.fmt, s0));
+    data.slice(6, 12).forEach(md => {
+      cells.push(fmtCell(row.fmt, md[row.idx]));
+    });
+    cells.push(s1 == null ? '-' : fmtCell(row.fmt, s1));
+    cells.push(annVal == null ? '-' : fmtCell(row.fmt, annVal));
+    rows.push(cells);
+  });
+  return rows;
+}
+
+function downloadPlCsvSingle() {
+  if (STATE.plMode === 'consolidated19') return;
+  const results = curResults();
+  if (!results.length) return;
+  const cls = curClassrooms();
+  const p = cls[STATE.clIdx];
+  if (!p) return;
+  const data = results[STATE.clIdx].months;
+  const fy = curYear().fiscal_year;
+  const rows = buildSingleClassroomPlCsv(data, p);
+  const bom = '\uFEFF';
+  const body = rows.map(r => r.map(csvEscapeCell).join(',')).join('\r\n');
+  const blob = new Blob([bom + body], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'PL_' + fy + '年度_' + safeFilenamePart(p.name) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function getBaseRef(row,p){
