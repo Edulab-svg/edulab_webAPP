@@ -85,7 +85,7 @@ label{display:block;font-size:13px;font-weight:500;color:#64748b;margin-bottom:6
   <div class="nav-item active" data-view="dashboard"><span>◈</span>休暇ダッシュボード</div>
   <div class="nav-item" data-view="employees"><span>◉</span>社員一覧</div>
   <div class="nav-item" data-view="calendar"><span>◫</span>取得カレンダー</div>
-  <div class="nav-item" data-view="rules"><span>◎</span>法令ガイド</div>
+  <div class="nav-item" data-view="rules"><span>◎</span>法令ガイド・マニュアル</div>
   <div class="nav-item" data-view="retired"><span>◌</span>退職者</div>
   <div style="margin-top:12px;padding:6px 8px 4px;font-size:10px;letter-spacing:.1em;color:#94a3b8;font-weight:700;text-transform:uppercase">給与</div>
   <div class="nav-item" data-view="salary"><span>¥</span>給与管理</div>
@@ -755,7 +755,7 @@ function renderCalendar(){
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 法令ガイド
+// 法令ガイド・マニュアル
 // ══════════════════════════════════════════════════════════════════
 function renderRules(){
   const sections=[
@@ -796,7 +796,7 @@ function renderRules(){
         {label:'休暇ダッシュボード',desc:'全社員の今年度の取得状況・年5日義務の達成状況を一覧で確認できます'},
         {label:'社員一覧',desc:'社員ごとの有給残日数・付与バッチ・取得履歴の確認と、取得登録・社員情報の編集ができます'},
         {label:'取得カレンダー',desc:'月別に誰がいつ有給を取得したか一覧で把握できます'},
-        {label:'法令ガイド',desc:'労基法39条に基づく付与日数・取得義務のルールを確認できます（このページ）'},
+        {label:'法令ガイド・マニュアル',desc:'労基法39条に基づく付与日数・取得義務のルールと、システムの操作方法を確認できます（このページ）'},
         {label:'給与管理 / 月次台帳 / 賞与台帳',desc:'基本給・各種手当の設定、月次・賞与の計算・確認ができます'},
         {label:'役職設定',desc:'役職名・役職手当・昇給範囲・給与上限などを管理します'},
       ]
@@ -804,7 +804,7 @@ function renderRules(){
   ];
   document.getElementById('main').innerHTML=`
   <div class="fadein" style="width:100%">
-    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:8px">法令ガイド</h1>
+    <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:8px">法令ガイド・マニュアル</h1>
     <p style="color:#64748b;font-size:14px;margin-bottom:28px">労働基準法 第39条 に基づく有給休暇ルール</p>
     ${sections.map(s=>`
     <div class="card" style="padding:24px;margin-bottom:16px">
