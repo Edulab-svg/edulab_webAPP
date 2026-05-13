@@ -765,6 +765,43 @@ function renderRules(){
     {title:'④ 年5日取得義務（2019年4月〜）',icon:'⚠',color:'#f43f5e',items:['年10日以上付与された社員が対象','使用者は年5日を確実に取得させる義務','【本システム】4月〜翌3月の年度単位で管理・初回付与年度は免除','違反した場合：30万円以下の罰金（労基法120条）']},
     {title:'⑤ 時効・繰越',icon:'◎',color:'#8b5cf6',items:['有給休暇の時効：付与日から2年','当年度分＋前年度分（最大2年分）が繰越可能','3年目以降は古い分から順に失効']},
   ];
+  const manual=[
+    {
+      title:'社員の登録方法',icon:'◉',color:'#6366f1',
+      rows:[
+        {label:'方法 A（推奨）',desc:'kintone【マスタ】社員にレコードを追加する → HRシステムに自動登録されます'},
+        {label:'方法 B（手動）',desc:'左メニュー「社員一覧」→ 右上「社員を追加」ボタン → 氏名・入社日・週労働日数を入力して登録'},
+      ]
+    },
+    {
+      title:'有給取得の登録方法',icon:'◫',color:'#10b981',
+      rows:[
+        {label:'①',desc:'左メニュー「社員一覧」→ 対象の社員カードをクリックして詳細を開く'},
+        {label:'②',desc:'「有給取得」ボタンをクリック'},
+        {label:'③',desc:'種別（全日 / 半日）・開始日・終了日・メモを入力して「登録する」'},
+        {label:'④',desc:'取得記録を誤って登録した場合は、詳細画面の記録右端にある削除ボタンで取り消せます'},
+      ]
+    },
+    {
+      title:'kintone【マスタ】社員 への有給残日数の反映タイミング',icon:'⚡',color:'#f59e0b',
+      rows:[
+        {label:'即時反映',desc:'有給取得を「登録」または「削除」したとき → 操作と同時に自動更新されます'},
+        {label:'夜間バッチ（毎日 03:00）',desc:'入社後6ヶ月・1年6ヶ月…などの付与タイミングが到来した場合 → 翌朝3時のバッチ処理で自動更新されます'},
+        {label:'注意',desc:'バッチを設定していない環境では、付与タイミング到来後も有給取得の操作があるまで kintone は更新されません'},
+      ]
+    },
+    {
+      title:'各画面の説明',icon:'◈',color:'#8b5cf6',
+      rows:[
+        {label:'休暇ダッシュボード',desc:'全社員の今年度の取得状況・年5日義務の達成状況を一覧で確認できます'},
+        {label:'社員一覧',desc:'社員ごとの有給残日数・付与バッチ・取得履歴の確認と、取得登録・社員情報の編集ができます'},
+        {label:'取得カレンダー',desc:'月別に誰がいつ有給を取得したか一覧で把握できます'},
+        {label:'法令ガイド',desc:'労基法39条に基づく付与日数・取得義務のルールを確認できます（このページ）'},
+        {label:'給与管理 / 月次台帳 / 賞与台帳',desc:'基本給・各種手当の設定、月次・賞与の計算・確認ができます'},
+        {label:'役職設定',desc:'役職名・役職手当・昇給範囲・給与上限などを管理します'},
+      ]
+    },
+  ];
   document.getElementById('main').innerHTML=`
   <div class="fadein" style="width:100%">
     <h1 style="font-size:26px;font-weight:700;color:#1e293b;margin-bottom:8px">法令ガイド</h1>
@@ -778,6 +815,26 @@ function renderRules(){
       <ul style="list-style:none;display:flex;flex-direction:column;gap:8px">
         ${s.items.map(item=>`<li style="font-size:14px;color:#94a3b8;display:flex;gap:10px"><span style="color:${s.color};flex-shrink:0">—</span>${item}</li>`).join('')}
       </ul>
+    </div>`).join('')}
+
+    <div style="margin-top:40px;margin-bottom:10px;display:flex;align-items:center;gap:10px">
+      <div style="width:4px;height:24px;background:#6366f1;border-radius:2px"></div>
+      <h2 style="font-size:20px;font-weight:700;color:#1e293b">操作マニュアル</h2>
+    </div>
+    <p style="color:#64748b;font-size:14px;margin-bottom:20px">システムの使い方・各画面の説明</p>
+    ${manual.map(m=>`
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="color:${m.color};font-size:20px">${m.icon}</span>
+        <h3 style="font-size:16px;font-weight:700;color:#1e293b">${m.title}</h3>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${m.rows.map(r=>`
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="background:${m.color}18;color:${m.color};font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;margin-top:1px;flex-shrink:0">${r.label}</span>
+          <span style="font-size:14px;color:#475569;line-height:1.6">${r.desc}</span>
+        </div>`).join('')}
+      </div>
     </div>`).join('')}
   </div>`;
 }
