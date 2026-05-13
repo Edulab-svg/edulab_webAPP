@@ -158,6 +158,13 @@ async function loadEmployees(){
   const r=await apiGet('get_employees');
   if(r.ok)employees=r.data;
 }
+async function syncKintoneLeave(empId){
+  const emp=employees.find(e=>e.id===empId);
+  if(!emp)return;
+  const remaining=calcAvail(emp.hire_date,emp.work_days_per_week,emp.leaves);
+  const r=await apiPost({action:'sync_kintone_leave',employee_id:empId,remaining_days:remaining});
+  if(!r.ok){console.warn('kintone同期失敗:',r.error);showToast('kintone同期失敗: '+r.error,'err');}
+}
 
 // ══════════════════════════════════════════════════════════════════
 // 計算ロジック
@@ -912,6 +919,7 @@ async function submitAddLeave(){
   if(!r.ok){showToast(r.error,'err');return;}
   closeModal();showToast(`${days}日分の取得を登録しました`);
   await loadEmployees();renderCurrent();
+  syncKintoneLeave(emp.id);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -934,6 +942,7 @@ async function submitDeleteLeave(leaveId){
   if(!r.ok){showToast(r.error,'err');return;}
   closeModal();showToast('取得記録を削除しました');
   await loadEmployees();renderCurrent();
+  syncKintoneLeave(selectedEmpId);
 }
 
 // ══════════════════════════════════════════════════════════════════

@@ -24,6 +24,43 @@ function post_int(string $key, int $default = 0): int {
     return isset($_POST[$key]) ? (int)$_POST[$key] : $default;
 }
 
+/**
+ * kintone REST API を呼び出す汎用ヘルパー
+ * @return array レスポンスのデコード結果。失敗時は ['_error' => string]
+ */
+function kintone_request(string $method, string $endpoint, array $query = [], array $body = []): array {
+    $base = 'https://' . KINTONE_SUBDOMAIN . '.cybozu.com/k/v1/' . $endpoint;
+    // RFC3986 でエンコード（スペースを + でなく %20 にする。kintone のクエリ構文に必要）
+    $url  = $query ? $base . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : $base;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    if ($method === 'PUT') {
+        $headers = [
+            'X-Cybozu-API-Token: ' . KINTONE_API_TOKEN,
+            'Content-Type: application/json',
+        ];
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+    } else {
+        $headers = [
+            'X-Cybozu-API-Token: ' . KINTONE_API_TOKEN,
+        ];
+    }
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    $raw  = curl_exec($ch);
+    $errno = curl_errno($ch);
+    curl_close($ch);
+
+    if ($errno || $raw === false) {
+        return ['_error' => 'curl error: ' . $errno];
+    }
+    return json_decode($raw, true) ?? ['_error' => 'invalid json'];
+}
+
 /** salary_reviews に業務手当関連カラムが無ければ追加（案A・昇給審査） */
 function ensure_salary_review_extended_columns(PDO $pdo): void {
     $need = ['raise_business_amount', 'business_before', 'business_after'];
@@ -430,6 +467,62 @@ try {
             );
             $stmt->execute([$id, $emp_id]);
             json_ok();
+        }
+
+        // ── kintone 有給残日数同期 ─────────────────────
+        if ($action === 'sync_kintone_leave') {
+            $emp_id        = post_int('employee_id');
+            $remaining     = (float)post_str('remaining_days', '0');
+
+            if ($emp_id <= 0) json_err('社員IDが不正です');
+
+            // DB から社員名を取得
+            $stmt = $pdo->prepare('SELECT name FROM employees WHERE id=? AND retired=0');
+            $stmt->execute([$emp_id]);
+            $emp = $stmt->fetch();
+            if (!$emp) json_err('社員が見つかりません');
+
+            $name = $emp['name'];
+
+            // kintone で氏名が一致するレコードを検索
+            $query = KINTONE_NAME_FIELD . ' = "' . str_replace('"', '\\"', $name) . '"';
+            $res = kintone_request('GET', 'records.json', [
+                'app'   => KINTONE_APP_ID,
+                'query' => $query,
+            ]);
+
+            if (isset($res['_error'])) {
+                json_err('kintone検索エラー: ' . $res['_error'], 502);
+            }
+            if (isset($res['code'])) {
+                json_err('kintone APIエラー: ' . ($res['message'] ?? $res['code']), 502);
+            }
+            if (empty($res['records'])) {
+                json_err("kintoneに「{$name}」のレコードが見つかりません", 404);
+            }
+            if (count($res['records']) > 1) {
+                json_err("kintoneに「{$name}」のレコードが複数存在します", 409);
+            }
+
+            $record_id = (int)$res['records'][0]['$id']['value'];
+
+            // 有給残日数を更新
+            $update = kintone_request('PUT', 'record.json', [], [
+                'app'    => KINTONE_APP_ID,
+                'id'     => $record_id,
+                'record' => [
+                    KINTONE_LEAVE_FIELD => ['value' => $remaining],
+                ],
+            ]);
+
+            if (isset($update['_error'])) {
+                json_err('kintone更新エラー: ' . $update['_error'], 502);
+            }
+            if (isset($update['message'])) {
+                json_err('kintoneエラー: ' . $update['message'], 502);
+            }
+
+            json_ok(['record_id' => $record_id, 'remaining' => $remaining]);
         }
 
         // ══════════════════════════════════════════════
