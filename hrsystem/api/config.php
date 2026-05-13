@@ -15,8 +15,11 @@ define('DB_CHARSET', 'utf8mb4');
 define('KINTONE_SUBDOMAIN',   '2f0arh5d0ae0');
 define('KINTONE_APP_ID',      110);
 define('KINTONE_API_TOKEN',   'gw21jETcrHkiUP9UF968YjYpclBvAEdRARzT1UXc');
-define('KINTONE_NAME_FIELD',  '氏名');              // 氏名フィールドコード
-define('KINTONE_LEAVE_FIELD', '有給残日数');         // 有給残日数フィールドコード
+define('KINTONE_NAME_FIELD',      '氏名');              // 氏名フィールドコード
+define('KINTONE_LEAVE_FIELD',     '有給残日数');         // 有給残日数フィールドコード
+define('KINTONE_WDPW_FIELD',      '週労働日数');         // 週労働日数フィールドコード
+define('KINTONE_HIREDATE_FIELD',  '入社年月日');         // 入社年月日フィールドコード
+define('KINTONE_WEBHOOK_TOKEN',   ''); // Webhook認証トークン（kintoneにトークン欄がない場合は空のまま）
 
 // =============================================
 // 以下は変更不要

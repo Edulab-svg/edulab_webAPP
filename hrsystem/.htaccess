@@ -4,9 +4,14 @@ AddDefaultCharset UTF-8
 # index.php 優先（ポータル認証のあと index.html）
 DirectoryIndex index.php index.html
 
-# api/ ディレクトリ直打ちアクセス拒否（index.php 経由のみ許可）
+# config.php への直接アクセスを拒否
 <Files "config.php">
   Require all denied
+</Files>
+
+# kintone_webhook.php は外部POST（kintone）からのアクセスを許可
+<Files "kintone_webhook.php">
+  Require all granted
 </Files>
 
 # キャッシュ無効（HTML・JS）
