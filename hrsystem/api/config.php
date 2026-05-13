@@ -33,3 +33,40 @@ function get_pdo(): PDO {
     ];
     return new PDO($dsn, DB_USER, DB_PASS, $options);
 }
+
+/**
+ * kintone REST API を呼び出す汎用ヘルパー
+ * @return array レスポンスのデコード結果。失敗時は ['_error' => string]
+ */
+function kintone_request(string $method, string $endpoint, array $query = [], array $body = []): array {
+    $base = 'https://' . KINTONE_SUBDOMAIN . '.cybozu.com/k/v1/' . $endpoint;
+    // RFC3986 でエンコード（スペースを + でなく %20 にする。kintone のクエリ構文に必要）
+    $url  = $query ? $base . '?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986) : $base;
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    if ($method === 'PUT') {
+        $headers = [
+            'X-Cybozu-API-Token: ' . KINTONE_API_TOKEN,
+            'Content-Type: application/json',
+        ];
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE));
+    } else {
+        $headers = [
+            'X-Cybozu-API-Token: ' . KINTONE_API_TOKEN,
+        ];
+    }
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+
+    $raw  = curl_exec($ch);
+    $errno = curl_errno($ch);
+    curl_close($ch);
+
+    if ($errno || $raw === false) {
+        return ['_error' => 'curl error: ' . $errno];
+    }
+    return json_decode($raw, true) ?? ['_error' => 'invalid json'];
+}
