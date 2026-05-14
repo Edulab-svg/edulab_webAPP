@@ -1329,6 +1329,12 @@ function renderMonthly(){
   const rows=monthlyData.map(emp=>{
     const has=!!emp.ms_id;
     const excl=!!emp.ms_excluded;
+    // 生成済みの場合はスナップショット値を優先表示
+    const base=has?(emp.ms_base_salary??emp.base_salary):emp.base_salary;
+    const biz=has?(emp.ms_business_allowance??emp.business_allowance):emp.business_allowance;
+    const duty=has?(emp.ms_duty_allowance??emp.duty_allowance):emp.duty_allowance;
+    const roleAllow=has?(emp.ms_role_allowance??emp.role_allowance):emp.role_allowance;
+    const housing=has?(emp.ms_housing_allowance??emp.housing_allowance):emp.housing_allowance;
     const sp=has?emp.ms_special:emp.special_allowance;
     const isSemiPay=emp.commute_cycle==='semi_annual';
     const isPayMonth=isSemiPay&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(mo);
@@ -1336,7 +1342,7 @@ function renderMonthly(){
     const commute=has&&emp.ms_commute!==null
       ? emp.ms_commute
       : (isSemiPay&&!isPayMonth ? 0 : (emp.commute_allowance||0));
-    const total=has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+(sp||0));
+    const total=has?emp.ms_total:((base||0)+(biz||0)+(duty||0)+(roleAllow||0)+commute+(housing||0)+(sp||0));
     const spDiff=has&&!excl&&emp.ms_special!==emp.special_allowance;
     let statusTag;
     if(excl) statusTag='<span class="tag" style="background:#fee2e244;color:#dc2626">除外</span>';
@@ -1355,16 +1361,16 @@ function renderMonthly(){
         ${emp.salary_note?`<div style="font-size:10px;color:#64748b;margin-top:1px">📌 ${emp.salary_note}</div>`:''}
       </td>
       <td style="${P2}">${emp.role_name?`<span class="tag" style="background:#f1f5f9;color:#64748b;font-size:10px;padding:2px 5px">${emp.role_name}</span>`:'—'}</td>
-      <td style="${P2};font-family:'IBM Plex Mono',monospace;color:#4f46e5;font-size:11px;font-weight:700;text-align:right;white-space:nowrap">${emp.base_salary?Number(emp.base_salary).toLocaleString('ja-JP'):'<span style="color:#cbd5e1">—</span>'}</td>
-      <td style="${P2};text-align:right">${mw(emp.business_allowance)}</td>
-      <td style="${P2};text-align:right">${mw(emp.duty_allowance)}</td>
-      <td style="${P2};text-align:right">${mw(emp.role_allowance)}</td>
+      <td style="${P2};font-family:'IBM Plex Mono',monospace;color:#4f46e5;font-size:11px;font-weight:700;text-align:right;white-space:nowrap">${base?Number(base).toLocaleString('ja-JP'):'<span style="color:#cbd5e1">—</span>'}</td>
+      <td style="${P2};text-align:right">${mw(biz)}</td>
+      <td style="${P2};text-align:right">${mw(duty)}</td>
+      <td style="${P2};text-align:right">${mw(roleAllow)}</td>
       <td style="${P2};border-left:1px solid #e2e8f0;text-align:right;${isPayMonth?'color:#047857;background:#f0fdf4;':isSemiPay&&!isPayMonth?'color:#94a3b8;':''}">
         <span style="font-family:'IBM Plex Mono',monospace;font-size:11px">${Number(commute).toLocaleString('ja-JP')}</span>
         ${isPayMonth?'<span style="display:block;font-size:9px;color:#047857;font-family:sans-serif">🚌 支給月</span>':''}
         ${isSemiPay&&!isPayMonth?'<span style="display:block;font-size:9px;color:#94a3b8;font-family:sans-serif">半年払(0)</span>':''}
       </td>
-      <td style="${P2};text-align:right">${mw(emp.housing_allowance)}</td>
+      <td style="${P2};text-align:right">${mw(housing)}</td>
       <td style="${P2};border-left:1px solid #e2e8f0;text-align:right">
         <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:${spDiff?'#c2410c':'#64748b'}">${Number(sp||0).toLocaleString('ja-JP')}</div>
         ${spDiff?`<div style="font-size:9px;color:#64748b">基本:${Number(emp.special_allowance).toLocaleString('ja-JP')}</div>`:''}
@@ -1373,8 +1379,9 @@ function renderMonthly(){
       <td style="${P2};font-size:11px;color:#64748b;max-width:110px;white-space:normal">${has&&emp.ms_note?`📝 ${emp.ms_note}`:'—'}</td>
       <td style="${P2}">${statusTag}</td>
       <td style="${P2};white-space:nowrap" onclick="event.stopPropagation()">
-        <div style="display:flex;gap:3px">
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
           ${!excl?`<button class="btn-sm" style="font-size:11px;padding:3px 7px" onclick="openMonthlyEdit(${emp.id})">編集</button>`:''}
+          ${has&&!excl?`<button class="btn-sm" style="font-size:11px;padding:3px 7px;border-color:#6366f1;color:#6366f1" onclick="refreshMonthlyBaseForEmployee(${emp.id})" title="この社員の基本給・各手当を給与テーブルの現在値で上書き">最新反映</button>`:''}
           ${exclBtn}
         </div>
       </td>
@@ -1480,22 +1487,28 @@ function exportMonthlyCsv(){
   monthlyData.forEach(emp=>{
     const has=!!emp.ms_id;
     const excl=!!emp.ms_excluded;
+    // 生成済みの場合はスナップショット値を優先
+    const base=has?(emp.ms_base_salary??emp.base_salary):emp.base_salary;
+    const biz=has?(emp.ms_business_allowance??emp.business_allowance):emp.business_allowance;
+    const duty=has?(emp.ms_duty_allowance??emp.duty_allowance):emp.duty_allowance;
+    const roleAllow=has?(emp.ms_role_allowance??emp.role_allowance):emp.role_allowance;
+    const housing=has?(emp.ms_housing_allowance??emp.housing_allowance):emp.housing_allowance;
     const sp=has?emp.ms_special:emp.special_allowance;
     const isSemi=emp.commute_cycle==='semi_annual';
     const isPay=isSemi&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(csvMo);
     const commute=has&&emp.ms_commute!==null ? emp.ms_commute : (isSemi&&!isPay ? 0 : (emp.commute_allowance||0));
-    const total=has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+(sp||0));
+    const total=has?emp.ms_total:((base||0)+(biz||0)+(duty||0)+(roleAllow||0)+commute+(housing||0)+(sp||0));
     const status=excl?'除外':has?'生成済':'未生成';
     const note=has&&emp.ms_note?emp.ms_note:'';
     csvRows.push([
       emp.name,
       emp.role_name||'',
-      excl?'':emp.base_salary||0,
-      excl?'':emp.business_allowance||0,
-      excl?'':emp.duty_allowance||0,
-      excl?'':emp.role_allowance||0,
+      excl?'':base||0,
+      excl?'':biz||0,
+      excl?'':duty||0,
+      excl?'':roleAllow||0,
       excl?'':commute,
-      excl?'':emp.housing_allowance||0,
+      excl?'':housing||0,
       excl?'':sp||0,
       excl?'':total||0,
       note,
@@ -1506,17 +1519,23 @@ function exportMonthlyCsv(){
   const totals=monthlyData.reduce((acc,emp)=>{
     if(emp.ms_excluded)return acc;
     const has=!!emp.ms_id;
+    // 生成済みの場合はスナップショット値を優先
+    const base=has?(emp.ms_base_salary??emp.base_salary):emp.base_salary;
+    const biz=has?(emp.ms_business_allowance??emp.business_allowance):emp.business_allowance;
+    const duty=has?(emp.ms_duty_allowance??emp.duty_allowance):emp.duty_allowance;
+    const roleAllow=has?(emp.ms_role_allowance??emp.role_allowance):emp.role_allowance;
+    const housing=has?(emp.ms_housing_allowance??emp.housing_allowance):emp.housing_allowance;
     const isSemi=emp.commute_cycle==='semi_annual';
     const isPay=isSemi&&emp.commute_months&&emp.commute_months.split(',').map(Number).includes(csvMo);
     const commute=has&&emp.ms_commute!==null ? emp.ms_commute : (isSemi&&!isPay ? 0 : (emp.commute_allowance||0));
     const sp=(has?emp.ms_special:emp.special_allowance)||0;
-    acc[0]+=(has?emp.ms_total:((emp.base_salary||0)+(emp.business_allowance||0)+(emp.duty_allowance||0)+(emp.role_allowance||0)+commute+(emp.housing_allowance||0)+sp));
-    acc[1]+=(emp.base_salary||0);
-    acc[2]+=(emp.business_allowance||0);
-    acc[3]+=(emp.duty_allowance||0);
-    acc[4]+=(emp.role_allowance||0);
+    acc[0]+=(has?emp.ms_total:((base||0)+(biz||0)+(duty||0)+(roleAllow||0)+commute+(housing||0)+sp));
+    acc[1]+=(base||0);
+    acc[2]+=(biz||0);
+    acc[3]+=(duty||0);
+    acc[4]+=(roleAllow||0);
     acc[5]+=commute;
-    acc[6]+=(emp.housing_allowance||0);
+    acc[6]+=(housing||0);
     acc[7]+=sp;
     return acc;
   },[0,0,0,0,0,0,0,0]);
@@ -1789,6 +1808,15 @@ async function refreshMonthlyBase(){
   const r=await apiPost({action:'refresh_monthly_base',year_month:currentMonthlyYM});
   if(!r.ok){showToast(r.error,'err');return;}
   showToast(`${r.data.updated}名の基本給情報を最新に更新しました`);
+  await loadMonthly(currentMonthlyYM);renderMonthly();
+}
+async function refreshMonthlyBaseForEmployee(empId){
+  const emp=monthlyData.find(e=>e.id===empId);if(!emp)return;
+  const[yr,mo]=currentMonthlyYM.split('-');
+  if(!confirm(`${emp.name}（${yr}年${parseInt(mo)}月）の基本給・各手当を給与テーブルの現在値で上書きします。\n特別手当・月次備考は保持されます。\nよろしいですか？`))return;
+  const r=await apiPost({action:'refresh_monthly_base',year_month:currentMonthlyYM,employee_ids:JSON.stringify([empId])});
+  if(!r.ok){showToast(r.error,'err');return;}
+  showToast(`${emp.name} の基本給情報を最新に更新しました`);
   await loadMonthly(currentMonthlyYM);renderMonthly();
 }
 async function generateMonthly(){

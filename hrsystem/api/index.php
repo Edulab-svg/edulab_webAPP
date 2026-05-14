@@ -215,6 +215,11 @@ try {
                         COALESCE(e.commute_cycle, 'monthly') AS commute_cycle,
                         e.commute_months                 AS commute_months,
                         ms.id                            AS ms_id,
+                        ms.base_salary                   AS ms_base_salary,
+                        ms.business_allowance            AS ms_business_allowance,
+                        ms.duty_allowance                AS ms_duty_allowance,
+                        ms.role_allowance                AS ms_role_allowance,
+                        ms.housing_allowance             AS ms_housing_allowance,
                         ms.commute_allowance             AS ms_commute,
                         ms.special_allowance             AS ms_special,
                         ms.total                         AS ms_total,
@@ -240,8 +245,13 @@ try {
                 $row['ms_id']             = $row['ms_id'] ? (int)$row['ms_id'] : null;
                 $row['ms_commute']        = $row['ms_commute'] !== null ? (int)$row['ms_commute'] : null;
                 $row['ms_special']        = $row['ms_special'] !== null ? (int)$row['ms_special'] : null;
-                $row['ms_total']          = $row['ms_total'] !== null ? (int)$row['ms_total'] : null;
-                $row['ms_excluded']       = (int)$row['ms_excluded'];
+                $row['ms_total']               = $row['ms_total'] !== null ? (int)$row['ms_total'] : null;
+                $row['ms_base_salary']         = $row['ms_base_salary'] !== null ? (int)$row['ms_base_salary'] : null;
+                $row['ms_business_allowance']  = $row['ms_business_allowance'] !== null ? (int)$row['ms_business_allowance'] : null;
+                $row['ms_duty_allowance']      = $row['ms_duty_allowance'] !== null ? (int)$row['ms_duty_allowance'] : null;
+                $row['ms_role_allowance']      = $row['ms_role_allowance'] !== null ? (int)$row['ms_role_allowance'] : null;
+                $row['ms_housing_allowance']   = $row['ms_housing_allowance'] !== null ? (int)$row['ms_housing_allowance'] : null;
+                $row['ms_excluded']            = (int)$row['ms_excluded'];
             }
             unset($row);
             json_ok($rows);
@@ -773,8 +783,23 @@ try {
             $ym = post_str('year_month');
             if (!preg_match('/^\d{4}-\d{2}$/', $ym)) json_err('年月が不正です');
 
+            // オプション: 特定社員のみ反映（省略時は全員）
+            $emp_ids = [];
+            $emp_ids_raw = post_str('employee_ids');
+            if ($emp_ids_raw !== '') {
+                $decoded = json_decode($emp_ids_raw, true);
+                if (is_array($decoded)) {
+                    $emp_ids = array_values(array_filter(array_map('intval', $decoded), fn($v) => $v > 0));
+                }
+            }
+
             // 対象月の既存レコードを現在の給与テーブルで上書き（special_allowance・note は保持）
             $targetMonth = (int)substr($ym, 5, 2);
+            $whereExtra = '';
+            if (!empty($emp_ids)) {
+                $placeholders = implode(',', array_fill(0, count($emp_ids), '?'));
+                $whereExtra = " AND ms.employee_id IN ($placeholders)";
+            }
             $rows = $pdo->prepare(
                 "SELECT ms.id, ms.special_allowance,
                         e.base_salary, e.business_allowance, e.duty_allowance,
@@ -785,9 +810,10 @@ try {
                  FROM monthly_salaries ms
                  JOIN employees e ON ms.employee_id = e.id
                  LEFT JOIN roles r ON e.role_id = r.id
-                 WHERE ms.`year_month` = ?"
+                 WHERE ms.`year_month` = ?{$whereExtra}"
             );
-            $rows->execute([$ym]);
+            $params = array_merge([$ym], $emp_ids);
+            $rows->execute($params);
             $records = $rows->fetchAll();
 
             $upd = $pdo->prepare(
