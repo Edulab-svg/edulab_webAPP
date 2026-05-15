@@ -170,6 +170,14 @@ main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-he
 .plan-bal-alert-banner{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;
   border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:14px;
   display:flex;align-items:center;gap:8px;line-height:1.5}
+
+/* セルメモボタン */
+.cell-memo-btn{border:none;background:transparent;cursor:pointer;font-size:10px;
+  opacity:.18;padding:0 1px;vertical-align:middle;line-height:1;transition:opacity .15s;display:inline-block}
+.cell-memo-btn:hover{opacity:.8}
+.cell-memo-btn.has-memo{opacity:1;filter:none}
+.daily-grid td:hover .cell-memo-btn{opacity:.5}
+.daily-grid td:hover .cell-memo-btn.has-memo{opacity:1}
 </style>
 </head>
 <body>
@@ -257,6 +265,26 @@ main{margin-top:var(--header-h);margin-left:var(--sidebar-w);padding:22px;min-he
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeM('acc-modal')">キャンセル</button>
       <button class="btn btn-primary" onclick="saveAcc()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- セルメモ Modal -->
+<div class="modal-overlay" id="cell-memo-modal">
+  <div class="modal" style="width:380px">
+    <h2 id="cell-memo-modal-ttl">メモ編集</h2>
+    <div class="form-group" style="margin-bottom:11px">
+      <label>金額（円）</label>
+      <input type="number" id="cell-memo-amt" min="0" style="width:100%" placeholder="0">
+    </div>
+    <div class="form-group">
+      <label>メモ（最大255文字）</label>
+      <input type="text" id="cell-memo-text" maxlength="255" style="width:100%" placeholder="メモを入力…"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();saveCellMemo()}">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeM('cell-memo-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveCellMemo()">保存</button>
     </div>
   </div>
 </div>
@@ -1034,9 +1062,10 @@ function deriveDailyPlanBalanceFromApi(d, carryInFromPrevMonthEnd = null) {
   const eMap = {};
   d.entries.forEach(e => {
     if (!eMap[e.category_id]) eMap[e.category_id] = {};
-    if (!eMap[e.category_id][e.entry_date]) eMap[e.category_id][e.entry_date] = { plan: 0, actual: 0 };
+    if (!eMap[e.category_id][e.entry_date]) eMap[e.category_id][e.entry_date] = { plan: 0, actual: 0, plan_memo: '', actual_memo: '' };
     eMap[e.category_id][e.entry_date][e.entry_type] =
       (eMap[e.category_id][e.entry_date][e.entry_type] || 0) + (parseInt(e.amount, 10) || 0);
+    if (e.memo) eMap[e.category_id][e.entry_date][e.entry_type + '_memo'] = e.memo;
   });
   const balMap = buildDailyBalanceCarryForwardMap(days, d.balances);
   const income = d.categories.filter(c => c.type === 'income');
@@ -1109,12 +1138,16 @@ async function renderDailyCF() {
         const cells = days.map(dt => {
           const v = (eMap[cat.id]?.[dt]?.['plan']) || 0;
           rowSum += v;
+          const memo = eMap[cat.id]?.[dt]?.['plan_memo'] || '';
+          const memoEsc = memo.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;');
+          const memoBtnCls = memo ? 'cell-memo-btn has-memo' : 'cell-memo-btn';
+          const memoTitle = memo ? ` title="${memoEsc}"` : '';
           const todayCls = dt === today ? ' today-col' : '';
           return `<td class="num${todayCls}"><input type="number" value="${v||''}"
-            data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}" data-acc-id="${cat.account_id||''}"
+            data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}" data-acc-id="${cat.account_id||''}" data-memo="${memoEsc}"
             oninput="refreshDailyDerivedRows()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
-            onblur="saveDailyCell(this)"></td>`;
+            onblur="saveDailyCell(this)"><button type="button" class="${memoBtnCls}"${memoTitle} onclick="openCellMemoPopover(this)">📝</button></td>`;
         });
         return `<tr class="${catType}-row daily-cf-block-${catType === 'income' ? 'inc' : 'exp'}">
           <td class="sticky-col">${cat.name}</td>
@@ -1604,12 +1637,66 @@ async function saveDailyCell(inp) {
       category_id: inp.dataset.cid,
       entry_date:  inp.dataset.date,
       entry_type:  inp.dataset.dtype,
-      amount:      amt
+      amount:      amt,
+      memo:        inp.dataset.memo || ''
     });
     invalidateMonthEndPlanMemo();
     inp.dataset.lastSaved = String(amt);
     inp.value = amt > 0 ? String(amt) : '';
     refreshDailyDerivedRows();
+    inp.style.background = '#bbf7d0';
+    setTimeout(() => inp.style.background = '', 700);
+  } catch(e) { toast(e.message, 'err'); }
+}
+
+// ============================================================
+//  日次CF: セルメモ編集
+// ============================================================
+let _cellMemoTarget = null;
+
+function openCellMemoPopover(btn) {
+  const td = btn.closest('td');
+  const inp = td?.querySelector('input[type=number]');
+  if (!inp) return;
+  const tr = td.closest('tr');
+  const catName = tr?.querySelector('td.sticky-col')?.textContent?.trim() || '';
+  const date = inp.dataset.date || '';
+  _cellMemoTarget = { inp, btn };
+  document.getElementById('cell-memo-modal-ttl').textContent = `メモ編集：${catName}（${date}）`;
+  document.getElementById('cell-memo-amt').value = inp.value || '';
+  document.getElementById('cell-memo-text').value = inp.dataset.memo || '';
+  openM('cell-memo-modal');
+  setTimeout(() => document.getElementById('cell-memo-text').focus(), 80);
+}
+
+async function saveCellMemo() {
+  if (!_cellMemoTarget) return;
+  const { inp, btn } = _cellMemoTarget;
+  const amtRaw = String(document.getElementById('cell-memo-amt').value ?? '').trim();
+  const amt = amtRaw === '' ? 0 : (parseInt(amtRaw, 10) || 0);
+  const memo = document.getElementById('cell-memo-text').value.trim().slice(0, 255);
+  try {
+    await apiPost('daily_cell_save', {
+      category_id: inp.dataset.cid,
+      entry_date:  inp.dataset.date,
+      entry_type:  inp.dataset.dtype,
+      amount:      amt,
+      memo:        memo
+    });
+    invalidateMonthEndPlanMemo();
+    inp.value = amt > 0 ? String(amt) : '';
+    inp.dataset.lastSaved = String(amt);
+    inp.dataset.memo = memo;
+    if (memo) {
+      btn.classList.add('has-memo');
+      btn.title = memo;
+    } else {
+      btn.classList.remove('has-memo');
+      btn.title = '';
+    }
+    refreshDailyDerivedRows();
+    closeM('cell-memo-modal');
+    toast('保存しました');
     inp.style.background = '#bbf7d0';
     setTimeout(() => inp.style.background = '', 700);
   } catch(e) { toast(e.message, 'err'); }
