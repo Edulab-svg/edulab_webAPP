@@ -1147,6 +1147,7 @@ async function renderDailyCF() {
             data-cid="${cat.id}" data-date="${dt}" data-dtype="plan" data-last-saved="${v}" data-acc-id="${cat.account_id||''}" data-memo="${memoEsc}"
             oninput="refreshDailyDerivedRows()"
             onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}"
+            onwheel="this.blur()"
             onblur="saveDailyCell(this)"><button type="button" class="${memoBtnCls}"${memoTitle} onclick="openCellMemoPopover(this)">📝</button></td>`;
         });
         return `<tr class="${catType}-row daily-cf-block-${catType === 'income' ? 'inc' : 'exp'}">
