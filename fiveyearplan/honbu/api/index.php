@@ -45,7 +45,7 @@ try {
             // repay は従来INT1件のDB列も想定: intFを外し、配列化は下の正規化で対応
             $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','repay','staff_json'];
             $intF   = ['salary1','salary2','rent','water','electric','phone','travel',
-                       'consume','sys','welfare','repair','lease','insurance','sanitation','other'];
+                       'consume','sys','welfare','repair','lease','insurance','sanitation','other','honor'];
             $floatF = ['legal_welf_r'];
             $strF   = ['name1','name2'];
             foreach ($rows as &$r) {
@@ -86,7 +86,7 @@ try {
 
                 $jsonF  = ['ads','fee_monthly','recruit','recruit_part','borrow','repay','staff_json'];
                 $intF   = ['salary1','salary2','rent','water','electric','phone','travel',
-                           'consume','sys','welfare','repair','lease','insurance','sanitation','other'];
+                           'consume','sys','welfare','repair','lease','insurance','sanitation','other','honor'];
                 $floatF = ['legal_welf_r'];
                 $strF   = ['name1','name2'];
                 $allowed = array_merge($jsonF,$intF,$floatF,$strF);
